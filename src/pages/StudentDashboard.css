@@ -1,0 +1,136 @@
+.student-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    color: #1a202c;
+    /* Working with a light theme dashboard inside the main container */
+}
+
+/* Override global text color for this dashboard specifically if needed, 
+   but since the global theme is dark navy, we need to be careful.
+   The image shows a white card-like background for the main content area 
+   OR the main content area has white cards on a light grey background.
+   Let's assume the dashboard main bg is white or off-white. 
+*/
+
+.quick-stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-card-dark {
+    background-color: #1f2937;
+    /* Dark navy/grey from image */
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    opacity: 0.9;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    /* Gold */
+    line-height: 1.1;
+}
+
+.stat-sub {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.dashboard-split {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-split {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dash-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    color: #1f2937;
+}
+
+.dash-card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+}
+
+/* Announcements specific */
+.announcement-item {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+    text-align: center;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+.cal-head {
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.cal-day {
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.cal-day.active {
+    background-color: var(--primary);
+    color: white;
+    font-weight: bold;
+}
+
+.view-all-btn-gold {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--primary);
+    color: #1f2937;
+    font-weight: 600;
+    border-radius: 4px;
+    margin-top: 1rem;
+    transition: all 0.2s;
+}
+
+.view-all-btn-gold:hover {
+    background-color: var(--primary);
+    color: white;
+}
