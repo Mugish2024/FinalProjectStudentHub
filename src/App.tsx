@@ -2,6 +2,11 @@ import { useState } from 'react';
 import DashboardLayout from './layouts/DashboardLayout';
 import RegistrationVerification from './pages/RegistrationVerification';
 import Payments from './pages/Payments';
+import Elections from './pages/Elections';
+import Discipline from './pages/Discipline';
+import Attendance from './pages/Attendance';
+import Claims from './pages/Claims';
+import Events from './pages/Events';
 import PlaceholderPage from './components/PlaceholderPage';
 
 import StudentDashboard from './pages/StudentDashboard';
@@ -13,18 +18,20 @@ function App() {
     switch (activePage) {
       case 'dashboard':
         return <StudentDashboard />;
+      case 'elections':
+        return <Elections />;
       case 'registration':
         return <RegistrationVerification />;
       case 'attendance':
-        return <PlaceholderPage title="Attendance Records" />;
+        return <Attendance />;
       case 'payments':
         return <Payments />;
       case 'events':
-        return <PlaceholderPage title="Events" />;
+        return <Events />;
       case 'claims':
-        return <PlaceholderPage title="Claims" />;
+        return <Claims />;
       case 'discipline':
-        return <PlaceholderPage title="Discipline Record" />;
+        return <Discipline />;
       default:
         return <PlaceholderPage title="Page Not Found" />;
     }

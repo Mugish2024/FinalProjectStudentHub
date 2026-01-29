@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Calendar, DollarSign, Megaphone, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, DollarSign, Megaphone, FileText, Settings, Vote } from 'lucide-react';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -12,6 +12,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen = true, onClose }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'elections', label: 'Elections', icon: Vote },
     { id: 'attendance', label: 'Attendance', icon: FileText },
     { id: 'payments', label: 'Payments', icon: DollarSign },
     { id: 'events', label: 'Events', icon: Calendar },
