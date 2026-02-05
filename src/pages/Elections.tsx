@@ -11,7 +11,7 @@ const Elections: React.FC = () => {
 
             {/* Current Elections Section */}
             <div className="election-card">
-                <h2 className="section-title" style={{ color: '#0f172a', marginBottom: '1.5rem' }}>
+                <h2 className="section-title">
                     CURRENT & UPCOMING ELECTIONS
                 </h2>
 
@@ -27,7 +27,7 @@ const Elections: React.FC = () => {
                         <span className="detail-label">Nomination Period:</span>
                         <span>Feb 1 - Feb 15</span>
                     </div>
-                    <div className="detail-row" style={{ borderBottom: '2px solid #dcb14a', paddingBottom: '0.25rem', width: 'fit-content' }}>
+                    <div className="detail-row active-campaign-period">
                         <span className="detail-label">Campaign Period:</span>
                         <span>Feb 16 - Mar 1</span>
                     </div>
@@ -35,7 +35,7 @@ const Elections: React.FC = () => {
                         <span className="detail-label">Voting Day:</span>
                         <span>Mar 2</span>
                     </div>
-                    
+
                     <div className="stats-row">
                         <div className="detail-row">
                             <span className="detail-label">Eligible Voters:</span>
@@ -60,8 +60,8 @@ const Elections: React.FC = () => {
             </div>
 
             {/* Past Elections Section */}
-            <div className="past-elections-card" style={{ maxWidth: '400px' }}>
-                <h2 className="section-title" style={{ color: '#0f172a' }}>PAST ELECTIONS</h2>
+            <div className="past-elections-card">
+                <h2 className="section-title">PAST ELECTIONS</h2>
                 <a href="#" className="view-all-link">View All Historical Elections</a>
             </div>
         </div>

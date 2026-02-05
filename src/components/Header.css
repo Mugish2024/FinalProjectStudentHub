@@ -1,6 +1,6 @@
 .header {
     height: var(--header-height);
-    background-color: var(--primary);
+    background-color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -8,14 +8,16 @@
     position: sticky;
     top: 0;
     z-index: 40;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .header-title {
     font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-inverted);
+    font-weight: 800;
+    color: var(--auca-blue);
     text-transform: uppercase;
+    letter-spacing: 0.025em;
 }
 
 .header-actions {
@@ -31,14 +33,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-inverted);
+    color: var(--text-secondary);
     transition: all 0.2s;
     position: relative;
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: transparent;
+    border: 1px solid transparent;
 }
 
 .icon-btn:hover {
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: #f1f5f9;
+    color: var(--auca-blue);
+    border-color: #e2e8f0;
 }
 
 .menu-btn {
@@ -54,7 +59,25 @@
     height: 8px;
     background-color: #ef4444;
     border-radius: 50%;
-    border: 1px solid var(--primary);
+    border: 1px solid #ffffff;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
 }
 
 .user-profile {
@@ -62,21 +85,23 @@
     align-items: center;
     gap: 0.75rem;
     cursor: pointer;
-    padding: 0.25rem 0.5rem;
-    border-radius: var(--radius);
-    transition: background-color 0.2s;
+    padding: 0.25rem 0.75rem 0.25rem 0.25rem;
+    border-radius: 999px;
+    transition: all 0.2s;
+    border: 1px solid transparent;
 }
 
 .user-profile:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
 }
 
 .avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background-color: var(--text-inverted);
-    color: var(--primary);
+    background-color: var(--auca-blue);
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -93,12 +118,12 @@
 .user-name {
     font-weight: 700;
     font-size: 0.875rem;
-    color: var(--text-inverted);
+    color: var(--text-main);
 }
 
 .user-role {
     font-size: 0.75rem;
-    color: rgba(0, 0, 0, 0.7);
+    color: var(--text-secondary);
     font-weight: 500;
 }
 

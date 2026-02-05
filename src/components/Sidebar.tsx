@@ -50,13 +50,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen = t
         </nav>
 
         <div className="sidebar-footer">
-          <div className="nav-item">
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+          <div className="sidebar-user-container">
+            <div className="sidebar-user-avatar">
               JD
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>Ishimwe Bienvenu</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Student</span>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">Ishimwe Bienvenu</span>
+              <span className="sidebar-user-role">Student</span>
             </div>
           </div>
         </div>

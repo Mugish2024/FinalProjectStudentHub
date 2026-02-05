@@ -1,176 +1,277 @@
-.elections-container {
-    padding: 1.5rem;
-    color: var(--text-main);
-    max-width: 1200px;
-    margin: 0 auto;
+/* Auctions/Elections Theme primarily Blue and White */
+:root {
+    --auca-blue: #004594;
+    --auca-blue-dark: #003366;
+    --auca-blue-light: #e6f0fa;
+    --auca-gold: #dcb14a;
+    /* Keeping subtle gold for highlighting if needed */
+    --text-dark: #1e293b;
+    --text-grey: #64748b;
+    --bg-page: #f0f7ff;
 }
 
+.elections-container {
+    padding: 2rem;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-dark);
+    max-width: 1000px;
+    margin: 0 auto;
+    /* Optional: if you want the whole page background to look white/light blue 
+       even if the dashboard is dark, we might need a wrapper setting background.
+       For now, we assume this container sits on the dashboard. */
+}
+
+/* Header Text */
 .elections-header-text {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 800;
-    color: var(--primary);
+    color: var(--auca-blue);
     margin-bottom: 2rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    /* Add a small accent line */
+    border-bottom: 3px solid var(--auca-blue);
+    padding-bottom: 0.5rem;
+    width: fit-content;
 }
 
 .elections-header-text .sub-id {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 400;
-    margin-left: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-grey);
+    font-weight: 500;
     text-transform: none;
+    letter-spacing: normal;
+    background-color: var(--auca-blue-light);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    color: var(--auca-blue);
+}
+
+/* Card Styling */
+.election-card {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 69, 148, 0.1), 0 8px 10px -6px rgba(0, 69, 148, 0.1);
+    margin-bottom: 2rem;
+    border: 1px solid #e2e8f0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative top bar for the card */
+.election-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--auca-blue) 0%, #3b82f6 100%);
 }
 
 .section-title {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    margin-bottom: 1rem;
-    color: var(--text-main);
+    margin-bottom: 1.5rem;
+    color: var(--auca-blue-dark);
     text-transform: uppercase;
-    letter-spacing: 0.025em;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
 }
 
-.election-card {
-    background-color: white; /* As per screenshot contrast, looks white/light grey against dark bg? Or maybe it's just a very light card. Wait, the screenshot shows the card is WHITE text on DARK background? Or White card on Dark background? Re-examining image. */
-    /* The image shows the SIDEBAR is dark. The MAIN CONTENT area is also dark blue. */
-    /* INSIDE the main content area, there is a White/Light Grey rounded rectangle containing the "Current & Upcoming Elections". */
-    /* Wait, no. The "Current & Upcoming Elections" text is OUTSIDE the white box? No, inside. */
-    
-    /* Re-evaluating Image: */
-    /* Sidebar: Deep Blue/Grey. */
-    /* Content Area Background: Deep Blue/Grey (same as sidebar). */
-    /* Large White Card: Contains "CURRENT & UPCOMING ELECTIONS", "AUCASA GENERAL ELECTION 2024", etc. */
-    /* So the main container "Current & Upcoming..." IS a white card. */
-    
-    background-color: #f8fafc; /* Slate 50 */
-    border-radius: var(--radius);
-    padding: 2rem;
-    color: #1e293b; /* Slate 800 - dark text on white card */
-    box-shadow: var(--shadow);
+/* Main Info Section */
+.election-main-info {
+    background-color: var(--auca-blue-light);
+    border-left: 4px solid var(--auca-blue);
+    border-radius: 0 8px 8px 0;
+    padding: 1.5rem;
     margin-bottom: 2rem;
 }
 
-/* Override global text color for inside the white card if needed, but scoping is better */
-.election-card h3 {
-    color: #0f172a;
-}
-
-.election-main-info {
-    border: 1px solid #e2e8f0;
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    background-color: #ffffff;
-}
-
 .election-title {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--auca-blue);
     line-height: 1.2;
     margin-bottom: 0.5rem;
 }
 
 .election-description {
-    color: #64748b;
-    font-size: 1rem;
+    color: var(--text-dark);
+    font-size: 1.05rem;
+    opacity: 0.9;
 }
 
+/* Details Grid */
 .election-details-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
-    margin-bottom: 1.5rem;
-    padding: 1.5rem;
+    margin-bottom: 2.5rem;
     background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: var(--radius);
 }
 
 .detail-row {
-    font-size: 0.95rem;
-    color: #334155;
+    font-size: 1rem;
+    color: var(--text-dark);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
 }
 
 .detail-label {
-    font-weight: 700;
-    color: #0f172a;
+    font-weight: 600;
+    color: var(--text-grey);
+    min-width: 140px;
 }
 
+/* Active Campaign Highlight */
+.active-campaign-period {
+    position: relative;
+    font-weight: 600;
+    color: var(--auca-blue);
+}
+
+.active-campaign-period::after {
+    content: "ACTIVE";
+    margin-left: auto;
+    font-size: 0.7rem;
+    background-color: var(--auca-blue);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transform: translateY(-1px);
+}
+
+/* Stats */
 .stats-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 0.5rem;
-    font-weight: 600;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
 }
 
 .stats-highlight {
-    color: var(--primary); /* Gold/Orange */
+    font-weight: 800;
+    color: var(--auca-blue);
+    font-size: 1.1rem;
 }
 
-.active-period-line {
-    border-bottom: 2px solid var(--primary);
-    /* width: 100%; - maybe partial? */
-    padding-bottom: 0.25rem;
-    display: inline-block;
-}
-
+/* Countdown Section */
 .countdown-section {
-    background-color: #f1f5f9;
-    border-radius: var(--radius);
-    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--auca-blue) 0%, var(--auca-blue-dark) 100%);
+    border-radius: 12px;
+    padding: 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 1.5rem;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 69, 148, 0.25);
 }
 
 .countdown-label {
-    font-weight: 700;
-    color: #334155;
-    margin-bottom: 0.25rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
     display: block;
 }
 
 .countdown-timer {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 800;
-    color: var(--primary); /* Gold */
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Vote Button */
 .vote-button {
-    background-color: var(--primary);
-    color: #ffffff; /* White text on Gold button? Or dark text? standard is usually white or dark. Screenshot text looks white. */
-    /* Wait, in screenshot button is GOLD background. Text looks to be WHITE. */
-    padding: 0.75rem 2rem;
-    font-size: 1.1rem;
-    font-weight: 700;
-    border-radius: var(--radius);
+    background-color: #ffffff;
+    color: var(--auca-blue);
+    padding: 0.875rem 2.5rem;
+    font-size: 1.125rem;
+    font-weight: 800;
+    border-radius: 999px;
     text-transform: uppercase;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .vote-button:hover {
-    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    background-color: #f8fafc;
 }
 
+.vote-button:active {
+    transform: translateY(0);
+}
+
+/* Past Elections Card */
 .past-elections-card {
-    background-color: #f8fafc;
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    box-shadow: var(--shadow);
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    max-width: 400px;
+    margin-top: 1rem;
 }
 
 .view-all-link {
-    color: #2563eb; /* Blue link */
-    text-decoration: underline;
+    color: var(--auca-blue);
+    text-decoration: none;
     font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s;
+}
+
+.view-all-link:hover {
+    color: #3b82f6;
+    /* Lighter blue on hover */
+    text-decoration: underline;
+}
+
+.view-all-link::after {
+    content: "→";
+    font-size: 1.1em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .countdown-section {
+        flex-direction: column;
+        text-align: center;
+        align-items: stretch;
+    }
+
+    .vote-button {
+        width: 100%;
+    }
+
+    .election-title {
+        font-size: 1.3rem;
+    }
+
+    .stats-row {
+        gap: 1rem;
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }

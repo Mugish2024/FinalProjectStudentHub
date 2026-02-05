@@ -34,7 +34,7 @@ const Payments: React.FC = () => {
             <div className="amount-card">
                 <div className="amount-label">Outstanding Balance</div>
                 <div className="amount-value">3,000 RWF</div>
-                <div style={{ color: '#22c55e', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                <div className="fee-info">
                     • Annual Membership Fee
                 </div>
             </div>
@@ -49,7 +49,7 @@ const Payments: React.FC = () => {
 
     const renderMethods = () => (
         <div className="payment-hero">
-            <button className="btn-back" onClick={() => setStep('initial')} style={{ position: 'absolute', left: '2rem', top: '7rem' }}>
+            <button className="btn-back" onClick={() => setStep('initial')} style={{ position: 'absolute', left: '0', top: '0' }}>
                 <ChevronLeft size={24} /> Back
             </button>
             <h2 className="hero-title">Select Payment Method</h2>
@@ -61,7 +61,7 @@ const Payments: React.FC = () => {
                         <Smartphone size={32} />
                     </div>
                     <h3>Mobile Money</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>MTN / Airtel Money</p>
+                    <p style={{ color: 'var(--text-grey)', fontSize: '0.9rem' }}>MTN / Airtel Money</p>
                 </div>
 
                 <div className="method-card" onClick={() => handleMethodSelect('card')}>
@@ -69,7 +69,7 @@ const Payments: React.FC = () => {
                         <CreditCard size={32} />
                     </div>
                     <h3>Card Payment</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Visa / Mastercard</p>
+                    <p style={{ color: 'var(--text-grey)', fontSize: '0.9rem' }}>Visa / Mastercard</p>
                 </div>
             </div>
         </div>
@@ -77,7 +77,7 @@ const Payments: React.FC = () => {
 
     const renderDetails = () => (
         <div className="payment-hero">
-            <button className="btn-back" onClick={() => setStep('methods')} style={{ position: 'absolute', left: '2rem', top: '7rem' }}>
+            <button className="btn-back" onClick={() => setStep('methods')} style={{ position: 'absolute', left: '0', top: '0' }}>
                 <ChevronLeft size={24} /> Back
             </button>
 
@@ -87,8 +87,8 @@ const Payments: React.FC = () => {
 
             <form className="payment-form-container" onSubmit={handlePayment}>
                 <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                    <div className="amount-value" style={{ fontSize: '2rem' }}>3,000 RWF</div>
-                    <div style={{ color: '#94a3b8' }}>To: AUCASA Association</div>
+                    <div className="amount-value" style={{ fontSize: '2.5rem' }}>3,000 RWF</div>
+                    <div style={{ color: 'var(--text-grey)' }}>To: AUCASA Association</div>
                 </div>
 
                 {selectedMethod === 'mobile' ? (
@@ -123,7 +123,7 @@ const Payments: React.FC = () => {
                     {isProcessing ? 'Processing...' : `Pay 3,000 RWF`}
                 </button>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.5rem', color: '#64748b', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.5rem', color: 'var(--text-grey)', fontSize: '0.85rem' }}>
                     <ShieldCheck size={16} /> Secure Payment
                 </div>
             </form>
@@ -135,23 +135,23 @@ const Payments: React.FC = () => {
             <div className="success-icon">
                 <Check size={48} color="white" strokeWidth={3} />
             </div>
-            <h2 className="hero-title">Payment Successful!</h2>
+            <h2 className="hero-title" style={{ fontSize: '2rem' }}>Payment Successful!</h2>
             <p className="hero-subtitle">
                 Your payment has been processed successfully. A receipt has been sent to your student email.
             </p>
 
-            <div className="amount-card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '250px', marginBottom: '0.5rem' }}>
-                    <span style={{ color: '#94a3b8' }}>Transaction ID</span>
-                    <span>#TXN-88293</span>
+            <div className="amount-card" style={{ padding: '1.5rem', marginTop: '1rem', width: '100%', maxWidth: '400px', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-grey)' }}>Transaction ID</span>
+                    <span style={{ fontWeight: 600 }}>#TXN-88293</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '250px', marginBottom: '0.5rem' }}>
-                    <span style={{ color: '#94a3b8' }}>Date</span>
-                    <span>{new Date().toLocaleDateString()}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-grey)' }}>Date</span>
+                    <span style={{ fontWeight: 600 }}>{new Date().toLocaleDateString()}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '250px' }}>
-                    <span style={{ color: '#94a3b8' }}>Amount</span>
-                    <span style={{ color: '#22c55e', fontWeight: 'bold' }}>3,000 RWF</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-grey)' }}>Amount</span>
+                    <span style={{ color: '#22c55e', fontWeight: '800' }}>3,000 RWF</span>
                 </div>
             </div>
 
