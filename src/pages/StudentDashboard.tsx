@@ -1,47 +1,112 @@
 import React from 'react';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { Calendar as CalendarIcon, Users, DollarSign, Vote, ArrowRight, FileText } from 'lucide-react';
 import './StudentDashboard.css';
 
-const data = [
-    { name: 'Week 1', hours: 12 },
-    { name: 'Week 2', hours: 19 },
-    { name: 'Week 3', hours: 30 },
-    { name: 'Week 4', hours: 22 },
-    { name: 'Week 5', hours: 35 },
-];
+interface StudentDashboardProps {
+    navigateTo?: (page: string) => void;
+}
 
-const StudentDashboard: React.FC = () => {
+const StudentDashboard: React.FC<StudentDashboardProps> = ({ navigateTo }) => {
+
+    // Fallback if navigateTo is not provided
+    const handleNavigate = (page: string) => {
+        if (navigateTo) {
+            navigateTo(page);
+        } else {
+            console.log(`Navigating to ${page}`);
+        }
+    };
+
     return (
         <div className="student-dashboard">
             <div className="quick-stats-row">
-                <div className="stat-card-dark">
-                    <div className="stat-label">Attendance Rate</div>
-                    <div className="stat-value">95% ↑</div>
+                <div className="stat-card">
+                    <div className="stat-icon-wrapper blue">
+                        <Users size={24} />
+                    </div>
+                    <div>
+                        <div className="stat-label">Attendance Rate</div>
+                        <div className="stat-value">95% <span className="trend-up">↑</span></div>
+                    </div>
                 </div>
-                <div className="stat-card-dark">
-                    <div className="stat-label">AUCASA Fee</div>
-                    <div className="stat-sub">PAID</div>
+                <div className="stat-card">
+                    <div className="stat-icon-wrapper gold">
+                        <DollarSign size={24} />
+                    </div>
+                    <div>
+                        <div className="stat-label">AUCASA Fee</div>
+                        <div className="stat-sub">PAID</div>
+                    </div>
                 </div>
-                <div className="stat-card-dark">
-                    <div className="stat-label">Upcoming Events</div>
-                    <div className="stat-value">2</div>
+                <div className="stat-card">
+                    <div className="stat-icon-wrapper green">
+                        <CalendarIcon size={24} />
+                    </div>
+                    <div>
+                        <div className="stat-label">Upcoming Events</div>
+                        <div className="stat-value">2</div>
+                    </div>
                 </div>
             </div>
 
             <div className="dashboard-split">
-                {/* Attendance History */}
+                {/* Quick Actions / Featured Navigation */}
                 <div className="dash-card">
-                    <h3 className="dash-card-title">Attendance History</h3>
-                    <div style={{ height: '300px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={data} barSize={30}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-                                <Bar dataKey="hours" fill="#dcb14a" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <h3 className="dash-card-title">Quick Actions</h3>
+                    <p className="section-desc">Access key features and services instantly.</p>
+
+                    <div className="quick-actions-grid">
+                        <div className="action-card" onClick={() => handleNavigate('elections')}>
+                            <div className="action-icon blue">
+                                <Vote size={28} />
+                            </div>
+                            <div className="action-content">
+                                <h4>Vote Now</h4>
+                                <p>Participate in ongoing student elections.</p>
+                            </div>
+                            <div className="action-arrow">
+                                <ArrowRight size={20} />
+                            </div>
+                        </div>
+
+                        <div className="action-card" onClick={() => handleNavigate('payments')}>
+                            <div className="action-icon gold">
+                                <DollarSign size={28} />
+                            </div>
+                            <div className="action-content">
+                                <h4>Make Payment</h4>
+                                <p>Settle tuition and association fees securely.</p>
+                            </div>
+                            <div className="action-arrow">
+                                <ArrowRight size={20} />
+                            </div>
+                        </div>
+
+                        <div className="action-card" onClick={() => handleNavigate('events')}>
+                            <div className="action-icon green">
+                                <CalendarIcon size={28} />
+                            </div>
+                            <div className="action-content">
+                                <h4>View Events</h4>
+                                <p>Check out upcoming campus activities.</p>
+                            </div>
+                            <div className="action-arrow">
+                                <ArrowRight size={20} />
+                            </div>
+                        </div>
+
+                        <div className="action-card" onClick={() => handleNavigate('registration')}>
+                            <div className="action-icon purple">
+                                <FileText size={28} />
+                            </div>
+                            <div className="action-content">
+                                <h4>Registration Info</h4>
+                                <p>Verify your semester registration status.</p>
+                            </div>
+                            <div className="action-arrow">
+                                <ArrowRight size={20} />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -51,14 +116,14 @@ const StudentDashboard: React.FC = () => {
 
                     <div className="announcement-item">
                         <div>
-                            <div style={{ fontWeight: 600 }}>General Assembly - Oct 26</div>
-                            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>Sports Tryouts - Nov 1</div>
+                            <div className="announcement-title">General Assembly - Oct 26</div>
+                            <div className="announcement-sub">Sports Tryouts - Nov 1</div>
                         </div>
-                        <CalendarIcon size={20} color="#64748b" />
+                        <CalendarIcon size={20} className="text-secondary" />
                     </div>
 
                     {/* Simple Calendar Mockup */}
-                    <div style={{ textAlign: 'center', margin: '1rem 0' }}>
+                    <div className="calendar-header">
                         <strong>October 2023</strong>
                     </div>
                     <div className="calendar-grid">

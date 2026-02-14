@@ -2,61 +2,107 @@
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    color: #1a202c;
-    /* Working with a light theme dashboard inside the main container */
+    color: var(--text-main);
+    animation: fadeIn 0.5s ease-out;
 }
 
-/* Override global text color for this dashboard specifically if needed, 
-   but since the global theme is dark navy, we need to be careful.
-   The image shows a white card-like background for the main content area 
-   OR the main content area has white cards on a light grey background.
-   Let's assume the dashboard main bg is white or off-white. 
-*/
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
 
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Quick Stats Row */
 .quick-stats-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
 }
 
-.stat-card-dark {
-    background-color: #1f2937;
-    /* Dark navy/grey from image */
-    color: white;
+.stat-card {
+    background-color: var(--surface);
     padding: 1.5rem;
-    border-radius: 12px;
+    border-radius: var(--radius);
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--border);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.stat-icon-wrapper.blue {
+    background-color: rgba(0, 69, 148, 0.1);
+    color: var(--auca-blue);
+}
+
+.stat-icon-wrapper.gold {
+    background-color: rgba(220, 177, 74, 0.15);
+    color: #9d7b1e;
+    /* Darker gold for text/icon visibility */
+}
+
+.stat-icon-wrapper.green {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--secondary);
 }
 
 .stat-label {
     font-size: 0.9rem;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    opacity: 0.9;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
 }
 
 .stat-value {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--primary);
-    /* Gold */
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-main);
     line-height: 1.1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .stat-sub {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--secondary);
 }
 
+.trend-up {
+    font-size: 1rem;
+    color: var(--secondary);
+    background: rgba(34, 197, 94, 0.1);
+    padding: 2px 6px;
+    border-radius: 12px;
+}
+
+/* Dashboard Split Layout */
 .dashboard-split {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 1.5rem;
 }
 
@@ -66,71 +112,216 @@
     }
 }
 
+/* Generic Dashboard Card */
 .dash-card {
-    background-color: white;
-    border-radius: 12px;
+    background-color: var(--surface);
+    border-radius: var(--radius);
     padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    color: #1f2937;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
 }
 
 .dash-card-title {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--text-main);
     margin-bottom: 1.5rem;
-}
-
-/* Announcements specific */
-.announcement-item {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
+/* Announcements */
+.announcement-item {
+    background-color: var(--surface-hover);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.announcement-item:hover {
+    background-color: #eef4ff;
+    /* Slight blue tint on hover */
+    border-color: #cbd5e1;
+}
+
+/* Calendar */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
+    gap: 0.5rem;
     text-align: center;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     margin-top: 1rem;
 }
 
 .cal-head {
     font-weight: 600;
-    color: var(--primary);
+    color: var(--text-secondary);
     margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
 }
 
 .cal-day {
     padding: 0.5rem;
-    border-radius: 4px;
+    border-radius: 50%;
+    /* Circle for modern look */
+    aspect-ratio: 1;
+    /* Keep it circular */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cal-day:hover:not(:empty) {
+    background-color: var(--surface-hover);
+    color: var(--auca-blue);
 }
 
 .cal-day.active {
-    background-color: var(--primary);
+    background-color: var(--auca-blue);
     color: white;
     font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0, 69, 148, 0.3);
 }
 
+/* Buttons */
 .view-all-btn-gold {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--primary);
-    color: #1f2937;
+    padding: 0.875rem;
+    border: 1px solid var(--border);
+    background-color: transparent;
+    color: var(--text-main);
     font-weight: 600;
-    border-radius: 4px;
-    margin-top: 1rem;
+    border-radius: var(--radius-sm);
+    margin-top: 1.5rem;
     transition: all 0.2s;
 }
 
 .view-all-btn-gold:hover {
-    background-color: var(--primary);
+    background-color: var(--auca-blue);
     color: white;
+    border-color: var(--auca-blue);
+    box-shadow: var(--shadow-sm);
+}
+
+.announcement-title {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.announcement-sub {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.calendar-header {
+    text-align: center;
+    margin: 1rem 0;
+    color: var(--text-main);
+}
+
+
+/* Quick Actions Grid */
+.section-desc {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-top: -1rem;
+    margin-bottom: 2rem;
+}
+
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.action-card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-card:hover {
+    border-color: var(--auca-blue);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.action-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.action-card:hover .action-icon {
+    transform: scale(1.1);
+}
+
+.action-icon.blue {
+    background-color: rgba(0, 69, 148, 0.1);
+    color: var(--auca-blue);
+}
+
+.action-icon.gold {
+    background-color: rgba(220, 177, 74, 0.15);
+    color: #9d7b1e;
+}
+
+.action-icon.green {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: var(--secondary);
+}
+
+.action-icon.purple {
+    background-color: rgba(99, 102, 241, 0.1);
+    color: var(--accent);
+}
+
+.action-content {
+    flex: 1;
+}
+
+.action-content h4 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+}
+
+.action-content p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.action-arrow {
+    color: var(--border-focus);
+    transition: all 0.3s ease;
+}
+
+.action-card:hover .action-arrow {
+    color: var(--auca-blue);
+    transform: translateX(4px);
 }

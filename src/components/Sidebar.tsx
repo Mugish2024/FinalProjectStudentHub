@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Calendar, DollarSign, Megaphone, FileText, Settings, Vote } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, DollarSign, FileText, Settings, Vote } from 'lucide-react';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -16,7 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen = t
     { id: 'attendance', label: 'Attendance', icon: FileText },
     { id: 'payments', label: 'Payments', icon: DollarSign },
     { id: 'events', label: 'Events', icon: Calendar },
-    { id: 'claims', label: 'Claims', icon: Megaphone },
+    // { id: 'claims', label: 'Claims', icon: Megaphone },
     { id: 'discipline', label: 'Discipline Record', icon: Settings }, // Using Settings as placeholder for shield if not available
     { id: 'registration', label: 'Registration Info', icon: Users }, // Keeping the old page accessible
   ];

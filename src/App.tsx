@@ -17,7 +17,7 @@ function App() {
   const renderContent = () => {
     switch (activePage) {
       case 'dashboard':
-        return <StudentDashboard />;
+        return <StudentDashboard navigateTo={setActivePage} />;
       case 'elections':
         return <Elections />;
       case 'registration':

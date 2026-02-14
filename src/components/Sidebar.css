@@ -1,10 +1,8 @@
 .sidebar {
     width: var(--sidebar-width);
     height: 100vh;
-    background-color: var(--sidebar-bg);
-    /* AUCA Blue */
-    background-image: linear-gradient(180deg, var(--auca-blue) 0%, var(--auca-blue-dark) 100%);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--surface);
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -12,43 +10,43 @@
     top: 0;
     z-index: 50;
     transition: transform 0.3s ease;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
-    color: var(--text-inverted);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-sidebar);
 }
 
 .sidebar-header {
     height: var(--header-height);
     display: flex;
     align-items: center;
-    padding: 0 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: transparent;
+    padding: 0 2rem;
+    /* border-bottom: 1px solid var(--border); */
+    /* Cleaner look without heavy border */
 }
 
 .logo-text {
-    font-size: 1.25rem;
-    font-weight: 900;
-    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--auca-blue);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: -0.02em;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
 }
 
 .logo-text::before {
-    /* Optional: Small accent dot if no logo image */
     content: '';
     display: block;
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     background-color: var(--auca-gold);
     border-radius: 50%;
+    box-shadow: 0 0 10px rgba(220, 177, 74, 0.5);
 }
 
 .sidebar-nav {
     flex: 1;
-    padding: 1.5rem 1rem;
+    padding: 2rem 1.5rem;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -58,52 +56,74 @@
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
-    border-radius: 8px;
-    color: rgba(255, 255, 255, 0.7);
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    color: var(--text-secondary);
     font-size: 0.95rem;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     cursor: pointer;
     border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
 }
 
 .nav-item:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
+    background-color: var(--surface-hover);
+    color: var(--auca-blue);
 }
 
 .nav-item.active {
-    background-color: #ffffff;
-    color: var(--auca-blue);
-    font-weight: 700;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: var(--primary);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: var(--shadow-glow);
 }
 
+/* Optional: Different style for active item (Light BG + Accent Text) 
+   If user prefers the "Glassy" look, use this instead:
+   
+.nav-item.active {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    font-weight: 700;
+}
+   But for now, solid blue active state is high contrast and professional.
+*/
+
 .sidebar-footer {
-    padding: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    background-color: rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    border-top: 1px solid var(--border);
+    /* background-color: var(--surface-hover); */
 }
 
 .sidebar-user-container {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+
+.sidebar-user-container:hover {
+    background-color: var(--surface-hover);
 }
 
 .sidebar-user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, var(--auca-blue), var(--auca-blue-dark));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     font-weight: 700;
     color: #ffffff;
+    box-shadow: var(--shadow-sm);
 }
 
 .sidebar-user-info {
@@ -113,14 +133,15 @@
 }
 
 .sidebar-user-name {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-main);
 }
 
 .sidebar-user-role {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
 /* Overlay for mobile */
@@ -131,9 +152,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.4);
     z-index: 45;
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(4px);
 }
 
 @media (max-width: 768px) {
