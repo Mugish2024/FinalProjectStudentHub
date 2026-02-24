@@ -1,23 +1,56 @@
 .header {
-    height: var(--header-height);
-    background-color: var(--surface);
+    height: 70px;
+    background-color: #09122c;
+    /* Very dark navy/black */
+    color: white;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
+    /* Align functional items to right */
     padding: 0 2rem;
     position: sticky;
     top: 0;
-    z-index: 40;
-    /* Soft shadow instead of border for a floating feel, or just border */
-    border-bottom: 1px solid var(--border);
-    transition: all 0.3s ease;
+    z-index: 90;
 }
 
-.header-title {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--text-main);
-    letter-spacing: -0.01em;
+.header-left-controls {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.semester-badge {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #4dabf7;
+    /* Light blue */
+    border: 1px solid rgba(77, 171, 247, 0.2);
+}
+
+.student-nr-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nr-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.nr-input-wrapper input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    color: white;
+    width: 120px;
+    font-weight: 600;
 }
 
 .header-actions {
@@ -26,136 +59,74 @@
     gap: 1rem;
 }
 
-.icon-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-secondary);
-    transition: all 0.2s ease;
-    position: relative;
-    background-color: transparent;
+.btn-header-fill {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
     border: none;
     cursor: pointer;
+    transition: all 0.2s;
 }
 
-.icon-btn:hover {
-    background-color: var(--surface-hover);
-    color: var(--auca-blue);
-    transform: translateY(-1px);
+.btn-blue {
+    background-color: #004594;
+    color: white;
 }
 
-.menu-btn {
-    display: none;
-    margin-right: 0.5rem;
+.btn-orange {
+    background-color: #f59e0b;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.notification-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+.chat-dot {
     width: 10px;
     height: 10px;
     background-color: #ef4444;
     border-radius: 50%;
-    border: 2px solid var(--surface);
-    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2);
+    margin-left: -5px;
 }
 
-/* User Profile Pill */
-.user-profile {
+.user-pill {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 12px 3px 4px;
+    border-radius: 30px;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    cursor: pointer;
-    padding: 0.35rem 0.5rem 0.35rem 0.35rem;
-    border-radius: 99px;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-    margin-left: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.user-profile:hover {
-    background-color: var(--surface-hover);
-    border-color: var(--border);
-}
-
-.avatar {
-    width: 40px;
-    height: 40px;
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    background-color: #004594;
+    color: white;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--auca-blue), var(--auca-blue-dark));
-    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 0.9rem;
-    box-shadow: var(--shadow-sm);
-}
-
-.user-info {
-    display: flex;
-    flex-direction: column;
-    padding-right: 0.5rem;
-}
-
-.user-name {
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: var(--text-main);
-}
-
-.user-role {
+    font-weight: 800;
     font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    line-height: 1;
-    margin-top: 2px;
 }
 
-.logout-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    margin-left: 0.5rem;
-    color: #ef4444;
-    /* Danger color because it's logout */
-    font-weight: 600;
-    font-size: 0.9rem;
-    border-radius: var(--radius-sm);
-    transition: all 0.2s;
-    background-color: rgba(239, 68, 68, 0.05);
+.user-name-small {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f1f5f9;
 }
 
-.logout-btn:hover {
-    background-color: rgba(239, 68, 68, 0.1);
-}
-
-@media (max-width: 768px) {
-    .header {
-        padding: 0 1rem;
-        height: 64px;
-    }
-
-    .menu-btn {
-        display: flex;
-    }
-
-    .header-title {
-        font-size: 1.1rem;
-    }
-
-    .user-info,
-    .logout-btn span {
-        display: none;
-    }
-
-    .logout-btn {
-        padding: 0.5rem;
-        background: transparent;
-    }
+.btn-logout-coral {
+    background-color: #ee675c;
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: 40px;
+    font-weight: 800;
+    font-size: 0.8rem;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
 }

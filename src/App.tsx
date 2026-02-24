@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import LandingPage from './pages/LandingPage';
 import DashboardLayout from './layouts/DashboardLayout';
 import RegistrationVerification from './pages/RegistrationVerification';
 import Payments from './pages/Payments';
@@ -8,11 +9,17 @@ import Attendance from './pages/Attendance';
 import Claims from './pages/Claims';
 import Events from './pages/Events';
 import PlaceholderPage from './components/PlaceholderPage';
-
 import StudentDashboard from './pages/StudentDashboard';
 
 function App() {
+  const [showLanding, setShowLanding] = useState(true);
   const [activePage, setActivePage] = useState('dashboard');
+
+  const goToDashboard = () => setShowLanding(false);
+
+  if (showLanding) {
+    return <LandingPage onExplore={goToDashboard} />;
+  }
 
   const renderContent = () => {
     switch (activePage) {

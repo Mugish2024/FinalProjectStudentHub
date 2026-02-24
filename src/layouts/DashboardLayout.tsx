@@ -21,9 +21,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
                 onClose={() => setIsSidebarOpen(false)}
             />
 
-            <main className={`main-content ${isSidebarOpen ? '' : 'sidebar-closed'}`}>
+            <main className="main-content">
                 <Header
-                    title={activePage.charAt(0).toUpperCase() + activePage.slice(1)}
                     onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 />
                 <div className="content-wrapper">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, LogOut, Search, Menu } from 'lucide-react';
+import { MessageSquare, LogOut } from 'lucide-react';
 import './Header.css';
 
 interface HeaderProps {
@@ -7,38 +7,36 @@ interface HeaderProps {
     onMenuClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title = "AUCA Student Dashboard", onMenuClick }) => {
+const Header: React.FC<HeaderProps> = () => {
     return (
         <header className="header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button className="icon-btn menu-btn" onClick={onMenuClick}>
-                    <Menu size={20} />
-                </button>
-                <h2 className="header-title">{title}</h2>
-            </div>
+            <div className="header-left-controls">
+                <div className="semester-badge">2025/2</div>
 
-            <div className="header-actions">
-                {/* Search could go here if needed */}
-                <button className="icon-btn">
-                    <Search size={20} />
-                </button>
-
-                <button className="icon-btn">
-                    <Bell size={20} />
-                    <span className="notification-badge"></span>
-                </button>
-
-                <div className="user-profile">
-                    <div className="avatar">JD</div>
-                    <div className="user-info">
-                        <span className="user-name">Ishimwe Bienvenu</span>
-                        <span className="user-role">Student</span>
+                <div className="student-nr-container">
+                    <span className="nr-label">Student Nr.</span>
+                    <div className="nr-input-wrapper">
+                        <input type="text" defaultValue="26701" />
                     </div>
                 </div>
 
-                <button className="logout-btn">
-                    <LogOut size={18} />
-                    <span>Logout</span>
+                <button className="btn-header-fill btn-blue">Fetch</button>
+
+                <button className="btn-header-fill btn-orange">
+                    <MessageSquare size={16} />
+                    <span>Chat</span>
+                    <div className="chat-dot"></div>
+                </button>
+            </div>
+
+            <div className="header-actions">
+                <div className="user-pill">
+                    <div className="user-avatar-small">JD</div>
+                    <span className="user-name-small">Ishimwe Bienvenu</span>
+                </div>
+
+                <button className="btn-logout-coral">
+                    <span>→ Logout</span>
                 </button>
             </div>
         </header>
