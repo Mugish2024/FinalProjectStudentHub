@@ -1,112 +1,97 @@
-/* Payments Theme - AUCA Blue/White */
-:root {
-    --auca-blue: #004594;
-    --auca-blue-dark: #003366;
-    --auca-blue-light: #e6f0fa;
-    --auca-gold: #dcb14a;
-    --text-dark: #1e293b;
-    --text-grey: #64748b;
-    --bg-page: #f0f7ff;
-}
-
 .payments-container {
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 0 auto;
-    color: var(--text-dark);
+    color: var(--text-main);
     min-height: 80vh;
     padding: 2rem;
-    font-family: 'Inter', sans-serif;
 }
 
 .payment-hero {
     text-align: center;
     margin-bottom: 3rem;
-    animation: fadeIn 0.5s ease-out;
+    animation: fadeIn 0.4s ease-out;
     position: relative;
 }
 
 .hero-title {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin-bottom: 1rem;
-    color: var(--auca-blue);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--primary);
 }
 
 .hero-subtitle {
-    font-size: 1.1rem;
-    color: var(--text-grey);
+    font-size: 1rem;
+    color: var(--text-secondary);
     max-width: 600px;
     margin: 0 auto 2rem;
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
-/* Amount Card */
+/* Amount Card - Horus style */
 .amount-card {
-    background: #ffffff;
-    padding: 2.5rem;
-    border-radius: 20px;
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: var(--radius);
     display: inline-block;
     margin-bottom: 2.5rem;
-    box-shadow: 0 10px 25px -5px rgba(0, 69, 148, 0.1), 0 8px 10px -6px rgba(0, 69, 148, 0.1);
-    border: 1px solid #e2e8f0;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
     min-width: 320px;
 }
 
 .amount-label {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: var(--text-grey);
-    margin-bottom: 0.75rem;
-    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
 }
 
 .amount-value {
-    font-size: 3.5rem;
-    font-weight: 800;
-    color: var(--auca-blue);
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
     margin-bottom: 0.5rem;
 }
 
 .fee-info {
-    color: #22c55e;
-    font-size: 0.95rem;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    background-color: #f0fdf4;
-    border-radius: 999px;
+    color: var(--secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 1rem;
+    background-color: var(--primary-light);
+    border-radius: 4px;
     display: inline-block;
 }
 
 /* Buttons */
 .btn-pay-large {
-    background: var(--auca-blue);
+    background: var(--primary);
     color: #ffffff;
-    padding: 1rem 3.5rem;
-    font-size: 1.125rem;
+    padding: 0.75rem 2.5rem;
+    font-size: 1rem;
     font-weight: 700;
-    border-radius: 999px;
+    border-radius: var(--radius);
     border: none;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 69, 148, 0.2);
-    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.025em;
 }
 
 .btn-pay-large:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 69, 148, 0.3);
-    background-color: var(--auca-blue-dark);
+    background-color: var(--primary-dark);
+    box-shadow: var(--shadow-lg);
 }
 
 .btn-pay-large:disabled {
-    opacity: 0.7;
+    opacity: 0.5;
     cursor: not-allowed;
-    transform: none;
 }
 
 /* Methods Grid */
@@ -115,134 +100,129 @@
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
     margin-top: 2rem;
-    animation: slideUp 0.5s ease-out;
 }
 
 .method-card {
-    background: #ffffff;
-    border: 2px solid #e2e8f0;
-    padding: 2.5rem;
-    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    border-radius: var(--radius);
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
+    box-shadow: var(--shadow);
 }
 
 .method-card:hover {
-    border-color: var(--auca-blue);
-    transform: translateY(-4px);
-    box-shadow: 0 10px 20px -5px rgba(0, 69, 148, 0.1);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
 }
 
 .method-icon {
-    width: 64px;
-    height: 64px;
-    background: var(--auca-blue-light);
-    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    background: var(--primary-light);
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--auca-blue);
-    transition: all 0.3s;
+    color: var(--primary);
+    transition: all 0.2s;
 }
 
 .method-card:hover .method-icon {
-    background: var(--auca-blue);
+    background: var(--primary);
     color: #ffffff;
 }
 
 .method-card h3 {
+    font-size: 1rem;
     font-weight: 700;
-    color: var(--text-dark);
+    color: var(--text-main);
     margin: 0;
 }
 
 /* Payment Form */
 .payment-form-container {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    padding: 3rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.5rem;
     max-width: 500px;
     margin: 0 auto;
-    animation: fadeIn 0.4s ease-out;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-lg);
 }
 
 .input-group {
     margin-bottom: 1.5rem;
-    text-align: left;
 }
 
 .input-group label {
     display: block;
-    margin-bottom: 0.5rem;
-    color: var(--text-dark);
-    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    color: var(--text-main);
+    font-size: 0.85rem;
     font-weight: 600;
+    opacity: 0.8;
 }
 
 .input-field {
     width: 100%;
-    background: #f8fafc;
-    border: 2px solid #e2e8f0;
-    padding: 1rem;
-    border-radius: 10px;
-    color: var(--text-dark);
-    font-size: 1rem;
-    transition: all 0.2s;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    color: var(--text-main);
+    font-size: 0.95rem;
 }
 
 .input-field:focus {
-    border-color: var(--auca-blue);
-    background: #ffffff;
-    outline: none;
-    box-shadow: 0 0 0 4px var(--auca-blue-light);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 .btn-back {
     background: transparent;
-    color: var(--text-grey);
-    padding: 0.5rem 1rem;
-    margin-right: 1rem;
+    color: var(--text-secondary);
+    padding: 0.5rem;
     border: none;
     cursor: pointer;
     font-weight: 600;
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    transition: color 0.2s;
+    font-size: 0.85rem;
 }
 
 .btn-back:hover {
-    color: var(--auca-blue);
+    color: var(--primary);
 }
 
 /* Success */
 .success-container {
     text-align: center;
-    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    background: #ffffff;
+    background: var(--surface);
     padding: 3rem;
-    border-radius: 20px;
+    border-radius: var(--radius);
     max-width: 600px;
     margin: 2rem auto;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-lg);
 }
 
 .success-icon {
-    width: 100px;
-    height: 100px;
-    background: #22c55e;
+    width: 80px;
+    height: 80px;
+    background: var(--secondary);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 2rem;
-    box-shadow: 0 10px 20px rgba(34, 197, 94, 0.3);
+    box-shadow: 0 4px 10px rgba(0, 126, 122, 0.3);
+    color: white;
 }
 
 @keyframes fadeIn {
@@ -252,29 +232,5 @@
 
     to {
         opacity: 1;
-    }
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes popIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
     }
 }

@@ -7,14 +7,24 @@ interface HeaderProps {
     onMenuClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title = "AUCA Student Dashboard", onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick }) => {
     return (
         <header className="header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button className="icon-btn menu-btn" onClick={onMenuClick}>
                     <Menu size={20} />
                 </button>
-                <h2 className="header-title">{title}</h2>
+                <div className="header-logo-container">
+                    <img
+                        src="https://upload.wikimedia.org/wikipedia/en/8/8c/Logo_of_the_Adventist_University_of_Central_Africa.png"
+                        alt="AUCA Logo"
+                        className="auca-logo-img-sm"
+                        onError={(e) => {
+                            e.currentTarget.src = "https://ui-avatars.com/api/?name=A&background=01447B&color=fff";
+                        }}
+                    />
+                    <h2 className="header-title">{title}</h2>
+                </div>
             </div>
 
             <div className="header-actions">

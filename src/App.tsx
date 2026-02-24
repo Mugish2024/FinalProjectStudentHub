@@ -8,11 +8,11 @@ import Attendance from './pages/Attendance';
 import Claims from './pages/Claims';
 import Events from './pages/Events';
 import PlaceholderPage from './components/PlaceholderPage';
-
 import StudentDashboard from './pages/StudentDashboard';
+import Landing from './pages/Landing';
 
 function App() {
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState('landing');
 
   const renderContent = () => {
     switch (activePage) {
@@ -36,6 +36,10 @@ function App() {
         return <PlaceholderPage title="Page Not Found" />;
     }
   };
+
+  if (activePage === 'landing') {
+    return <Landing onEnter={() => setActivePage('dashboard')} />;
+  }
 
   return (
     <DashboardLayout activePage={activePage} setActivePage={setActivePage}>

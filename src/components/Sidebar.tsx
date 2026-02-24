@@ -25,7 +25,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen = t
     <>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h1 className="logo-text">STUDENTHUB</h1>
+          <div className="logo-container">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/en/8/8c/Logo_of_the_Adventist_University_of_Central_Africa.png"
+              alt="AUCA Logo"
+              className="auca-logo-img"
+              onError={(e) => {
+                e.currentTarget.src = "https://ui-avatars.com/api/?name=AUCA&background=01447B&color=fff";
+              }}
+            />
+            <h1 className="logo-text">STUDENTHUB</h1>
+          </div>
         </div>
 
         <nav className="sidebar-nav">

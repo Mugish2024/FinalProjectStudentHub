@@ -19,6 +19,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ navigateTo }) => {
 
     return (
         <div className="student-dashboard">
+            <header className="welcome-hero">
+                <div className="hero-content">
+                    <h1>Welcome back, Bienvenu!</h1>
+                    <p>Access your student services, track your records, and stay updated with campus life.</p>
+                </div>
+                <div className="hero-stats-mini">
+                    <div className="mini-stat">
+                        <span className="label">Semester</span>
+                        <span className="value">Fall 2023</span>
+                    </div>
+                </div>
+            </header>
+
             <div className="quick-stats-row">
                 <div className="stat-card">
                     <div className="stat-icon-wrapper blue">

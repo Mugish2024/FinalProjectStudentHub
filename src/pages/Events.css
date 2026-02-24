@@ -1,6 +1,6 @@
 .events-page {
     padding-bottom: 3rem;
-    animation: fadeIn 0.5s ease-out;
+    animation: fadeIn 0.4s ease-out;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -8,7 +8,7 @@
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
     }
 
     to {
@@ -26,77 +26,72 @@
 }
 
 .events-header h2 {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(90deg, var(--text-main) 0%, var(--primary) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--primary);
     margin-bottom: 0.5rem;
 }
 
 .events-header p {
     color: var(--text-secondary);
     max-width: 600px;
+    font-size: 0.9rem;
 }
 
-/* Filter/Tabs */
+/* Filter/Tabs - Horus Tab Style */
 .events-tabs {
     display: flex;
-    gap: 1rem;
+    gap: 0.5rem;
     margin-bottom: 2rem;
-    background: var(--surface);
-    padding: 0.5rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    width: fit-content;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0.5rem;
 }
 
 .tab-btn {
-    padding: 0.5rem 1.5rem;
-    border-radius: 6px;
+    padding: 0.5rem 1rem;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
 }
 
 .tab-btn:hover {
-    color: var(--text-main);
-    background: rgba(255, 255, 255, 0.05);
+    color: var(--primary);
 }
 
 .tab-btn.active {
-    background: var(--primary);
-    color: var(--text-inverted);
+    color: var(--primary);
+    border-bottom-color: var(--primary);
 }
 
 /* Events Grid */
 .events-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 2rem;
+    gap: 1.5rem;
 }
 
 .event-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
     overflow: hidden;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.2s ease;
     display: flex;
     flex-direction: column;
+    box-shadow: var(--shadow);
 }
 
 .event-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow-lg);
     border-color: var(--primary);
 }
 
 .event-header-image {
-    height: 140px;
-    background: var(--surface-highlight);
+    height: 120px;
+    background: var(--primary-light);
     position: relative;
     display: flex;
     align-items: center;
@@ -105,15 +100,14 @@
 
 .event-overlay-badge {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 100px;
-    font-size: 0.75rem;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .badge-upcoming {
@@ -127,41 +121,35 @@
     border: 1px solid var(--border);
 }
 
-.category-icon {
-    font-size: 3rem;
-    opacity: 0.2;
-    color: var(--text-main);
-}
-
 .event-content {
-    padding: 1.5rem;
+    padding: 1.25rem;
     flex: 1;
     display: flex;
     flex-direction: column;
 }
 
 .event-organizer {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--primary);
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     margin-bottom: 0.5rem;
 }
 
 .event-title {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--text-main);
-    margin-bottom: 1rem;
-    line-height: 1.4;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
 }
 
 .event-meta {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
 }
 
 .meta-item {
@@ -169,16 +157,16 @@
     align-items: center;
     gap: 0.5rem;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .event-description {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
     flex: 1;
-    /* Pushes footer down */
+    opacity: 0.9;
 }
 
 .event-footer {
@@ -191,22 +179,24 @@
 }
 
 .finance-highlight {
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: var(--primary-light);
+    border-left: 3px solid var(--primary);
     padding: 0.75rem;
-    border-radius: 8px;
+    border-radius: 0 4px 4px 0;
     margin-bottom: 1rem;
 }
 
 .finance-highlight h4 {
-    color: var(--secondary);
-    font-size: 0.85rem;
+    color: var(--primary);
+    font-size: 0.8rem;
     margin-bottom: 0.25rem;
+    font-weight: 700;
 }
 
 .finance-highlight p {
     color: var(--text-main);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 500;
 }
 
 @media (max-width: 768px) {
