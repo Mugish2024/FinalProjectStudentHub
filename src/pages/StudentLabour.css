@@ -1,0 +1,264 @@
+.student-labour {
+    padding: 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #1e293b;
+}
+
+.labour-header {
+    margin-bottom: 3rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 1.5rem;
+}
+
+.labour-header h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #01447B;
+    letter-spacing: -0.025em;
+}
+
+.labour-header p {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+}
+
+/* Tab Navigation - Minimalist */
+.labour-tabs {
+    display: flex;
+    gap: 2.5rem;
+    margin-bottom: 3rem;
+    position: relative;
+}
+
+.tab-btn {
+    padding: 0.5rem 0;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tab-btn:hover {
+    color: #01447B;
+}
+
+.tab-btn.active {
+    color: #01447B;
+}
+
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #CF6218;
+    /* AUCA Orange indicator */
+}
+
+/* Eligibility Check - Refined */
+.eligibility-check {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 3rem;
+}
+
+.eligibility-check h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.eligibility-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.eligibility-row:last-child {
+    border-bottom: none;
+}
+
+.check-label {
+    font-weight: 500;
+    color: #475569;
+}
+
+.check-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    color: #01447B;
+}
+
+/* Application Form - Elegant */
+.application-container {
+    max-width: 650px;
+}
+
+.form-field {
+    margin-bottom: 2rem;
+}
+
+.form-field label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.75rem;
+}
+
+.custom-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #1e293b;
+    background-color: white;
+}
+
+.upload-area {
+    border: 1px solid #e2e8f0;
+    padding: 2rem;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.upload-area:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.upload-area span {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.primary-action-btn {
+    background: #01447B;
+    color: white;
+    padding: 0.85rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.primary-action-btn:hover {
+    background: #00335d;
+}
+
+.primary-action-btn:active {
+    transform: scale(0.98);
+}
+
+/* Daily Log Styling */
+.log-entry-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.daily-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.log-textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    resize: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+/* History List */
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.item-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-date {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.item-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}
+
+.status-indicator {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #01447B;
+    background: #f1f5f9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+}
+
+/* Tracking Numbers - Professional */
+.stats-summary {
+    display: flex;
+    gap: 4rem;
+    margin-bottom: 4rem;
+}
+
+.stat-block {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-num {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #01447B;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}

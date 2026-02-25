@@ -1,22 +1,23 @@
 import React from 'react';
-import { Bell, LogOut, Search, Menu } from 'lucide-react';
+import { MessageSquare, LogOut, Menu } from 'lucide-react';
 import './Header.css';
 
 interface HeaderProps {
     title?: string;
     onMenuClick?: () => void;
+    onLogout?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick, onLogout }) => {
     return (
         <header className="header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div className="header-left-section">
                 <button className="icon-btn menu-btn" onClick={onMenuClick}>
                     <Menu size={20} />
                 </button>
                 <div className="header-logo-container">
                     <img
-                        src="https://upload.wikimedia.org/wikipedia/en/8/8c/Logo_of_the_Adventist_University_of_Central_Africa.png"
+                        src="/src/assets/auca-logo.png"
                         alt="AUCA Logo"
                         className="auca-logo-img-sm"
                         onError={(e) => {
@@ -27,27 +28,33 @@ const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick }
                 </div>
             </div>
 
-            <div className="header-actions">
-                {/* Search could go here if needed */}
-                <button className="icon-btn">
-                    <Search size={20} />
-                </button>
+            <div className="header-controls-group">
+                <div className="semester-badge">2025/2</div>
 
-                <button className="icon-btn">
-                    <Bell size={20} />
-                    <span className="notification-badge"></span>
-                </button>
-
-                <div className="user-profile">
-                    <div className="avatar">JD</div>
-                    <div className="user-info">
-                        <span className="user-name">Ishimwe Bienvenu</span>
-                        <span className="user-role">Student</span>
+                <div className="student-nr-container">
+                    <span className="nr-label">Student Nr.</span>
+                    <div className="nr-input-wrapper">
+                        <input type="text" defaultValue="26701" />
                     </div>
                 </div>
 
-                <button className="logout-btn">
-                    <LogOut size={18} />
+                <button className="btn-header-fill btn-blue">Fetch</button>
+
+                <button className="btn-header-fill btn-blue">
+                    <MessageSquare size={16} />
+                    <span>Chat</span>
+                    <div className="chat-dot"></div>
+                </button>
+            </div>
+
+            <div className="header-actions">
+                <div className="user-pill">
+                    <div className="user-avatar-small">JD</div>
+                    <span className="user-name-small">Ishimwe Bienvenu</span>
+                </div>
+
+                <button className="btn-logout-slate" onClick={onLogout}>
+                    <LogOut size={16} style={{ marginRight: '6px' }} />
                     <span>Logout</span>
                 </button>
             </div>

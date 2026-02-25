@@ -1,156 +1,117 @@
 import React from 'react';
-import { Calendar as CalendarIcon, Users, DollarSign, Vote, ArrowRight, FileText } from 'lucide-react';
+import { UserCheck, FileText, ClipboardList, ArrowRight } from 'lucide-react';
 import './StudentDashboard.css';
 
 interface StudentDashboardProps {
-    navigateTo?: (page: string) => void;
+    navigateTo: (page: string) => void;
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({ navigateTo }) => {
-
-    // Fallback if navigateTo is not provided
     const handleNavigate = (page: string) => {
         if (navigateTo) {
             navigateTo(page);
-        } else {
-            console.log(`Navigating to ${page}`);
         }
     };
 
     return (
         <div className="student-dashboard">
-            <header className="welcome-hero">
-                <div className="hero-content">
-                    <h1>Welcome back, Bienvenu!</h1>
-                    <p>Access your student services, track your records, and stay updated with campus life.</p>
+            {/* Profile Grid - Top Section of Content Area */}
+            <div className="profile-info-grid">
+                <div className="info-card">
+                    <span className="info-label">Full Name</span>
+                    <span className="info-value">Mutarutwa Ketsia</span>
                 </div>
-                <div className="hero-stats-mini">
-                    <div className="mini-stat">
-                        <span className="label">Semester</span>
-                        <span className="value">Fall 2023</span>
-                    </div>
+                <div className="info-card">
+                    <span className="info-label">Reg. Nr.</span>
+                    <span className="info-value">26701</span>
                 </div>
-            </header>
-
-            <div className="quick-stats-row">
-                <div className="stat-card">
-                    <div className="stat-icon-wrapper blue">
-                        <Users size={24} />
-                    </div>
-                    <div>
-                        <div className="stat-label">Attendance Rate</div>
-                        <div className="stat-value">95% <span className="trend-up">↑</span></div>
-                    </div>
+                <div className="info-card">
+                    <span className="info-label">Faculty</span>
+                    <span className="info-value accent-blue">Info. Technology</span>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon-wrapper gold">
-                        <DollarSign size={24} />
-                    </div>
-                    <div>
-                        <div className="stat-label">AUCASA Fee</div>
-                        <div className="stat-sub">PAID</div>
-                    </div>
+                <div className="info-card">
+                    <span className="info-label">Department</span>
+                    <span className="info-value accent-blue">Info. Management</span>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon-wrapper green">
-                        <CalendarIcon size={24} />
-                    </div>
-                    <div>
-                        <div className="stat-label">Upcoming Events</div>
-                        <div className="stat-value">2</div>
-                    </div>
+                <div className="info-card">
+                    <span className="info-label">Program</span>
+                    <span className="info-value">Evening</span>
+                </div>
+                <div className="info-card">
+                    <span className="info-label">Credits</span>
+                    <span className="info-value accent-blue">13</span>
                 </div>
             </div>
 
-            <div className="dashboard-split">
-                {/* Quick Actions / Featured Navigation */}
-                <div className="dash-card">
-                    <h3 className="dash-card-title">Quick Actions</h3>
-                    <p className="section-desc">Access key features and services instantly.</p>
+            {/* Main Interactive Sections */}
+            <div className="dashboard-main-sections">
+                {/* Primary Student Services */}
+                <div className="section-container">
+                    <div className="section-title-bar">
+                        <div className="title-marker"></div>
+                        <h3 className="section-title">Essential Services</h3>
+                    </div>
 
-                    <div className="quick-actions-grid">
-                        <div className="action-card" onClick={() => handleNavigate('elections')}>
-                            <div className="action-icon blue">
-                                <Vote size={28} />
+                    <div className="baton-services-container">
+                        <button className="btn-baton-service" onClick={() => handleNavigate('attendance')}>
+                            <div className="service-btn-content">
+                                <div className="service-btn-icon-wrapper">
+                                    <UserCheck size={24} />
+                                </div>
+                                <span className="service-btn-label">Attendance Records</span>
                             </div>
-                            <div className="action-content">
-                                <h4>Vote Now</h4>
-                                <p>Participate in ongoing student elections.</p>
-                            </div>
-                            <div className="action-arrow">
-                                <ArrowRight size={20} />
-                            </div>
-                        </div>
+                            <ArrowRight size={20} className="service-arrow" />
+                        </button>
 
-                        <div className="action-card" onClick={() => handleNavigate('payments')}>
-                            <div className="action-icon gold">
-                                <DollarSign size={28} />
+                        <button className="btn-baton-service" onClick={() => handleNavigate('discipline')}>
+                            <div className="service-btn-content">
+                                <div className="service-btn-icon-wrapper">
+                                    <ClipboardList size={24} />
+                                </div>
+                                <span className="service-btn-label">Discipline Records</span>
                             </div>
-                            <div className="action-content">
-                                <h4>Make Payment</h4>
-                                <p>Settle tuition and association fees securely.</p>
-                            </div>
-                            <div className="action-arrow">
-                                <ArrowRight size={20} />
-                            </div>
-                        </div>
+                            <ArrowRight size={20} className="service-arrow" />
+                        </button>
 
-                        <div className="action-card" onClick={() => handleNavigate('events')}>
-                            <div className="action-icon green">
-                                <CalendarIcon size={28} />
+                        <button className="btn-baton-service" onClick={() => handleNavigate('registration')}>
+                            <div className="service-btn-content">
+                                <div className="service-btn-icon-wrapper">
+                                    <FileText size={24} />
+                                </div>
+                                <span className="service-btn-label">Registration Information</span>
                             </div>
-                            <div className="action-content">
-                                <h4>View Events</h4>
-                                <p>Check out upcoming campus activities.</p>
-                            </div>
-                            <div className="action-arrow">
-                                <ArrowRight size={20} />
-                            </div>
-                        </div>
-
-                        <div className="action-card" onClick={() => handleNavigate('registration')}>
-                            <div className="action-icon purple">
-                                <FileText size={28} />
-                            </div>
-                            <div className="action-content">
-                                <h4>Registration Info</h4>
-                                <p>Verify your semester registration status.</p>
-                            </div>
-                            <div className="action-arrow">
-                                <ArrowRight size={20} />
-                            </div>
-                        </div>
+                            <ArrowRight size={20} className="service-arrow" />
+                        </button>
                     </div>
                 </div>
 
-                {/* Announcements */}
-                <div className="dash-card">
-                    <h3 className="dash-card-title">Announcements</h3>
-
-                    <div className="announcement-item">
-                        <div>
-                            <div className="announcement-title">General Assembly - Oct 26</div>
-                            <div className="announcement-sub">Sports Tryouts - Nov 1</div>
-                        </div>
-                        <CalendarIcon size={20} className="text-secondary" />
+                {/* Navigation Hub */}
+                <div className="section-container">
+                    <div className="section-title-bar">
+                        <div className="title-marker"></div>
+                        <h3 className="section-title">Navigation Hub</h3>
                     </div>
 
-                    {/* Simple Calendar Mockup */}
-                    <div className="calendar-header">
-                        <strong>October 2023</strong>
+                    <div className="navigation-hub-grid">
+                        <button className="btn-nav-hub" onClick={() => handleNavigate('dashboard')}>
+                            Dashboard
+                        </button>
+                        <button className="btn-nav-hub" onClick={() => handleNavigate('courses')}>
+                            Courses
+                        </button>
+                        <button className="btn-nav-hub" onClick={() => handleNavigate('payments')}>
+                            Payments
+                        </button>
+                        <button className="btn-nav-hub" onClick={() => handleNavigate('events')}>
+                            Events
+                        </button>
+                        <button className="btn-nav-hub" onClick={() => handleNavigate('profile')}>
+                            Profile
+                        </button>
+                        <button className="btn-nav-hub" onClick={() => handleNavigate('transcript')}>
+                            Transcript
+                        </button>
                     </div>
-                    <div className="calendar-grid">
-                        <div className="cal-head">S</div><div className="cal-head">M</div><div className="cal-head">T</div><div className="cal-head">W</div><div className="cal-head">T</div><div className="cal-head">F</div><div className="cal-head">S</div>
-
-                        {/* Simple days */}
-                        <div className="cal-day"></div><div className="cal-day"></div><div className="cal-day">1</div><div className="cal-day">2</div><div className="cal-day">3</div><div className="cal-day">4</div><div className="cal-day">5</div>
-                        <div className="cal-day">6</div><div className="cal-day">7</div><div className="cal-day">8</div><div className="cal-day">9</div><div className="cal-day">10</div><div className="cal-day">11</div><div className="cal-day">12</div>
-                        <div className="cal-day">13</div><div className="cal-day">14</div><div className="cal-day">15</div><div className="cal-day">16</div><div className="cal-day">17</div><div className="cal-day">18</div><div className="cal-day">19</div>
-                        <div className="cal-day">20</div><div className="cal-day">21</div><div className="cal-day active">22</div><div className="cal-day">23</div><div className="cal-day">24</div><div className="cal-day">25</div><div className="cal-day">26</div>
-                        <div className="cal-day">27</div><div className="cal-day">28</div><div className="cal-day">29</div><div className="cal-day">30</div><div className="cal-day">31</div>
-                    </div>
-
-                    <button className="view-all-btn-gold">View All Events</button>
                 </div>
             </div>
         </div>

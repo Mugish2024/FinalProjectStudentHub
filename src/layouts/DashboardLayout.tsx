@@ -7,9 +7,10 @@ interface DashboardLayoutProps {
     children: React.ReactNode;
     activePage: string;
     setActivePage: (page: string) => void;
+    onLogout?: () => void;
 }
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage, setActivePage }) => {
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage, setActivePage, onLogout }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     return (
@@ -21,10 +22,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
                 onClose={() => setIsSidebarOpen(false)}
             />
 
-            <main className={`main-content ${isSidebarOpen ? '' : 'sidebar-closed'}`}>
+            <main className="main-content">
                 <Header
-                    title={activePage.charAt(0).toUpperCase() + activePage.slice(1)}
                     onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onLogout={onLogout}
                 />
                 <div className="content-wrapper">
                     {children}

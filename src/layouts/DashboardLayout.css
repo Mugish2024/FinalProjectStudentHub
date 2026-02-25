@@ -1,26 +1,25 @@
 .dashboard-layout {
     display: flex;
     min-height: 100vh;
-    background-color: var(--background);
+    background-color: #f8fafc;
 }
 
 .main-content {
     flex: 1;
-    margin-left: var(--sidebar-width);
+    margin-left: 260px;
+    /* Width of the sidebar */
     display: flex;
     flex-direction: column;
     min-width: 0;
-    /* Prevent flex child from overflowing */
-    transition: margin-left 0.3s ease;
 }
 
 .content-wrapper {
-    padding: 1.5rem;
     flex: 1;
     overflow-y: auto;
+    /* Specific pages handle their own padding for full-bleed sections if needed */
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .main-content {
         margin-left: 0;
     }

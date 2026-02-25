@@ -1,0 +1,199 @@
+.dean-labour {
+    padding: 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #ffffff;
+}
+
+.dean-header {
+    border-bottom: 2px solid #01447B;
+    padding-bottom: 2rem;
+    margin-bottom: 3rem;
+}
+
+.dean-header h1 {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #01447B;
+    margin: 0;
+}
+
+.dean-header p {
+    color: #64748b;
+    margin-top: 0.5rem;
+}
+
+/* Summary Blocks */
+.dean-summary {
+    display: flex;
+    gap: 5rem;
+    margin-bottom: 4rem;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-val {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #01447B;
+}
+
+.summary-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Application List - Professional Style */
+.applications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.application-entry {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #01447B;
+    /* Professional accent */
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: box-shadow 0.2s;
+}
+
+.application-entry:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.applicant-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.applicant-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.applicant-details {
+    font-size: 0.9rem;
+    color: #64748b;
+    display: flex;
+    gap: 1.5rem;
+}
+
+.dt-badge {
+    background: #f1f5f9;
+    padding: 0.1rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.action-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-ghost {
+    background: none;
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-ghost:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.btn-outline-primary {
+    background: none;
+    border: 1px solid #01447B;
+    padding: 0.5rem 1.5rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #01447B;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-outline-primary:hover {
+    background: #01447B;
+    color: white;
+}
+
+/* Daily Report Table - Minimalist */
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.log-table th {
+    text-align: left;
+    padding: 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.log-table td {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid #f8fafc;
+    font-size: 0.95rem;
+}
+
+.log-table tr:hover {
+    background: #fdfdfd;
+}
+
+.view-btn {
+    color: #01447B;
+    font-weight: 700;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.view-btn:hover {
+    text-decoration: underline;
+}
+
+/* Tab Toggle */
+.dean-view-toggle {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.toggle-link {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #94a3b8;
+    cursor: pointer;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid transparent;
+}
+
+.toggle-link.active {
+    color: #01447B;
+    border-bottom-color: #01447B;
+}

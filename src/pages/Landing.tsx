@@ -13,7 +13,7 @@ const Landing: React.FC<LandingProps> = ({ onEnter }) => {
                 <div className="nav-container">
                     <div className="logo">
                         <img
-                            src="https://upload.wikimedia.org/wikipedia/en/8/8c/Logo_of_the_Adventist_University_of_Central_Africa.png"
+                            src="/src/assets/auca-logo.png"
                             alt="AUCA Logo"
                             className="auca-logo-img-landing"
                             onError={(e) => {
@@ -22,7 +22,7 @@ const Landing: React.FC<LandingProps> = ({ onEnter }) => {
                         />
                         <span>STUDENTHUB</span>
                     </div>
-                    <button className="btn-portal" onClick={onEnter}>Enter Portal</button>
+                    <button className="btn-portal" onClick={onEnter}>Login</button>
                 </div>
             </nav>
 
@@ -36,7 +36,7 @@ const Landing: React.FC<LandingProps> = ({ onEnter }) => {
                     </p>
                     <div className="hero-actions">
                         <button className="btn-primary-large" onClick={onEnter}>
-                            Get Started Now <ArrowRight size={20} />
+                            Access Student Portal <ArrowRight size={20} />
                         </button>
                         <button className="btn-outline-large">Learn More</button>
                     </div>

@@ -1,0 +1,243 @@
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    padding: 1.5rem;
+}
+
+.login-card {
+    background: white;
+    width: 100%;
+    max-width: 440px;
+    padding: 3rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px -5px rgba(0, 47, 84, 0.05), 0 8px 10px -6px rgba(0, 47, 84, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.login-brand {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.login-logo {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 1rem;
+    object-fit: contain;
+}
+
+.login-brand h2 {
+    color: #01447B;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    margin: 0;
+}
+
+.login-brand p {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.login-form .form-group {
+    margin-bottom: 1.25rem;
+}
+
+.login-form label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: #94a3b8;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #1e293b;
+    transition: all 0.2s;
+    background: #fcfdfe;
+}
+
+.login-form input:focus {
+    outline: none;
+    border-color: #01447B;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(1, 68, 123, 0.05);
+}
+
+.btn-login {
+    width: 100%;
+    background: #01447B;
+    color: white;
+    padding: 0.875rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 1rem;
+}
+
+.btn-login:hover {
+    background: #00335d;
+    transform: translateY(-1px);
+}
+
+.btn-login:active {
+    transform: translateY(0);
+}
+
+.login-footer {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.login-footer p {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.signup-link {
+    color: #4dabf7;
+    background: none;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+}
+
+.signup-link:hover {
+    text-decoration: underline;
+}
+
+.staff-checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    background: #f1f5f9;
+}
+
+.staff-checkbox-container input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.staff-checkbox-container label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+}
+
+.signup-contact-info {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f1f5f9;
+    text-align: left;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+.contact-item strong {
+    color: #01447B;
+    min-width: 80px;
+}
+
+.info-modal {
+    background: white;
+    width: 90%;
+    max-width: 400px;
+    padding: 2.5rem;
+    border-radius: 20px;
+    text-align: center;
+    position: relative;
+    border: 1px solid #e2e8f0;
+}
+
+.info-icon-wrapper {
+    width: 64px;
+    height: 64px;
+    background: #e0f2fe;
+    color: #01447B;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
+
+.info-modal h3 {
+    color: #01447B;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.info-modal p {
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.btn-close-info {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-close-info:hover {
+    background: #e2e8f0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
