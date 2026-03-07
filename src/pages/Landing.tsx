@@ -1,5 +1,6 @@
 import React from 'react';
 import { Vote, Calendar, DollarSign, ArrowRight, CheckCircle2 } from 'lucide-react';
+import aucaLogo from '../assets/auca-logo.png';
 import './Landing.css';
 
 interface LandingProps {
@@ -13,7 +14,7 @@ const Landing: React.FC<LandingProps> = ({ onEnter }) => {
                 <div className="nav-container">
                     <div className="logo">
                         <img
-                            src="/src/assets/auca-logo.png"
+                            src={aucaLogo}
                             alt="AUCA Logo"
                             className="auca-logo-img-landing"
                             onError={(e) => {

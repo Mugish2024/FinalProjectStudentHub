@@ -1,26 +1,48 @@
 .dashboard-layout {
     display: flex;
     min-height: 100vh;
-    background-color: #f8fafc;
+    background-color: transparent;
 }
 
 .main-content {
     flex: 1;
     margin-left: 260px;
-    /* Width of the sidebar */
     display: flex;
     flex-direction: column;
     min-width: 0;
+    background:
+        radial-gradient(circle at top right, rgba(1, 68, 123, 0.08), transparent 45%),
+        radial-gradient(circle at bottom left, rgba(207, 98, 24, 0.08), transparent 35%);
 }
 
 .content-wrapper {
     flex: 1;
     overflow-y: auto;
-    /* Specific pages handle their own padding for full-bleed sections if needed */
+    padding: 1rem 1.25rem 1.5rem;
+}
+
+.content-wrapper>* {
+    animation: fade-slide-in 0.35s ease-out;
+}
+
+@keyframes fade-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @media (max-width: 1024px) {
     .main-content {
         margin-left: 0;
+    }
+
+    .content-wrapper {
+        padding: 0.75rem;
     }
 }

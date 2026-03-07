@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Lock, Info, ArrowLeft, Phone, Mail, MapPin } from 'lucide-react';
+import aucaLogo from '../assets/auca-logo.png';
 import './Login.css';
 
 interface LoginProps {
@@ -43,7 +44,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
             <div className="login-card">
                 <div className="login-brand">
                     <img
-                        src="/src/assets/auca-logo.png"
+                        src={aucaLogo}
                         alt="AUCA Logo"
                         className="login-logo"
                     />

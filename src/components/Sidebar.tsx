@@ -1,15 +1,17 @@
 import React from 'react';
 import { LayoutDashboard, Users, Calendar, DollarSign, FileText, Vote, Grid, BookOpen, Clock, Shield } from 'lucide-react';
+import aucaLogo from '../assets/auca-logo.png';
 import './Sidebar.css';
 
 interface SidebarProps {
   activePage: string;
   setActivePage: (page: string) => void;
+  userRole: 'student' | 'staff' | null;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen = true, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, userRole, isOpen = true, onClose }) => {
   const mainItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'labour', label: 'Student Labour', icon: Users },
@@ -35,7 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen = t
         <div className="sidebar-header">
           <div className="logo-container">
             <img
-              src="/src/assets/auca-logo.png"
+              src={aucaLogo}
               alt="AUCA Logo"
               className="auca-logo-img"
               onError={(e) => {
@@ -67,25 +69,29 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen = t
             );
           })}
 
-          <div className="nav-section-label">Dean Tools</div>
-          {deanTools.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActivePage(item.id);
-                  if (window.innerWidth <= 768 && onClose) {
-                    onClose();
-                  }
-                }}
-                className={`nav-item ${activePage === item.id ? 'active' : ''}`}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+          {userRole === 'staff' && (
+            <>
+              <div className="nav-section-label">Dean Tools</div>
+              {deanTools.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActivePage(item.id);
+                      if (window.innerWidth <= 768 && onClose) {
+                        onClose();
+                      }
+                    }}
+                    className={`nav-item ${activePage === item.id ? 'active' : ''}`}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
         </nav>
       </aside>
       {isOpen && <div className="sidebar-overlay" onClick={onClose}></div>}

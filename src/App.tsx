@@ -14,17 +14,27 @@ import StudentLabour from './pages/StudentLabour';
 import DeanLabourManagement from './pages/DeanLabourManagement';
 import Login from './pages/Login';
 
+type UserRole = 'student' | 'staff' | null;
+
+const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam']);
+
 function App() {
   const [activePage, setActivePage] = useState('landing');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>(null);
 
-  // Helper to change page with auth check
   const navigateWithAuth = (page: string) => {
     if (!isLoggedIn && page !== 'landing') {
       setActivePage('login');
-    } else {
-      setActivePage(page);
+      return;
     }
+
+    if (DEAN_PAGES.has(page) && userRole !== 'staff') {
+      setActivePage('dashboard');
+      return;
+    }
+
+    setActivePage(page);
   };
 
   const renderContent = () => {
@@ -35,6 +45,14 @@ function App() {
         return <StudentLabour />;
       case 'labour-mgmt':
         return <DeanLabourManagement />;
+      case 'groups':
+        return <PlaceholderPage title="Groups & Sizes" />;
+      case 'courses':
+        return <PlaceholderPage title="Courses" />;
+      case 'dashboard-tools':
+        return <PlaceholderPage title="Dean Dashboard" />;
+      case 'exam':
+        return <PlaceholderPage title="Exam Officer" />;
       case 'elections':
         return <Elections />;
       case 'registration':
@@ -63,6 +81,7 @@ function App() {
     return <Login
       onLogin={(isStaff) => {
         setIsLoggedIn(true);
+        setUserRole(isStaff ? 'staff' : 'student');
         if (isStaff) {
           setActivePage('labour-mgmt');
         } else {
@@ -75,13 +94,22 @@ function App() {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setUserRole(null);
     setActivePage('landing');
   };
+
+  const headerTitle = userRole === 'staff' ? 'Dean Portal' : 'Student Portal';
+  const profileName = userRole === 'staff' ? 'Dean User' : 'Student User';
+  const profileId = userRole === 'staff' ? 'STAFF-01' : '26701';
 
   return (
     <DashboardLayout
       activePage={activePage}
       setActivePage={navigateWithAuth}
+      userRole={userRole}
+      title={headerTitle}
+      userName={profileName}
+      userId={profileId}
       onLogout={handleLogout}
     >
       {renderContent()}

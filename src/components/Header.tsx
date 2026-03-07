@@ -1,14 +1,26 @@
 import React from 'react';
 import { MessageSquare, LogOut, Menu } from 'lucide-react';
+import aucaLogo from '../assets/auca-logo.png';
 import './Header.css';
 
 interface HeaderProps {
     title?: string;
+    userName?: string;
+    userId?: string;
+    userRole?: 'student' | 'staff' | null;
     onMenuClick?: () => void;
     onLogout?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ title = "Student Portal", userName = "Student User", userId = "26701", userRole = "student", onMenuClick, onLogout }) => {
+    const initials = userName
+        .split(' ')
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
     return (
         <header className="header">
             <div className="header-left-section">
@@ -17,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick, 
                 </button>
                 <div className="header-logo-container">
                     <img
-                        src="/src/assets/auca-logo.png"
+                        src={aucaLogo}
                         alt="AUCA Logo"
                         className="auca-logo-img-sm"
                         onError={(e) => {
@@ -32,9 +44,9 @@ const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick, 
                 <div className="semester-badge">2025/2</div>
 
                 <div className="student-nr-container">
-                    <span className="nr-label">Student Nr.</span>
+                    <span className="nr-label">{userRole === 'staff' ? 'Staff ID' : 'Student Nr.'}</span>
                     <div className="nr-input-wrapper">
-                        <input type="text" defaultValue="26701" />
+                        <input type="text" value={userId} readOnly />
                     </div>
                 </div>
 
@@ -49,8 +61,8 @@ const Header: React.FC<HeaderProps> = ({ title = "Student Portal", onMenuClick, 
 
             <div className="header-actions">
                 <div className="user-pill">
-                    <div className="user-avatar-small">JD</div>
-                    <span className="user-name-small">Ishimwe Bienvenu</span>
+                    <div className="user-avatar-small">{initials}</div>
+                    <span className="user-name-small">{userName}</span>
                 </div>
 
                 <button className="btn-logout-slate" onClick={onLogout}>
