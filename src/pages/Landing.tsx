@@ -30,7 +30,7 @@ const Landing: React.FC<LandingProps> = ({ onEnter }) => {
             <section className="landing-hero">
                 <div className="hero-content">
                     <div className="badge">OFFICIAL AUCASA PORTAL</div>
-                    <h1>Welcome to the Future of Student Management</h1>
+                    <h1>Welcome to AUCA Student Association</h1>
                     <p>
                         Experience a seamless, secure, and modern way to manage your campus life at AUCA.
                         From elections to finance and attendance, everything you need is just a click away.

@@ -1,180 +1,207 @@
-import React from 'react';
-import { Search, Check, Upload, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check } from 'lucide-react';
 import './RegistrationVerification.css';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+
+interface RegistrationResult {
+    studentId: number;
+    studentNumber: string;
+    fullName: string;
+    faculty: string;
+    department: string;
+}
+
 const RegistrationVerification: React.FC = () => {
+    const [studentNumber, setStudentNumber] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [faculty, setFaculty] = useState('');
+    const [department, setDepartment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isCreatingDemo, setIsCreatingDemo] = useState(false);
+    const [error, setError] = useState('');
+    const [result, setResult] = useState<RegistrationResult | null>(null);
+    const [demoResults, setDemoResults] = useState<RegistrationResult[]>([]);
+
+    const handleRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setResult(null);
+        setDemoResults([]);
+        setIsSubmitting(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/api/students/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentNumber,
+                    firstName,
+                    lastName,
+                    faculty,
+                    department,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Registration failed.');
+            }
+
+            setResult(data as RegistrationResult);
+            setStudentNumber('');
+            setFirstName('');
+            setLastName('');
+            setFaculty('');
+            setDepartment('');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Registration failed.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCreateDemoStudents = async () => {
+        setError('');
+        setResult(null);
+        setDemoResults([]);
+        setIsCreatingDemo(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/api/students/register/demo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            const data = await response.json().catch(() => []);
+            if (!response.ok) {
+                throw new Error('Failed to create demo students.');
+            }
+
+            setDemoResults(Array.isArray(data) ? (data as RegistrationResult[]) : []);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create demo students.');
+        } finally {
+            setIsCreatingDemo(false);
+        }
+    };
+
     return (
         <div className="registration-container">
             <h1 className="page-title">STUDENT REGISTRATION & VERIFICATION</h1>
 
-            <div className="registration-grid">
-                {/* Left Column */}
-                <div className="left-column">
+            <section className="section-block" style={{ maxWidth: '900px', margin: '0 auto' }}>
+                <h3 className="section-title">REGISTER NEW STUDENT</h3>
 
-                    {/* Student Search Section */}
-                    <section className="section-block">
-                        <h3 className="section-title">STUDENT SEARCH</h3>
-                        <div className="search-row">
-                            <div className="search-input-wrapper">
-                                <Search size={18} className="search-icon" />
-                                <input type="text" placeholder="Enter Student ID or Name" className="search-input" />
-                            </div>
-                            <button className="btn-gold">Search</button>
+                {error && (
+                    <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                        {error}
+                    </div>
+                )}
+
+                {result && (
+                    <div style={{ background: '#dcfce7', color: '#166534', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                        <strong>Student registered successfully.</strong><br />
+                        Internal ID: {result.studentId} | Student ID: {result.studentNumber} | Name: {result.fullName}
+                    </div>
+                )}
+
+                <form onSubmit={handleRegister}>
+                    <div className="search-row" style={{ marginBottom: '1rem' }}>
+                        <div className="search-input-wrapper" style={{ flex: 1 }}>
+                            <input
+                                type="text"
+                                placeholder="Student ID (e.g AUCA/UG/123/020)"
+                                className="search-input"
+                                value={studentNumber}
+                                onChange={(e) => setStudentNumber(e.target.value)}
+                                required
+                            />
                         </div>
+                    </div>
 
-                        <div className="filters-box">
-                            <div className="filter-group">
-                                <label>Campus</label>
-                                <select><option>Masoro</option></select>
-                                <div className="tag">Nursing</div>
-                            </div>
-                            <div className="filter-group">
-                                <label>Faculty</label>
-                                <div className="tags-row">
-                                    <span className="tag">Business</span>
-                                    <span className="tag">Nursing</span>
-                                    <span className="tag">Education, IT</span>
-                                </div>
-                            </div>
+                    <div className="search-row" style={{ marginBottom: '1rem', gap: '1rem' }}>
+                        <div className="search-input-wrapper" style={{ flex: 1 }}>
+                            <input
+                                type="text"
+                                placeholder="First Name"
+                                className="search-input"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value)}
+                                required
+                            />
                         </div>
-                    </section>
-
-                    {/* Student Information Section */}
-                    <section className="section-block info-card-container">
-                        <h3 className="section-title">STUDENT INFORMATION</h3>
-                        <div className="info-card">
-                            <div className="info-main">
-                                <div className="profile-large">
-                                    <div className="avatar-placeholder"></div>
-                                </div>
-                                <div className="info-details">
-                                    <div className="info-row"><strong>Name:</strong> John Doe</div>
-                                    <div className="info-row"><strong>ID:</strong> AUCA/UG/123/020</div>
-                                    <div className="info-row"><strong>Faculty:</strong> Theology</div>
-                                    <div className="info-row"><strong>Campus:</strong> Masoro</div>
-                                </div>
-                            </div>
-
-                            <div className="status-row">
-                                <div className="status-pill success">
-                                    <div className="check-circle"><Check size={12} /></div>
-                                    <span>Registered</span>
-                                </div>
-                                <div className="status-pill success-dark">
-                                    <span>AUCASA Fee: Paid (3,000 RWF)</span>
-                                    <div className="check-circle"><Check size={12} /></div>
-                                </div>
-                            </div>
-
-                            <div className="academic-info">
-                                <div>Academic Year: 2023/2024</div>
-                                <div>Semester: Harmattan</div>
-                            </div>
+                        <div className="search-input-wrapper" style={{ flex: 1 }}>
+                            <input
+                                type="text"
+                                placeholder="Last Name"
+                                className="search-input"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
+                                required
+                            />
                         </div>
-                    </section>
+                    </div>
 
-                    {/* Registration Confirmation */}
-                    <section className="section-block confirmation-block">
-                        <div className="alert-gold">
-                            <strong>REGISTRATION CONFIRMATION</strong>
-                            <p>Your registration is complete!</p>
-                            <div className="check-circle-large"><Check size={24} /></div>
+                    <div className="search-row" style={{ marginBottom: '1rem', gap: '1rem' }}>
+                        <div className="search-input-wrapper" style={{ flex: 1 }}>
+                            <input
+                                type="text"
+                                placeholder="Faculty"
+                                className="search-input"
+                                value={faculty}
+                                onChange={(e) => setFaculty(e.target.value)}
+                                required
+                            />
                         </div>
-
-                        <div className="terms-container">
-                            <div className="terms-text">
-                                I agree to the Terms & Conditions
-                                <br /><span className="text-muted">Academic Rules</span>
-                                <br /><span className="text-muted">Accept Year Receipt</span>
-                            </div>
-
-                            <div className="action-row">
-                                <label className="checkbox-wrapper">
-                                    <input type="checkbox" checked readOnly />
-                                    <span>I agree to the Terms & Conditions</span>
-                                </label>
-                                <button className="btn-gold">Complete Registration</button>
-                            </div>
+                        <div className="search-input-wrapper" style={{ flex: 1 }}>
+                            <input
+                                type="text"
+                                placeholder="Department"
+                                className="search-input"
+                                value={department}
+                                onChange={(e) => setDepartment(e.target.value)}
+                                required
+                            />
                         </div>
-                    </section>
+                    </div>
+
+                    <button className="btn-gold" type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Registering...' : 'Register Student'}
+                    </button>
+                    <button
+                        className="btn-gold"
+                        type="button"
+                        onClick={handleCreateDemoStudents}
+                        disabled={isCreatingDemo}
+                        style={{ marginLeft: '0.75rem' }}
+                    >
+                        {isCreatingDemo ? 'Creating...' : 'Create 3 Demo Students'}
+                    </button>
+                </form>
+
+                {demoResults.length > 0 && (
+                    <div style={{ marginTop: '1rem', background: '#eff6ff', color: '#1e3a8a', padding: '0.75rem 1rem', borderRadius: '8px' }}>
+                        <strong>Demo students ready:</strong>
+                        {demoResults.map((item) => (
+                            <div key={item.studentId}>
+                                Internal ID: {item.studentId} | Student ID: {item.studentNumber} | Name: {item.fullName}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            <section className="section-block" style={{ maxWidth: '900px', margin: '1rem auto 0' }}>
+                <h3 className="section-title">NEXT STEP FOR PAYMENT TEST</h3>
+                <div className="status-row" style={{ justifyContent: 'flex-start' }}>
+                    <div className="status-pill success">
+                        <div className="check-circle"><Check size={12} /></div>
+                        <span>After registration, use returned Internal ID in Payments page.</span>
+                    </div>
                 </div>
-
-                {/* Right Column */}
-                <div className="right-column">
-
-                    {/* Verification Process */}
-                    <section className="section-block">
-                        <h3 className="section-title">VERIFICATION PROCESS VISUALIZATION</h3>
-                        <div className="flowchart-container">
-                            <div className="flow-step">
-                                <div className="step-number">1</div>
-                                <span>Student ID Verification</span>
-                            </div>
-                            <div className="flow-arrow"><ArrowRight size={20} /></div>
-                            <div className="flow-step status-check">
-                                <div className="check-gold"><Check size={16} /></div>
-                            </div>
-                            <div className="flow-arrow"><ArrowRight size={20} /></div>
-                            <div className="flow-step">
-                                <div className="step-number">3</div>
-                                <span>Registration Completion</span>
-                            </div>
-
-                            {/* Second Row mockup */}
-                            <div className="flow-row-2">
-                                <div className="flow-step">
-                                    <div className="step-number">2</div>
-                                    <span>AUCASA Fee Payment Confirmation</span>
-                                </div>
-                                <div className="flow-arrow"><ArrowRight size={20} /></div>
-                                <div className="flow-step">
-                                    <span>Registration Completion</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Payment Verification */}
-                    <section className="section-block">
-                        <h3 className="section-title">PAYMENT VERIFICATION</h3>
-                        <div className="payment-card">
-                            <div className="payment-form">
-                                <div className="form-group">
-                                    <label>Date: 2023-09-01</label>
-                                </div>
-                                <div className="receipt-info">
-                                    <p>Receipt No: PMT-2023-001</p>
-                                    <p>Amount: 3,000 RWF</p>
-                                    <div className="status-success-icon"><Check size={16} /></div>
-                                </div>
-
-                                <div className="payment-actions">
-                                    <button className="btn-dark-icon">
-                                        <Upload size={16} /> Upload Payment Receipt
-                                    </button>
-                                    <button className="btn-gold">Verify Payment</button>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* System Integration Visualization */}
-                    <section className="section-block">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 className="section-title">SYSTEM INTEGRATION VISUALIZATION</h3>
-                        </div>
-                        <div className="system-tree">
-                            <div className="tree-node root">AUCASA-DMS</div>
-                            <div className="tree-lines">
-                                <div className="tree-node child">Student Data Sync</div>
-                                <div className="tree-node child">Status Updates Verification Status</div>
-                            </div>
-                            <div className="tree-node root bottom">Registrar's Database</div>
-                        </div>
-                    </section>
-
-                </div>
-            </div>
+            </section>
         </div>
     );
 };
