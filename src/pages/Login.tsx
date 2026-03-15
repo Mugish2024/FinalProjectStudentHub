@@ -13,6 +13,9 @@ type LoginProfile = {
     program: string;
     credits: number;
     role: 'student' | 'staff' | 'dean' | 'admin';
+    gpa: string;
+    semester: number;
+    disciplineStatus: string;
 };
 
 interface LoginProps {
@@ -24,7 +27,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
     const [showSignUpInfo, setShowSignUpInfo] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isStaff, setIsStaff] = useState(false);
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -120,16 +122,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
-                    </div>
-
-                    <div className="staff-checkbox-container">
-                        <input
-                            id="staff-login"
-                            type="checkbox"
-                            checked={isStaff}
-                            onChange={(e) => setIsStaff(e.target.checked)}
-                        />
-                        <label htmlFor="staff-login">I am staff</label>
                     </div>
 
                     <button type="submit" className="btn-login" disabled={isSubmitting}>

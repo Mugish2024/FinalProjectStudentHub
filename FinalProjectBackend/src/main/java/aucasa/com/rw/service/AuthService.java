@@ -70,7 +70,10 @@ public class AuthService {
                     "",
                     "",
                     0,
-                    user.getRole().getName().name().toLowerCase()
+                    user.getRole().getName().name().toLowerCase(),
+                    "0.00",
+                    0,
+                    ""
             );
         }
 
@@ -79,6 +82,9 @@ public class AuthService {
         String department = student.getDepartment() != null ? student.getDepartment().getName() : "";
         String program = student.getProgram() != null ? student.getProgram() : "Day";
         Integer credits = student.getCredits() != null ? student.getCredits() : 0;
+        String gpa = student.getGpa() != null ? student.getGpa().toPlainString() : "0.00";
+        Integer semester = student.getSemester() != null ? student.getSemester() : 0;
+        String disciplineStatus = student.getDisciplineStatus() != null ? student.getDisciplineStatus().name() : "";
 
         return new LoginResponse(
                 user.getFirstName() + " " + user.getLastName(),
@@ -87,7 +93,10 @@ public class AuthService {
                 department,
                 program,
                 credits,
-                user.getRole().getName().name().toLowerCase()
+                user.getRole().getName().name().toLowerCase(),
+                gpa,
+                semester,
+                disciplineStatus
         );
     }
 

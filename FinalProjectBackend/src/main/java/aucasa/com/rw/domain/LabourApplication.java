@@ -33,6 +33,9 @@ public class LabourApplication extends BaseEntity {
     @Column(length = 255)
     private String transcriptPath;
 
+    @Column(length = 4000)
+    private String coverLetterText;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private LabourApplicationStatus status = LabourApplicationStatus.PENDING;
@@ -88,6 +91,14 @@ public class LabourApplication extends BaseEntity {
 
     public void setTranscriptPath(String transcriptPath) {
         this.transcriptPath = transcriptPath;
+    }
+
+    public String getCoverLetterText() {
+        return coverLetterText;
+    }
+
+    public void setCoverLetterText(String coverLetterText) {
+        this.coverLetterText = coverLetterText;
     }
 
     public LabourApplicationStatus getStatus() {

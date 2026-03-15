@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface LabourDailyLogRepository extends JpaRepository<LabourDailyLog, Long> {
     List<LabourDailyLog> findByApplicationId(Long applicationId);
     List<LabourDailyLog> findByStatus(LabourLogStatus status);
+    List<LabourDailyLog> findByApplicationStudentStudentNumber(String studentNumber);
 }

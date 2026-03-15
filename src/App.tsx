@@ -13,6 +13,7 @@ import Landing from './pages/Landing';
 import StudentLabour from './pages/StudentLabour';
 import DeanLabourManagement from './pages/DeanLabourManagement';
 import DeanDashboard from './pages/DeanDashboard';
+import DeanAttendance from './pages/DeanAttendance';
 import Login from './pages/Login';
 
 type AuthProfile = {
@@ -23,11 +24,14 @@ type AuthProfile = {
   program: string;
   credits: number;
   role: 'student' | 'staff' | 'dean' | 'admin';
+  gpa: string;
+  semester: number;
+  disciplineStatus: string;
 };
 
 type UserRole = 'student' | 'staff' | 'dean' | 'admin' | null;
 
-const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam']);
+const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam', 'attendance-review']);
 
 function App() {
   const [activePage, setActivePage] = useState('landing');
@@ -71,7 +75,14 @@ function App() {
           />
         );
       case 'labour':
-        return <StudentLabour />;
+        return (
+          <StudentLabour
+            studentNumber={profile?.studentNumber ?? ''}
+            gpa={profile?.gpa ?? '0.00'}
+            semester={profile?.semester ?? 0}
+            disciplineStatus={profile?.disciplineStatus ?? ''}
+          />
+        );
       case 'labour-mgmt':
         return <DeanLabourManagement />;
       case 'groups':
@@ -80,6 +91,8 @@ function App() {
         return <PlaceholderPage title="Courses" />;
       case 'dashboard-tools':
         return <DeanDashboard />;
+      case 'attendance-review':
+        return <DeanAttendance />;
       case 'exam':
         return <PlaceholderPage title="Exam Officer" />;
       case 'elections':
@@ -87,7 +100,7 @@ function App() {
       case 'registration':
         return <RegistrationVerification />;
       case 'attendance':
-        return <Attendance />;
+        return <Attendance studentNumber={profile?.studentNumber ?? ''} />;
       case 'payments':
         return <Payments />;
       case 'events':

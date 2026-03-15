@@ -1,8 +1,11 @@
 package aucasa.com.rw.controller;
 
-import aucasa.com.rw.domain.LabourDailyLog;
+import aucasa.com.rw.dto.labour.LabourDailyLogRequest;
+import aucasa.com.rw.dto.labour.LabourDailyLogResponse;
+import aucasa.com.rw.dto.labour.LabourDailyLogReviewRequest;
 import aucasa.com.rw.service.LabourDailyLogService;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,21 +19,35 @@ public class LabourDailyLogController {
     }
 
     @GetMapping
-    public List<LabourDailyLog> getAll() { return service.findAll(); }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<LabourDailyLog> getById(@PathVariable Long id) {
-        return service.findById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    public List<LabourDailyLogResponse> getAll(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String studentNumber
+    ) {
+        return service.listLogs(status, department, studentNumber);
     }
 
-    @PostMapping
-    public ResponseEntity<LabourDailyLog> create(@RequestBody LabourDailyLog payload) {
-        return ResponseEntity.ok(service.create(payload));
+    @PostMapping("/submit")
+    public ResponseEntity<?> submit(@RequestBody LabourDailyLogRequest request) {
+        try {
+            LabourDailyLogResponse response = service.submitLog(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping("/{id}/review")
+    public ResponseEntity<?> review(@PathVariable Long id, @RequestBody LabourDailyLogReviewRequest request) {
+        try {
+            LabourDailyLogResponse response = service.reviewLog(id, request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
     }
 }

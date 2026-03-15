@@ -1,6 +1,7 @@
 package aucasa.com.rw.config;
 
 import aucasa.com.rw.domain.AcademicTerm;
+import aucasa.com.rw.domain.AttendanceSession;
 import aucasa.com.rw.domain.Campus;
 import aucasa.com.rw.domain.Faculty;
 import aucasa.com.rw.domain.Role;
@@ -10,6 +11,7 @@ import aucasa.com.rw.domain.enums.AccountStatus;
 import aucasa.com.rw.domain.enums.DisciplineStatus;
 import aucasa.com.rw.domain.enums.RoleType;
 import aucasa.com.rw.repository.AcademicTermRepository;
+import aucasa.com.rw.repository.AttendanceSessionRepository;
 import aucasa.com.rw.repository.CampusRepository;
 import aucasa.com.rw.repository.FacultyRepository;
 import aucasa.com.rw.repository.RoleRepository;
@@ -17,6 +19,7 @@ import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -31,6 +34,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     private final UserAccountRepository userAccountRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final AcademicTermRepository academicTermRepository;
+    private final AttendanceSessionRepository attendanceSessionRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DemoDataInitializer(
@@ -40,6 +44,7 @@ public class DemoDataInitializer implements CommandLineRunner {
             UserAccountRepository userAccountRepository,
             StudentProfileRepository studentProfileRepository,
             AcademicTermRepository academicTermRepository,
+            AttendanceSessionRepository attendanceSessionRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.roleRepository = roleRepository;
@@ -48,6 +53,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         this.userAccountRepository = userAccountRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.academicTermRepository = academicTermRepository;
+        this.attendanceSessionRepository = attendanceSessionRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -57,6 +63,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         seedActiveTermIfMissing();
         seedStudentIfMissing();
         seedDeanIfMissing();
+        seedAttendanceSessionsIfMissing();
     }
 
     private void seedActiveTermIfMissing() {
@@ -147,5 +154,55 @@ public class DemoDataInitializer implements CommandLineRunner {
         dean.setRole(deanRole);
         dean.setStatus(AccountStatus.ACTIVE);
         userAccountRepository.save(dean);
+    }
+
+    private void seedAttendanceSessionsIfMissing() {
+        if (attendanceSessionRepository.count() > 0) {
+            return;
+        }
+
+        AcademicTerm term = academicTermRepository.findByActiveTrue()
+                .orElseGet(() -> {
+                    AcademicTerm t = new AcademicTerm();
+                    t.setName("Harmattan 2026");
+                    t.setAcademicYear("2025/2026");
+                    t.setSemesterNumber(2);
+                    t.setStartDate(LocalDate.now().minusMonths(1));
+                    t.setEndDate(LocalDate.now().plusMonths(4));
+                    t.setActive(true);
+                    return academicTermRepository.save(t);
+                });
+
+        Campus masoro = campusRepository.findByCode("MAS").orElseGet(() -> {
+            Campus c = new Campus();
+            c.setCode("MAS");
+            c.setName("Masoro Campus");
+            return campusRepository.save(c);
+        });
+
+        Campus gishushu = campusRepository.findByCode("GIS").orElseGet(() -> {
+            Campus c = new Campus();
+            c.setCode("GIS");
+            c.setName("Gishushu Campus");
+            return campusRepository.save(c);
+        });
+
+        AttendanceSession activeSession = new AttendanceSession();
+        activeSession.setTitle("Gishushu General Assembly");
+        activeSession.setCampus(gishushu);
+        activeSession.setTerm(term);
+        activeSession.setStartsAt(LocalDateTime.now().minusMinutes(30));
+        activeSession.setEndsAt(LocalDateTime.now().plusHours(2));
+        activeSession.setActive(true);
+        attendanceSessionRepository.save(activeSession);
+
+        AttendanceSession upcomingSession = new AttendanceSession();
+        upcomingSession.setTitle("Masoro General Assembly");
+        upcomingSession.setCampus(masoro);
+        upcomingSession.setTerm(term);
+        upcomingSession.setStartsAt(LocalDateTime.now().plusDays(2).withHour(14).withMinute(0));
+        upcomingSession.setEndsAt(LocalDateTime.now().plusDays(2).withHour(16).withMinute(0));
+        upcomingSession.setActive(false);
+        attendanceSessionRepository.save(upcomingSession);
     }
 }

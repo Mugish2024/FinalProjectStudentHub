@@ -8,6 +8,9 @@ public class LoginResponse {
     private String program;
     private Integer credits;
     private String role;
+    private String gpa;
+    private Integer semester;
+    private String disciplineStatus;
 
     public LoginResponse(
             String fullName,
@@ -16,7 +19,10 @@ public class LoginResponse {
             String department,
             String program,
             Integer credits,
-            String role
+            String role,
+            String gpa,
+            Integer semester,
+            String disciplineStatus
     ) {
         this.fullName = fullName;
         this.studentNumber = studentNumber;
@@ -25,6 +31,9 @@ public class LoginResponse {
         this.program = program;
         this.credits = credits;
         this.role = role;
+        this.gpa = gpa;
+        this.semester = semester;
+        this.disciplineStatus = disciplineStatus;
     }
 
     public String getFullName() {
@@ -53,5 +62,17 @@ public class LoginResponse {
 
     public String getRole() {
         return role;
+    }
+
+    public String getGpa() {
+        return gpa;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public String getDisciplineStatus() {
+        return disciplineStatus;
     }
 }

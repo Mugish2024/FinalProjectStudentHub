@@ -1,0 +1,92 @@
+package aucasa.com.rw.dto.attendance;
+
+public class AttendanceRecordAdminResponse {
+    private Long id;
+    private String studentName;
+    private String studentNumber;
+    private String sessionTitle;
+    private String campus;
+    private String checkInAt;
+    private String method;
+    private String status;
+    private String verificationStatus;
+    private String wifiSsid;
+    private String ipAddress;
+    private String deviceInfo;
+
+    public AttendanceRecordAdminResponse(
+            Long id,
+            String studentName,
+            String studentNumber,
+            String sessionTitle,
+            String campus,
+            String checkInAt,
+            String method,
+            String status,
+            String verificationStatus,
+            String wifiSsid,
+            String ipAddress,
+            String deviceInfo
+    ) {
+        this.id = id;
+        this.studentName = studentName;
+        this.studentNumber = studentNumber;
+        this.sessionTitle = sessionTitle;
+        this.campus = campus;
+        this.checkInAt = checkInAt;
+        this.method = method;
+        this.status = status;
+        this.verificationStatus = verificationStatus;
+        this.wifiSsid = wifiSsid;
+        this.ipAddress = ipAddress;
+        this.deviceInfo = deviceInfo;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public String getStudentNumber() {
+        return studentNumber;
+    }
+
+    public String getSessionTitle() {
+        return sessionTitle;
+    }
+
+    public String getCampus() {
+        return campus;
+    }
+
+    public String getCheckInAt() {
+        return checkInAt;
+    }
+
+    public String getMethod() {
+        return method;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getVerificationStatus() {
+        return verificationStatus;
+    }
+
+    public String getWifiSsid() {
+        return wifiSsid;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public String getDeviceInfo() {
+        return deviceInfo;
+    }
+}
