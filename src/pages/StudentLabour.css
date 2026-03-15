@@ -177,6 +177,14 @@
     transform: scale(0.98);
 }
 
+.secondary-action-btn {
+    background: #475569;
+}
+
+.secondary-action-btn:hover {
+    background: #334155;
+}
+
 /* Daily Log Styling */
 .log-entry-card {
     background: white;

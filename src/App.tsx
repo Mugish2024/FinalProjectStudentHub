@@ -14,6 +14,8 @@ import StudentLabour from './pages/StudentLabour';
 import DeanLabourManagement from './pages/DeanLabourManagement';
 import DeanDashboard from './pages/DeanDashboard';
 import DeanAttendance from './pages/DeanAttendance';
+import DeanStudentList from './pages/DeanStudentList';
+import DeanCandidateReview from './pages/DeanCandidateReview';
 import Login from './pages/Login';
 
 type AuthProfile = {
@@ -31,7 +33,7 @@ type AuthProfile = {
 
 type UserRole = 'student' | 'staff' | 'dean' | 'admin' | null;
 
-const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam', 'attendance-review']);
+const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam', 'attendance-review', 'students', 'candidate-review']);
 
 function App() {
   const [activePage, setActivePage] = useState('landing');
@@ -93,10 +95,14 @@ function App() {
         return <DeanDashboard />;
       case 'attendance-review':
         return <DeanAttendance />;
+      case 'students':
+        return <DeanStudentList />;
+      case 'candidate-review':
+        return <DeanCandidateReview />;
       case 'exam':
         return <PlaceholderPage title="Exam Officer" />;
       case 'elections':
-        return <Elections />;
+        return <Elections studentNumber={profile?.studentNumber ?? ''} />;
       case 'registration':
         return <RegistrationVerification />;
       case 'attendance':

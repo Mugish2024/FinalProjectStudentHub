@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ElectionCandidateRepository extends JpaRepository<ElectionCandidate, Long> {
     List<ElectionCandidate> findByElectionId(Long electionId);
+    List<ElectionCandidate> findByApprovedTrue();
+    List<ElectionCandidate> findByApprovedFalse();
 }

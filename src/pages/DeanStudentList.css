@@ -1,0 +1,168 @@
+.dean-students {
+    padding: 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: #0f172a;
+}
+
+.dean-students__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 1.5rem;
+}
+
+.dean-students__header h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #01447B;
+    margin: 0 0 0.5rem;
+}
+
+.dean-students__header p {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.dean-students__refresh {
+    border: none;
+    background: #0f172a;
+    color: white;
+    padding: 0.7rem 1.4rem;
+    border-radius: 30px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.dean-students__refresh:hover {
+    background: #1e293b;
+    transform: translateY(-1px);
+}
+
+.dean-students__controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.dean-students__search {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    background: #f8fafc;
+}
+
+.dean-students__count {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #475569;
+    background: #e2e8f0;
+    padding: 0.4rem 0.9rem;
+    border-radius: 20px;
+}
+
+.dean-students__error {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.dean-students__table-wrap {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.dean-students__table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dean-students__table thead {
+    background: #0f172a;
+    color: white;
+}
+
+.dean-students__table th {
+    text-align: left;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 1rem 1.25rem;
+}
+
+.dean-students__table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.95rem;
+    color: #1e293b;
+}
+
+.dean-students__table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.dean-students__name {
+    font-weight: 700;
+}
+
+.dean-students__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.dean-students__credits {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 0.25rem 0.6rem;
+    border-radius: 12px;
+    background: #01447B;
+    color: white;
+    font-weight: 700;
+}
+
+.dean-students__empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #64748b;
+}
+
+@media (max-width: 1024px) {
+    .dean-students__header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dean-students__controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+@media (max-width: 768px) {
+    .dean-students__table th,
+    .dean-students__table td {
+        padding: 0.75rem;
+    }
+}

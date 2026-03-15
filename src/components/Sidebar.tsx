@@ -26,6 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, userRole, 
   const deanTools = [
     { id: 'labour-mgmt', label: 'Labour Management', icon: Shield },
     { id: 'attendance-review', label: 'Attendance Review', icon: FileText },
+    { id: 'students', label: 'Registered Students', icon: Users },
+    { id: 'candidate-review', label: 'Candidate Review', icon: Vote },
     { id: 'groups', label: 'Groups & Sizes', icon: Grid },
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'dashboard-tools', label: 'Dashboard', icon: LayoutDashboard },

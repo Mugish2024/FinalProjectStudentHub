@@ -348,7 +348,7 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
                                 required
                             />
                         </div>
-                        <button className="primary-action-btn" style={{ background: '#CF6218' }} type="submit">
+                        <button className="primary-action-btn secondary-action-btn" type="submit">
                             Record Daily Entry
                         </button>
                     </form>

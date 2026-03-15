@@ -75,6 +75,35 @@ const RegistrationVerification: React.FC = () => {
         }
     };
 
+    const facultyDepartments: Record<string, string[]> = {
+        'Information Technology': [
+            'Software Engineering',
+            'Information Management',
+            'Networks and Communication Systems',
+        ],
+        'Business Administration': [
+            'Accounting',
+            'Finance',
+            'Marketing',
+            'Management',
+        ],
+        'Education': [
+            'Theology',
+            'Geography & History',
+            'English Language and Literature',
+            'Accounting & IT',
+        ],
+        'Theology': [
+            'Theology',
+        ],
+        'Nursing': [
+            'Bachelor of Science in Nursing',
+            'Bachelor of Science in Midwifery',
+        ],
+    };
+
+    const departments = faculty ? (facultyDepartments[faculty] ?? []) : [];
+
     const handleCreateDemoStudents = async () => {
         setError('');
         setResult(null);
@@ -189,24 +218,36 @@ const RegistrationVerification: React.FC = () => {
 
                     <div className="search-row" style={{ marginBottom: '1rem', gap: '1rem' }}>
                         <div className="search-input-wrapper" style={{ flex: 1 }}>
-                            <input
-                                type="text"
-                                placeholder="Faculty"
+                            <select
                                 className="search-input"
                                 value={faculty}
-                                onChange={(e) => setFaculty(e.target.value)}
+                                onChange={(e) => {
+                                    setFaculty(e.target.value);
+                                    setDepartment('');
+                                }}
                                 required
-                            />
+                            >
+                                <option value="">Select Faculty</option>
+                                {Object.keys(facultyDepartments).map((item) => (
+                                    <option key={item} value={item}>{item}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="search-input-wrapper" style={{ flex: 1 }}>
-                            <input
-                                type="text"
-                                placeholder="Department"
+                            <select
                                 className="search-input"
                                 value={department}
                                 onChange={(e) => setDepartment(e.target.value)}
                                 required
-                            />
+                                disabled={!faculty}
+                            >
+                                <option value="">
+                                    {faculty ? 'Select Department' : 'Select Faculty First'}
+                                </option>
+                                {departments.map((item) => (
+                                    <option key={item} value={item}>{item}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 

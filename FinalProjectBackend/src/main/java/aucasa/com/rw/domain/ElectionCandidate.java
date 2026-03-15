@@ -31,6 +31,27 @@ public class ElectionCandidate extends BaseEntity {
     @Column(nullable = false)
     private Boolean approved = false;
 
+    @Column(precision = 4, scale = 2)
+    private java.math.BigDecimal gpa;
+
+    @Column
+    private Integer credits;
+
+    @Column(length = 80)
+    private String disciplineStatus;
+
+    @Column(length = 255)
+    private String adventistProofPath;
+
+    @Column(length = 255)
+    private String transcriptPath;
+
+    @Column(length = 255)
+    private String professionalPhotoPath;
+
+    @Column(length = 255)
+    private String certificatesPath;
+
     public Election getElection() {
         return election;
     }
@@ -77,5 +98,61 @@ public class ElectionCandidate extends BaseEntity {
 
     public void setApproved(Boolean approved) {
         this.approved = approved;
+    }
+
+    public java.math.BigDecimal getGpa() {
+        return gpa;
+    }
+
+    public void setGpa(java.math.BigDecimal gpa) {
+        this.gpa = gpa;
+    }
+
+    public Integer getCredits() {
+        return credits;
+    }
+
+    public void setCredits(Integer credits) {
+        this.credits = credits;
+    }
+
+    public String getDisciplineStatus() {
+        return disciplineStatus;
+    }
+
+    public void setDisciplineStatus(String disciplineStatus) {
+        this.disciplineStatus = disciplineStatus;
+    }
+
+    public String getAdventistProofPath() {
+        return adventistProofPath;
+    }
+
+    public void setAdventistProofPath(String adventistProofPath) {
+        this.adventistProofPath = adventistProofPath;
+    }
+
+    public String getTranscriptPath() {
+        return transcriptPath;
+    }
+
+    public void setTranscriptPath(String transcriptPath) {
+        this.transcriptPath = transcriptPath;
+    }
+
+    public String getProfessionalPhotoPath() {
+        return professionalPhotoPath;
+    }
+
+    public void setProfessionalPhotoPath(String professionalPhotoPath) {
+        this.professionalPhotoPath = professionalPhotoPath;
+    }
+
+    public String getCertificatesPath() {
+        return certificatesPath;
+    }
+
+    public void setCertificatesPath(String certificatesPath) {
+        this.certificatesPath = certificatesPath;
     }
 }

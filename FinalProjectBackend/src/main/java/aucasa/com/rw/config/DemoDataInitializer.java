@@ -3,16 +3,19 @@ package aucasa.com.rw.config;
 import aucasa.com.rw.domain.AcademicTerm;
 import aucasa.com.rw.domain.AttendanceSession;
 import aucasa.com.rw.domain.Campus;
+import aucasa.com.rw.domain.Election;
 import aucasa.com.rw.domain.Faculty;
 import aucasa.com.rw.domain.Role;
 import aucasa.com.rw.domain.StudentProfile;
 import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.domain.enums.AccountStatus;
 import aucasa.com.rw.domain.enums.DisciplineStatus;
+import aucasa.com.rw.domain.enums.ElectionStatus;
 import aucasa.com.rw.domain.enums.RoleType;
 import aucasa.com.rw.repository.AcademicTermRepository;
 import aucasa.com.rw.repository.AttendanceSessionRepository;
 import aucasa.com.rw.repository.CampusRepository;
+import aucasa.com.rw.repository.ElectionRepository;
 import aucasa.com.rw.repository.FacultyRepository;
 import aucasa.com.rw.repository.RoleRepository;
 import aucasa.com.rw.repository.StudentProfileRepository;
@@ -35,6 +38,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     private final StudentProfileRepository studentProfileRepository;
     private final AcademicTermRepository academicTermRepository;
     private final AttendanceSessionRepository attendanceSessionRepository;
+    private final ElectionRepository electionRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DemoDataInitializer(
@@ -45,6 +49,7 @@ public class DemoDataInitializer implements CommandLineRunner {
             StudentProfileRepository studentProfileRepository,
             AcademicTermRepository academicTermRepository,
             AttendanceSessionRepository attendanceSessionRepository,
+            ElectionRepository electionRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.roleRepository = roleRepository;
@@ -54,6 +59,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         this.studentProfileRepository = studentProfileRepository;
         this.academicTermRepository = academicTermRepository;
         this.attendanceSessionRepository = attendanceSessionRepository;
+        this.electionRepository = electionRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -64,6 +70,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         seedStudentIfMissing();
         seedDeanIfMissing();
         seedAttendanceSessionsIfMissing();
+        seedElectionIfMissing();
     }
 
     private void seedActiveTermIfMissing() {
@@ -204,5 +211,25 @@ public class DemoDataInitializer implements CommandLineRunner {
         upcomingSession.setEndsAt(LocalDateTime.now().plusDays(2).withHour(16).withMinute(0));
         upcomingSession.setActive(false);
         attendanceSessionRepository.save(upcomingSession);
+    }
+
+    private void seedElectionIfMissing() {
+        if (electionRepository.count() > 0) {
+            return;
+        }
+
+        Election election = new Election();
+        election.setTitle("AUCASA GENERAL ELECTION");
+        election.setDescription("Apply to run for AUCASA leadership positions.");
+        election.setNominationStart(LocalDateTime.now().minusDays(2));
+        election.setNominationEnd(LocalDateTime.now().plusDays(10));
+        election.setCampaignStart(LocalDateTime.now().plusDays(11));
+        election.setCampaignEnd(LocalDateTime.now().plusDays(18));
+        election.setVotingStart(LocalDateTime.now().plusDays(20));
+        election.setVotingEnd(LocalDateTime.now().plusDays(21));
+        election.setEligibleVoters(1500);
+        election.setTotalVotes(0);
+        election.setStatus(ElectionStatus.VOTING);
+        electionRepository.save(election);
     }
 }
