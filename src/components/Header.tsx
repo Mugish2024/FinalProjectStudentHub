@@ -7,12 +7,13 @@ interface HeaderProps {
     title?: string;
     userName?: string;
     userId?: string;
-    userRole?: 'student' | 'staff' | null;
+    userRole?: 'student' | 'staff' | 'dean' | 'admin' | null;
     onMenuClick?: () => void;
     onLogout?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ title = "Student Portal", userName = "Student User", userId = "26701", userRole = "student", onMenuClick, onLogout }) => {
+    const isStaffRole = userRole === 'staff' || userRole === 'dean' || userRole === 'admin';
     const initials = userName
         .split(' ')
         .filter(Boolean)
@@ -44,7 +45,7 @@ const Header: React.FC<HeaderProps> = ({ title = "Student Portal", userName = "S
                 <div className="semester-badge">2025/2</div>
 
                 <div className="student-nr-container">
-                    <span className="nr-label">{userRole === 'staff' ? 'Staff ID' : 'Student Nr.'}</span>
+                    <span className="nr-label">{isStaffRole ? 'Staff ID' : 'Student Nr.'}</span>
                     <div className="nr-input-wrapper">
                         <input type="text" value={userId} readOnly />
                     </div>

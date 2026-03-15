@@ -6,13 +6,17 @@ public class StudentRegistrationResponse {
     private String fullName;
     private String faculty;
     private String department;
+    private String program;
+    private Integer credits;
 
-    public StudentRegistrationResponse(Long studentId, String studentNumber, String fullName, String faculty, String department) {
+    public StudentRegistrationResponse(Long studentId, String studentNumber, String fullName, String faculty, String department, String program, Integer credits) {
         this.studentId = studentId;
         this.studentNumber = studentNumber;
         this.fullName = fullName;
         this.faculty = faculty;
         this.department = department;
+        this.program = program;
+        this.credits = credits;
     }
 
     public Long getStudentId() {
@@ -33,5 +37,13 @@ public class StudentRegistrationResponse {
 
     public String getDepartment() {
         return department;
+    }
+
+    public String getProgram() {
+        return program;
+    }
+
+    public Integer getCredits() {
+        return credits;
     }
 }

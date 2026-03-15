@@ -6,12 +6,13 @@ import './Sidebar.css';
 interface SidebarProps {
   activePage: string;
   setActivePage: (page: string) => void;
-  userRole: 'student' | 'staff' | null;
+  userRole: 'student' | 'staff' | 'dean' | 'admin' | null;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, userRole, isOpen = true, onClose }) => {
+  const isStaffRole = userRole === 'staff' || userRole === 'dean' || userRole === 'admin';
   const mainItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'labour', label: 'Student Labour', icon: Users },
@@ -20,7 +21,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, userRole, 
     { id: 'payments', label: 'Payments', icon: DollarSign },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'discipline', label: 'Discipline Record', icon: Shield },
-    { id: 'registration', label: 'Registration Info', icon: Users },
   ];
 
   const deanTools = [
@@ -29,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, userRole, 
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'dashboard-tools', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'exam', label: 'Exam Officer', icon: Clock },
+    { id: 'registration', label: 'Student Registration', icon: Users },
   ];
 
   return (
@@ -69,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, userRole, 
             );
           })}
 
-          {userRole === 'staff' && (
+          {isStaffRole && (
             <>
               <div className="nav-section-label">Dean Tools</div>
               {deanTools.map((item) => {

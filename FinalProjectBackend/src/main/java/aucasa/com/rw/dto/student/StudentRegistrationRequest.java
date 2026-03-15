@@ -6,6 +6,8 @@ public class StudentRegistrationRequest {
     private String lastName;
     private String faculty;
     private String department;
+    private String program;
+    private Integer credits;
 
     public String getStudentNumber() {
         return studentNumber;
@@ -45,5 +47,21 @@ public class StudentRegistrationRequest {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public String getProgram() {
+        return program;
+    }
+
+    public void setProgram(String program) {
+        this.program = program;
+    }
+
+    public Integer getCredits() {
+        return credits;
+    }
+
+    public void setCredits(Integer credits) {
+        this.credits = credits;
     }
 }

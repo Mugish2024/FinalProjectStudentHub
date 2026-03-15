@@ -4,9 +4,23 @@ import './StudentDashboard.css';
 
 interface StudentDashboardProps {
     navigateTo: (page: string) => void;
+    fullName: string;
+    studentNumber: string;
+    faculty: string;
+    department: string;
+    program: string;
+    credits: number;
 }
 
-const StudentDashboard: React.FC<StudentDashboardProps> = ({ navigateTo }) => {
+const StudentDashboard: React.FC<StudentDashboardProps> = ({
+    navigateTo,
+    fullName,
+    studentNumber,
+    faculty,
+    department,
+    program,
+    credits,
+}) => {
     const handleNavigate = (page: string) => {
         if (navigateTo) {
             navigateTo(page);
@@ -19,27 +33,27 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ navigateTo }) => {
             <div className="profile-info-grid">
                 <div className="info-card">
                     <span className="info-label">Full Name</span>
-                    <span className="info-value">Mutarutwa Ketsia</span>
+                    <span className="info-value">{fullName}</span>
                 </div>
                 <div className="info-card">
                     <span className="info-label">Reg. Nr.</span>
-                    <span className="info-value">26701</span>
+                    <span className="info-value">{studentNumber}</span>
                 </div>
                 <div className="info-card">
                     <span className="info-label">Faculty</span>
-                    <span className="info-value accent-blue">Info. Technology</span>
+                    <span className="info-value accent-blue">{faculty}</span>
                 </div>
                 <div className="info-card">
                     <span className="info-label">Department</span>
-                    <span className="info-value accent-blue">Info. Management</span>
+                    <span className="info-value accent-blue">{department}</span>
                 </div>
                 <div className="info-card">
                     <span className="info-label">Program</span>
-                    <span className="info-value">Evening</span>
+                    <span className="info-value">{program}</span>
                 </div>
                 <div className="info-card">
                     <span className="info-label">Credits</span>
-                    <span className="info-value accent-blue">13</span>
+                    <span className="info-value accent-blue">{credits}</span>
                 </div>
             </div>
 

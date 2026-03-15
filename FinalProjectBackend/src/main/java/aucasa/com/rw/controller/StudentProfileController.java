@@ -27,6 +27,21 @@ public class StudentProfileController {
         return service.findById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/summary")
+    public List<StudentRegistrationResponse> getAllSummaries() {
+        return service.findAllSummaries();
+    }
+
+    @GetMapping("/summary/search")
+    public ResponseEntity<?> findSummaryByStudentNumber(@RequestParam String studentNumber) {
+        if (studentNumber == null || studentNumber.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "studentNumber is required"));
+        }
+        return service.findSummaryByStudentNumber(studentNumber.trim())
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public ResponseEntity<StudentProfile> create(@RequestBody StudentProfile payload) {
         return ResponseEntity.ok(service.create(payload));

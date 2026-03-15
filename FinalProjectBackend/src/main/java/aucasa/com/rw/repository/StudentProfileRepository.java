@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StudentProfileRepository extends JpaRepository<StudentProfile, Long> {
     Optional<StudentProfile> findByStudentNumber(String studentNumber);
+    Optional<StudentProfile> findByUserAccountId(Long userAccountId);
 }

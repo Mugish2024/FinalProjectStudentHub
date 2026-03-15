@@ -48,6 +48,12 @@ public class StudentProfile extends BaseEntity {
     @Column(nullable = false, length = 30)
     private DisciplineStatus disciplineStatus = DisciplineStatus.SATISFACTORY;
 
+    @Column(length = 60)
+    private String program;
+
+    @Column
+    private Integer credits;
+
     public UserAccount getUserAccount() {
         return userAccount;
     }
@@ -118,5 +124,21 @@ public class StudentProfile extends BaseEntity {
 
     public void setDisciplineStatus(DisciplineStatus disciplineStatus) {
         this.disciplineStatus = disciplineStatus;
+    }
+
+    public String getProgram() {
+        return program;
+    }
+
+    public void setProgram(String program) {
+        this.program = program;
+    }
+
+    public Integer getCredits() {
+        return credits;
+    }
+
+    public void setCredits(Integer credits) {
+        this.credits = credits;
     }
 }

@@ -3,8 +3,20 @@ import { User, Lock, Info, ArrowLeft, Phone, Mail, MapPin } from 'lucide-react';
 import aucaLogo from '../assets/auca-logo.png';
 import './Login.css';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+
+type LoginProfile = {
+    fullName: string;
+    studentNumber: string;
+    faculty: string;
+    department: string;
+    program: string;
+    credits: number;
+    role: 'student' | 'staff' | 'dean' | 'admin';
+};
+
 interface LoginProps {
-    onLogin: (isStaff: boolean) => void;
+    onLogin: (profile: LoginProfile) => void;
     onBack: () => void;
 }
 
@@ -13,11 +25,35 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isStaff, setIsStaff] = useState(false);
+    const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, validation would happen here
-        onLogin(isStaff);
+        setError('');
+        setIsSubmitting(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    usernameOrEmail: email,
+                    password,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Login failed.');
+            }
+
+            onLogin(data as LoginProfile);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Login failed.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -53,6 +89,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
                 </div>
 
                 <form className="login-form" onSubmit={handleSubmit}>
+                    {error && (
+                        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                            {error}
+                        </div>
+                    )}
                     <div className="form-group">
                         <label>Email / ID Number</label>
                         <div className="input-wrapper">
@@ -73,7 +114,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
                             <Lock size={18} className="input-icon" />
                             <input
                                 type="password"
-                                placeholder="••••••••"
+                                placeholder="********"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -83,15 +124,17 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
 
                     <div className="staff-checkbox-container">
                         <input
+                            id="staff-login"
                             type="checkbox"
-                            id="staffCheck"
                             checked={isStaff}
                             onChange={(e) => setIsStaff(e.target.checked)}
                         />
-                        <label htmlFor="staffCheck">I am a Staff Member / Dean</label>
+                        <label htmlFor="staff-login">I am staff</label>
                     </div>
 
-                    <button type="submit" className="btn-login">Sign In</button>
+                    <button type="submit" className="btn-login" disabled={isSubmitting}>
+                        {isSubmitting ? 'Signing In...' : 'Sign In'}
+                    </button>
                 </form>
 
                 <div className="login-footer">

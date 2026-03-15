@@ -7,7 +7,7 @@ interface DashboardLayoutProps {
     children: React.ReactNode;
     activePage: string;
     setActivePage: (page: string) => void;
-    userRole: 'student' | 'staff' | null;
+    userRole: 'student' | 'staff' | 'dean' | 'admin' | null;
     title?: string;
     userName?: string;
     userId?: string;

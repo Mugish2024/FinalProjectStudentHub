@@ -18,6 +18,7 @@ import aucasa.com.rw.repository.UserAccountRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     private final UserAccountRepository userAccountRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final AcademicTermRepository academicTermRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public DemoDataInitializer(
             RoleRepository roleRepository,
@@ -37,7 +39,8 @@ public class DemoDataInitializer implements CommandLineRunner {
             FacultyRepository facultyRepository,
             UserAccountRepository userAccountRepository,
             StudentProfileRepository studentProfileRepository,
-            AcademicTermRepository academicTermRepository
+            AcademicTermRepository academicTermRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.roleRepository = roleRepository;
         this.campusRepository = campusRepository;
@@ -45,6 +48,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         this.userAccountRepository = userAccountRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.academicTermRepository = academicTermRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -52,6 +56,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     public void run(String... args) {
         seedActiveTermIfMissing();
         seedStudentIfMissing();
+        seedDeanIfMissing();
     }
 
     private void seedActiveTermIfMissing() {
@@ -97,7 +102,7 @@ public class DemoDataInitializer implements CommandLineRunner {
         UserAccount user = new UserAccount();
         user.setUsername("student1");
         user.setEmail("student1@auca.ac.rw");
-        user.setPasswordHash("demo-password-hash");
+        user.setPasswordHash(passwordEncoder.encode("demo123"));
         user.setFirstName("Demo");
         user.setLastName("Student");
         user.setRole(studentRole);
@@ -113,6 +118,34 @@ public class DemoDataInitializer implements CommandLineRunner {
         student.setSemester(4);
         student.setDisciplineScore(75);
         student.setDisciplineStatus(DisciplineStatus.SATISFACTORY);
+        student.setProgram("Day");
+        student.setCredits(15);
         studentProfileRepository.save(student);
+    }
+
+    private void seedDeanIfMissing() {
+        String deanUsername = "dean1";
+        String deanEmail = "dean1@auca.ac.rw";
+
+        if (userAccountRepository.findByUsername(deanUsername).isPresent()
+                || userAccountRepository.findByEmail(deanEmail).isPresent()) {
+            return;
+        }
+
+        Role deanRole = roleRepository.findByName(RoleType.DEAN).orElseGet(() -> {
+            Role role = new Role();
+            role.setName(RoleType.DEAN);
+            return roleRepository.save(role);
+        });
+
+        UserAccount dean = new UserAccount();
+        dean.setUsername(deanUsername);
+        dean.setEmail(deanEmail);
+        dean.setPasswordHash(passwordEncoder.encode("dean123"));
+        dean.setFirstName("Demo");
+        dean.setLastName("Dean");
+        dean.setRole(deanRole);
+        dean.setStatus(AccountStatus.ACTIVE);
+        userAccountRepository.save(dean);
     }
 }

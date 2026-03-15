@@ -12,9 +12,20 @@ import StudentDashboard from './pages/StudentDashboard';
 import Landing from './pages/Landing';
 import StudentLabour from './pages/StudentLabour';
 import DeanLabourManagement from './pages/DeanLabourManagement';
+import DeanDashboard from './pages/DeanDashboard';
 import Login from './pages/Login';
 
-type UserRole = 'student' | 'staff' | null;
+type AuthProfile = {
+  fullName: string;
+  studentNumber: string;
+  faculty: string;
+  department: string;
+  program: string;
+  credits: number;
+  role: 'student' | 'staff' | 'dean' | 'admin';
+};
+
+type UserRole = 'student' | 'staff' | 'dean' | 'admin' | null;
 
 const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam']);
 
@@ -22,6 +33,9 @@ function App() {
   const [activePage, setActivePage] = useState('landing');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [profile, setProfile] = useState<AuthProfile | null>(null);
+
+  const isStaffRole = (role: UserRole) => role === 'staff' || role === 'dean' || role === 'admin';
 
   const navigateWithAuth = (page: string) => {
     if (!isLoggedIn && page !== 'landing') {
@@ -29,7 +43,12 @@ function App() {
       return;
     }
 
-    if (DEAN_PAGES.has(page) && userRole !== 'staff') {
+    if (DEAN_PAGES.has(page) && !isStaffRole(userRole)) {
+      setActivePage('dashboard');
+      return;
+    }
+
+    if (page === 'registration' && !isStaffRole(userRole)) {
       setActivePage('dashboard');
       return;
     }
@@ -40,7 +59,17 @@ function App() {
   const renderContent = () => {
     switch (activePage) {
       case 'dashboard':
-        return <StudentDashboard navigateTo={navigateWithAuth} />;
+        return (
+          <StudentDashboard
+            navigateTo={navigateWithAuth}
+            fullName={profile?.fullName ?? 'Student User'}
+            studentNumber={profile?.studentNumber ?? '26701'}
+            faculty={profile?.faculty ?? 'Information Technology'}
+            department={profile?.department ?? 'Software Engineering'}
+            program={profile?.program ?? 'Day'}
+            credits={profile?.credits ?? 0}
+          />
+        );
       case 'labour':
         return <StudentLabour />;
       case 'labour-mgmt':
@@ -50,7 +79,7 @@ function App() {
       case 'courses':
         return <PlaceholderPage title="Courses" />;
       case 'dashboard-tools':
-        return <PlaceholderPage title="Dean Dashboard" />;
+        return <DeanDashboard />;
       case 'exam':
         return <PlaceholderPage title="Exam Officer" />;
       case 'elections':
@@ -79,10 +108,11 @@ function App() {
 
   if (activePage === 'login') {
     return <Login
-      onLogin={(isStaff) => {
+      onLogin={(loginProfile) => {
         setIsLoggedIn(true);
-        setUserRole(isStaff ? 'staff' : 'student');
-        if (isStaff) {
+        setProfile(loginProfile);
+        setUserRole(loginProfile.role);
+        if (isStaffRole(loginProfile.role)) {
           setActivePage('labour-mgmt');
         } else {
           setActivePage('dashboard');
@@ -95,12 +125,14 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserRole(null);
+    setProfile(null);
     setActivePage('landing');
   };
 
-  const headerTitle = userRole === 'staff' ? 'Dean Portal' : 'Student Portal';
-  const profileName = userRole === 'staff' ? 'Dean User' : 'Student User';
-  const profileId = userRole === 'staff' ? 'STAFF-01' : '26701';
+  const isStaff = isStaffRole(userRole);
+  const headerTitle = isStaff ? 'Dean Portal' : 'Student Portal';
+  const profileName = profile?.fullName ?? (isStaff ? 'Dean User' : 'Student User');
+  const profileId = profile?.studentNumber ?? (isStaff ? 'STAFF-01' : '26701');
 
   return (
     <DashboardLayout

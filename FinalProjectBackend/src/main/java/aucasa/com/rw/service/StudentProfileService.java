@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class StudentProfileService {
     private final DepartmentRepository departmentRepository;
     private final CampusRepository campusRepository;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public StudentProfileService(
             StudentProfileRepository repository,
@@ -39,7 +41,8 @@ public class StudentProfileService {
             FacultyRepository facultyRepository,
             DepartmentRepository departmentRepository,
             CampusRepository campusRepository,
-            RoleRepository roleRepository
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder
     ) {
         this.repository = repository;
         this.userAccountRepository = userAccountRepository;
@@ -47,12 +50,28 @@ public class StudentProfileService {
         this.departmentRepository = departmentRepository;
         this.campusRepository = campusRepository;
         this.roleRepository = roleRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<StudentProfile> findAll() { return repository.findAll(); }
     public Optional<StudentProfile> findById(Long id) { return repository.findById(id); }
     public StudentProfile create(StudentProfile entity) { return repository.save(entity); }
     public void delete(Long id) { repository.deleteById(id); }
+    public Optional<StudentRegistrationResponse> findSummaryByStudentNumber(String studentNumber) {
+        if (isBlank(studentNumber)) {
+            return Optional.empty();
+        }
+        return repository.findByStudentNumber(studentNumber.trim()).map(this::toRegistrationResponse);
+    }
+
+    public List<StudentRegistrationResponse> findAllSummaries() {
+        List<StudentProfile> students = repository.findAll();
+        List<StudentRegistrationResponse> result = new ArrayList<>();
+        for (StudentProfile student : students) {
+            result.add(toRegistrationResponse(student));
+        }
+        return result;
+    }
 
     @Transactional
     public StudentRegistrationResponse registerStudent(StudentRegistrationRequest request) {
@@ -66,7 +85,9 @@ public class StudentProfileService {
                     student.getStudentNumber(),
                     student.getUserAccount().getFirstName() + " " + student.getUserAccount().getLastName(),
                     student.getFaculty().getName(),
-                    student.getDepartment() != null ? student.getDepartment().getName() : ""
+                    student.getDepartment() != null ? student.getDepartment().getName() : "",
+                    normalizeProgram(student.getProgram()),
+                    normalizeCredits(student.getCredits())
             );
         }
 
@@ -89,7 +110,7 @@ public class StudentProfileService {
         UserAccount user = new UserAccount();
         user.setUsername(username);
         user.setEmail(email);
-        user.setPasswordHash("set-password-later");
+        user.setPasswordHash(passwordEncoder.encode("set-password-later"));
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
         user.setRole(studentRole);
@@ -106,6 +127,8 @@ public class StudentProfileService {
         student.setSemester(1);
         student.setDisciplineScore(0);
         student.setDisciplineStatus(DisciplineStatus.SATISFACTORY);
+        student.setProgram(normalizeProgram(request.getProgram()));
+        student.setCredits(normalizeCredits(request.getCredits()));
         student = repository.save(student);
 
         return new StudentRegistrationResponse(
@@ -113,7 +136,9 @@ public class StudentProfileService {
                 student.getStudentNumber(),
                 user.getFirstName() + " " + user.getLastName(),
                 faculty.getName(),
-                department.getName()
+                department.getName(),
+                normalizeProgram(student.getProgram()),
+                normalizeCredits(student.getCredits())
         );
     }
 
@@ -181,6 +206,20 @@ public class StudentProfileService {
         return value == null || value.trim().isEmpty();
     }
 
+    private String normalizeProgram(String program) {
+        if (isBlank(program)) {
+            return "Day";
+        }
+        return program.trim();
+    }
+
+    private Integer normalizeCredits(Integer credits) {
+        if (credits == null || credits < 0) {
+            return 0;
+        }
+        return credits;
+    }
+
     private StudentRegistrationRequest buildRequest(
             String studentNumber,
             String firstName,
@@ -194,6 +233,26 @@ public class StudentProfileService {
         request.setLastName(lastName);
         request.setFaculty(faculty);
         request.setDepartment(department);
+        request.setProgram("Day");
+        request.setCredits(12);
         return request;
+    }
+
+    private StudentRegistrationResponse toRegistrationResponse(StudentProfile student) {
+        String faculty = student.getFaculty() != null ? student.getFaculty().getName() : "";
+        String department = student.getDepartment() != null ? student.getDepartment().getName() : "";
+        String program = normalizeProgram(student.getProgram());
+        Integer credits = normalizeCredits(student.getCredits());
+        String fullName = student.getUserAccount().getFirstName() + " " + student.getUserAccount().getLastName();
+
+        return new StudentRegistrationResponse(
+                student.getId(),
+                student.getStudentNumber(),
+                fullName,
+                faculty,
+                department,
+                program,
+                credits
+        );
     }
 }
