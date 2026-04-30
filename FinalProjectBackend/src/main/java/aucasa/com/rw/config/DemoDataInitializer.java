@@ -69,37 +69,17 @@ public class DemoDataInitializer implements CommandLineRunner {
         seedActiveTermIfMissing();
         seedAdminIfMissing();
         seedDeanIfMissing();
+        seedStaffIfMissing();
         seedAttendanceSessionsIfMissing();
         seedElectionIfMissing();
         seedFinanceIfMissing();
         seedGuildPresidentIfMissing();
+        seedStudentsIfMissing();
         seedFinanceBudgetIfMissing();
     }
 
     private void seedAdminIfMissing() {
-        String adminUsername = "admin1";
-        String adminEmail = "admin1@auca.ac.rw";
-
-        if (userAccountRepository.findByUsername(adminUsername).isPresent()
-                || userAccountRepository.findByEmail(adminEmail).isPresent()) {
-            return;
-        }
-
-        Role adminRole = roleRepository.findByName(RoleType.ADMIN).orElseGet(() -> {
-            Role role = new Role();
-            role.setName(RoleType.ADMIN);
-            return roleRepository.save(role);
-        });
-
-        UserAccount admin = new UserAccount();
-        admin.setUsername(adminUsername);
-        admin.setEmail(adminEmail);
-        admin.setPasswordHash(passwordEncoder.encode("admin123"));
-        admin.setFirstName("Demo");
-        admin.setLastName("Admin");
-        admin.setRole(adminRole);
-        admin.setStatus(AccountStatus.ACTIVE);
-        userAccountRepository.save(admin);
+        seedUserIfMissing("admin1", "admin1@auca.ac.rw", "admin123", "Demo", "Admin", RoleType.ADMIN);
     }
 
     private void seedActiveTermIfMissing() {
@@ -118,29 +98,7 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void seedDeanIfMissing() {
-        String deanUsername = "dean1";
-        String deanEmail = "dean1@auca.ac.rw";
-
-        if (userAccountRepository.findByUsername(deanUsername).isPresent()
-                || userAccountRepository.findByEmail(deanEmail).isPresent()) {
-            return;
-        }
-
-        Role deanRole = roleRepository.findByName(RoleType.DEAN).orElseGet(() -> {
-            Role role = new Role();
-            role.setName(RoleType.DEAN);
-            return roleRepository.save(role);
-        });
-
-        UserAccount dean = new UserAccount();
-        dean.setUsername(deanUsername);
-        dean.setEmail(deanEmail);
-        dean.setPasswordHash(passwordEncoder.encode("dean123"));
-        dean.setFirstName("Demo");
-        dean.setLastName("Dean");
-        dean.setRole(deanRole);
-        dean.setStatus(AccountStatus.ACTIVE);
-        userAccountRepository.save(dean);
+        seedUserIfMissing("dean1", "dean1@auca.ac.rw", "dean123", "Demo", "Dean", RoleType.DEAN);
     }
 
     private void seedAttendanceSessionsIfMissing() {
@@ -214,55 +172,51 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void seedFinanceIfMissing() {
-        String financeUsername = "finance1";
-        String financeEmail = "finance1@auca.ac.rw";
-
-        if (userAccountRepository.findByUsername(financeUsername).isPresent()
-                || userAccountRepository.findByEmail(financeEmail).isPresent()) {
-            return;
-        }
-
-        Role financeRole = roleRepository.findByName(RoleType.FINANCE).orElseGet(() -> {
-            Role role = new Role();
-            role.setName(RoleType.FINANCE);
-            return roleRepository.save(role);
-        });
-
-        UserAccount finance = new UserAccount();
-        finance.setUsername(financeUsername);
-        finance.setEmail(financeEmail);
-        finance.setPasswordHash(passwordEncoder.encode("finance123"));
-        finance.setFirstName("Demo");
-        finance.setLastName("Finance");
-        finance.setRole(financeRole);
-        finance.setStatus(AccountStatus.ACTIVE);
-        userAccountRepository.save(finance);
+        seedUserIfMissing("finance1", "finance1@auca.ac.rw", "finance123", "Demo", "Finance", RoleType.FINANCE);
     }
 
     private void seedGuildPresidentIfMissing() {
-        String guildUsername = "guild1";
-        String guildEmail = "guild1@auca.ac.rw";
+        seedUserIfMissing("guild1", "guild1@auca.ac.rw", "guild123", "Demo", "Guild", RoleType.GUILD_PRESIDENT);
+    }
 
-        if (userAccountRepository.findByUsername(guildUsername).isPresent()
-                || userAccountRepository.findByEmail(guildEmail).isPresent()) {
+    private void seedStaffIfMissing() {
+        seedUserIfMissing("staff1", "staff1@auca.ac.rw", "staff123", "Demo", "Staff", RoleType.STAFF);
+    }
+
+    private void seedStudentsIfMissing() {
+        seedUserIfMissing("25876", "student25876@auca.ac.rw", "student123", "Abikunda", "Mugisha", RoleType.STUDENT);
+        seedUserIfMissing("26317", "student26317@auca.ac.rw", "student123", "Ishimwe", "Bienvenu", RoleType.STUDENT);
+        seedUserIfMissing("26330", "student26330@auca.ac.rw", "student123", "Eligible", "Student", RoleType.STUDENT);
+    }
+
+    private void seedUserIfMissing(
+            String username,
+            String email,
+            String password,
+            String firstName,
+            String lastName,
+            RoleType roleType
+    ) {
+        if (userAccountRepository.findByUsername(username).isPresent()
+                || userAccountRepository.findByEmail(email).isPresent()) {
             return;
         }
 
-        Role guildRole = roleRepository.findByName(RoleType.GUILD_PRESIDENT).orElseGet(() -> {
-            Role role = new Role();
-            role.setName(RoleType.GUILD_PRESIDENT);
-            return roleRepository.save(role);
+        Role role = roleRepository.findByName(roleType).orElseGet(() -> {
+            Role newRole = new Role();
+            newRole.setName(roleType);
+            return roleRepository.save(newRole);
         });
 
-        UserAccount guild = new UserAccount();
-        guild.setUsername(guildUsername);
-        guild.setEmail(guildEmail);
-        guild.setPasswordHash(passwordEncoder.encode("guild123"));
-        guild.setFirstName("Demo");
-        guild.setLastName("Guild");
-        guild.setRole(guildRole);
-        guild.setStatus(AccountStatus.ACTIVE);
-        userAccountRepository.save(guild);
+        UserAccount account = new UserAccount();
+        account.setUsername(username);
+        account.setEmail(email);
+        account.setPasswordHash(passwordEncoder.encode(password));
+        account.setFirstName(firstName);
+        account.setLastName(lastName);
+        account.setRole(role);
+        account.setStatus(AccountStatus.ACTIVE);
+        userAccountRepository.save(account);
     }
 
     private void seedFinanceBudgetIfMissing() {
