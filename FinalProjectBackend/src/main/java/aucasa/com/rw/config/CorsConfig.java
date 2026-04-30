@@ -1,41 +1,39 @@
 package aucasa.com.rw.config;
 
+import java.util.List;
+import java.util.stream.Stream;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
+    private final String allowedOriginsRaw;
+
+    public CorsConfig(
+            @Value("${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}") String allowedOriginsRaw
+    ) {
+        this.allowedOriginsRaw = allowedOriginsRaw;
+    }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        List<String> allowedOrigins = Stream.of(allowedOriginsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(this::normalizeOrigin)
+                .distinct()
+                .toList();
+
         registry.addMapping("/api/**")
-                .allowedOriginPatterns(
-                        "http://localhost:*",
-                        "https://localhost:*",
-                        "http://127.0.0.1:*",
-                        "https://127.0.0.1:*",
-                        "http://10.*:*",
-                        "https://10.*:*",
-                        "http://192.168.*:*",
-                        "https://192.168.*:*",
-                        "http://172.16.*:*",
-                        "https://172.16.*:*",
-                        "http://172.17.*:*",
-                        "https://172.17.*:*",
-                        "http://172.18.*:*",
-                        "https://172.18.*:*",
-                        "http://172.19.*:*",
-                        "https://172.19.*:*",
-                        "http://172.2*.*:*",
-                        "https://172.2*.*:*",
-                        "http://172.30.*:*",
-                        "https://172.30.*:*",
-                        "http://172.31.*:*",
-                        "https://172.31.*:*"
-                )
+                .allowedOrigins(allowedOrigins.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
+    }
+
+    private String normalizeOrigin(String origin) {
+        return origin.endsWith("/") ? origin.substring(0, origin.length() - 1) : origin;
     }
 }
