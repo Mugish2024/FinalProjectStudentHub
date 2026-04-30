@@ -3,12 +3,8 @@ import {
     Vote, 
     Calendar, 
     DollarSign, 
-    ShieldCheck, 
-    Zap, 
-    Users,
     ArrowLeft,
-    Handshake,
-    Mic2
+    Handshake
 } from 'lucide-react';
 import aucaLogo from '../assets/auca-logo.png';
 import campusView from '../assets/campus-view.png';

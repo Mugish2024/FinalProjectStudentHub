@@ -15,15 +15,11 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({
     title = 'Student Portal',
-    userName = 'Student User',
-    userId = '26701',
     activePage = 'dashboard',
     userRole = 'student',
     onNavigate,
     onChatClick,
 }) => {
-    const isStaffRole = userRole === 'staff' || userRole === 'dean' || userRole === 'admin' || userRole === 'finance' || userRole === 'guild_president';
-
     const [searchText, setSearchText] = useState('');
     const navItems = useMemo(
         () => {
