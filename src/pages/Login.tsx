@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Lock, Info, ArrowLeft, Phone, Mail, MapPin } from 'lucide-react';
+import { User, Lock, ArrowLeft } from 'lucide-react';
 import aucaLogo from '../assets/auca-logo.png';
 import './Login.css';
 
@@ -24,10 +24,10 @@ type LoginProfile = {
 interface LoginProps {
     onLogin: (profile: LoginProfile) => void;
     onBack: () => void;
+    onSignUp: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
-    const [showSignUpInfo, setShowSignUpInfo] = useState(false);
+const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -135,45 +135,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack }) => {
                 <div className="login-footer">
                     <p>
                         Don't have an account?
-                        <button className="signup-link" onClick={() => setShowSignUpInfo(true)}>
+                        <button className="signup-link" onClick={onSignUp}>
                             Register Here
                         </button>
                     </p>
                 </div>
             </div>
-
-            {showSignUpInfo && (
-                <div className="signup-info-overlay">
-                    <div className="info-modal">
-                        <div className="info-icon-wrapper">
-                            <Info size={32} />
-                        </div>
-                        <h3>Account Registration</h3>
-                        <p>
-                            Credentials are issued manually. Please contact the <strong>AUCASA Office</strong> to verify your identity and set up your account.
-                        </p>
-
-                        <div className="signup-contact-info">
-                            <div className="contact-item">
-                                <Phone size={16} />
-                                <strong>Phone:</strong> <span>+250 788 000 000</span>
-                            </div>
-                            <div className="contact-item">
-                                <Mail size={16} />
-                                <strong>Email:</strong> <span>aucasa@auca.ac.rw</span>
-                            </div>
-                            <div className="contact-item">
-                                <MapPin size={16} />
-                                <strong>Office:</strong> <span>Main Campus, Block B, Room 102</span>
-                            </div>
-                        </div>
-
-                        <button className="btn-close-info" onClick={() => setShowSignUpInfo(false)} style={{ marginTop: '1rem' }}>
-                            Got it, thanks
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

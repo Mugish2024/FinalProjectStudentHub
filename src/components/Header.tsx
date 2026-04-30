@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MessageSquare, Search, Bell, Settings } from 'lucide-react';
+import { MessageSquare, Search, Bell, Settings, Menu } from 'lucide-react';
 import './Header.css';
 
 interface HeaderProps {
@@ -18,6 +18,7 @@ const Header: React.FC<HeaderProps> = ({
     activePage = 'dashboard',
     userRole = 'student',
     onNavigate,
+    onMenuClick,
     onChatClick,
 }) => {
     const [searchText, setSearchText] = useState('');
@@ -28,7 +29,6 @@ const Header: React.FC<HeaderProps> = ({
             }
             return [
                 { label: 'Dashboard', page: 'dashboard' },
-                { label: 'Courses', page: 'courses' },
                 { label: 'Payments', page: 'payments' },
                 { label: 'Events', page: 'events' },
             ];
@@ -49,6 +49,11 @@ const Header: React.FC<HeaderProps> = ({
     return (
         <header className="header">
             <div className="header-left-section">
+                {onMenuClick && (
+                    <button className="icon-btn top-icon-btn header-menu-btn" aria-label="Toggle sidebar" onClick={onMenuClick}>
+                        <Menu size={18} />
+                    </button>
+                )}
                 <h2 className="header-title">{title}</h2>
             </div>
 

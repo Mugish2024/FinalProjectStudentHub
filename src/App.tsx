@@ -25,6 +25,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import StudentIssues from './pages/StudentIssues';
 import About from './pages/About';
 import Services from './pages/Services';
+import Signup from './pages/Signup';
+import Contact from './pages/Contact';
 
 type AuthProfile = {
   userId: number;
@@ -87,7 +89,7 @@ function App() {
   }, [isLoggedIn]);
 
   const navigateWithAuth = (page: string) => {
-    if (!isLoggedIn && (page !== 'landing' && page !== 'about' && page !== 'services')) {
+    if (!isLoggedIn && (page !== 'landing' && page !== 'about' && page !== 'services' && page !== 'contact' && page !== 'signup' && page !== 'login')) {
       setActivePage('login');
       return;
     }
@@ -226,6 +228,12 @@ function App() {
   if (activePage === 'services') {
     return <Services onBack={() => setActivePage('landing')} />;
   }
+  if (activePage === 'contact') {
+    return <Contact onBack={() => setActivePage('landing')} />;
+  }
+  if (activePage === 'signup') {
+    return <Signup onBack={() => setActivePage('landing')} onLogin={() => setActivePage('login')} />;
+  }
 
   if (activePage === 'login') {
     return <Login
@@ -250,6 +258,7 @@ function App() {
         }
       }}
       onBack={() => setActivePage('landing')}
+      onSignUp={() => setActivePage('signup')}
     />;
   }
 

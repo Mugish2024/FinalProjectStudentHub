@@ -22,11 +22,11 @@ const Landing: React.FC<LandingProps> = ({ onEnter, onNavigate }) => {
                     <nav className="exact-links">
                         <button type="button" onClick={() => onNavigate('landing')}>Home</button>
                         <button type="button" onClick={() => onNavigate('about')}>About</button>
-                        <button type="button" onClick={() => onNavigate('services')}>Contact</button>
+                        <button type="button" onClick={() => onNavigate('contact')}>Contact</button>
                     </nav>
 
                     <div className="exact-actions">
-                        <button type="button" className="btn-register" onClick={() => onNavigate('services')}>Register</button>
+                        <button type="button" className="btn-register" onClick={() => onNavigate('signup')}>Register</button>
                         <button type="button" className="btn-signin" onClick={onEnter}>Sign In</button>
                     </div>
                 </div>

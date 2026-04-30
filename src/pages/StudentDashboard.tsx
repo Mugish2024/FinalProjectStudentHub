@@ -16,7 +16,6 @@ import {
     LogOut,
     TrendingUp,
     ArrowUpRight,
-    Pencil,
 } from 'lucide-react';
 import './StudentDashboard.css';
 import studentCardFront from '../assets/student-card-front.png';
@@ -434,7 +433,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             <h3>QUICK ACTIONS</h3>
                             <button onClick={() => setShowCardModal(true)}><IdCard size={16} /> Download ID Card</button>
                             <button onClick={() => handleNavigate('payments')}><Wallet size={16} /> Make Payment</button>
-                            <button onClick={() => handleNavigate('profile')}><Pencil size={16} /> Update Profile</button>
                         </aside>
                     </section>
                 </main>

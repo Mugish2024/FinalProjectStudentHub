@@ -17,7 +17,7 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage, setActivePage, userRole, userAccountId, title, userName, userId, onLogout }) => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth > 1024 : true));
     const [isChatOpen, setIsChatOpen] = useState(false);
 
     return (

@@ -15,7 +15,12 @@
 .header-left-section {
     display: flex;
     align-items: center;
+    gap: 0.6rem;
     min-width: 170px;
+}
+
+.header-menu-btn {
+    display: none;
 }
 
 .header-title {
@@ -220,6 +225,10 @@
 }
 
 @media (max-width: 980px) {
+    .header-menu-btn {
+        display: inline-flex;
+    }
+
     .global-search {
         display: none;
     }
