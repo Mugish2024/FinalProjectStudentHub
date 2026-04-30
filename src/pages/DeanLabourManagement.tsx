@@ -1,19 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { UserCheck, FileText, Clock, Eye, Calendar } from 'lucide-react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { UserCheck, FileText, Clock, Eye, Calendar, BadgeCheck, Download } from 'lucide-react';
 import './DeanLabourManagement.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
-
-type DepartmentItem = {
-    id: number;
-    name: string;
-};
 
 type ApplicationItem = {
     id: number;
     studentName: string;
     studentNumber: string;
     department: string;
+    roleTitle?: string;
     status: string;
     submittedAt: string;
     coverLetterPath?: string;
@@ -30,16 +26,59 @@ type LogItem = {
     hoursWorked: string;
     taskDescription: string;
     status: string;
+    lateSubmissionReason?: string;
+    locationValidated?: boolean;
+};
+
+type LabourActivityItem = {
+    id: number;
+    title: string;
+    department: string;
+    description?: string;
+    minSemester: number;
+    minGpa: number;
+    requiresSatisfactoryDiscipline: boolean;
+    active: boolean;
+};
+
+type MonthlyPerformanceItem = {
+    studentNumber: string;
+    studentName: string;
+    campus: string;
+    position: string;
+    expectedWorkDays: number;
+    daysPresent: number;
+    daysMissed: number;
+    totalHours: string;
 };
 
 const DeanLabourManagement: React.FC = () => {
     const [activeView, setActiveView] = useState<'applications' | 'daily-logs'>('applications');
-    const [departments, setDepartments] = useState<DepartmentItem[]>([]);
-    const [selectedDepartment, setSelectedDepartment] = useState('');
     const [applications, setApplications] = useState<ApplicationItem[]>([]);
     const [dailyLogs, setDailyLogs] = useState<LogItem[]>([]);
     const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({});
     const [error, setError] = useState('');
+    const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
+    const [activities, setActivities] = useState<LabourActivityItem[]>([]);
+    const [roleReportFilter, setRoleReportFilter] = useState('');
+    const [backfillNote, setBackfillNote] = useState('');
+    const [newActivity, setNewActivity] = useState({
+        title: '',
+        department: 'Gishushu',
+        description: '',
+        minSemester: '1',
+        minGpa: '14',
+        requiresSatisfactoryDiscipline: true,
+    });
+    const [positionFormOpen, setPositionFormOpen] = useState(false);
+    const [campusFilter, setCampusFilter] = useState('');
+    const [positionFilter, setPositionFilter] = useState('');
+    const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
+    const [monthlyPerformance, setMonthlyPerformance] = useState<MonthlyPerformanceItem[]>([]);
+    const [selectedStudentPerformance, setSelectedStudentPerformance] = useState<MonthlyPerformanceItem | null>(null);
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportCampus, setReportCampus] = useState<'Gishushu' | 'Masoro' | ''>('');
+    const [reportPosition, setReportPosition] = useState('');
 
     const pendingApplicationsCount = applications.length;
     const pendingLogsCount = dailyLogs.length;
@@ -47,57 +86,72 @@ const DeanLabourManagement: React.FC = () => {
         return dailyLogs.reduce((sum, log) => sum + Number(log.hoursWorked || 0), 0);
     }, [dailyLogs]);
 
-    const loadDepartments = async () => {
-        const response = await fetch(`${API_BASE}/api/departments`);
+    const selectedApplication = useMemo(() => {
+        if (!selectedApplicationId) return applications[0] ?? null;
+        return applications.find((app) => app.id === selectedApplicationId) ?? applications[0] ?? null;
+    }, [applications, selectedApplicationId]);
+
+    const loadApplications = async () => {
+        const response = await fetch(`${API_BASE}/api/labour-applications?status=PENDING`);
         const data = await response.json().catch(() => []);
         const list = Array.isArray(data) ? data : [];
-        setDepartments(list);
-        if (!selectedDepartment && list.length > 0) {
-            setSelectedDepartment(list[0].name);
+        list.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+        setApplications(list);
+        if (list.length > 0) {
+            setSelectedApplicationId((prev) => prev ?? list[0].id);
+        } else {
+            setSelectedApplicationId(null);
         }
     };
 
-    const loadApplications = async (department: string) => {
-        if (!department) {
-            setApplications([]);
-            return;
-        }
-        const response = await fetch(`${API_BASE}/api/labour-applications?status=PENDING&department=${encodeURIComponent(department)}`);
+    const loadDailyLogs = async () => {
+        const response = await fetch(`${API_BASE}/api/labour-daily-logs`);
         const data = await response.json().catch(() => []);
-        setApplications(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        list.sort((a, b) => new Date(b.logDate).getTime() - new Date(a.logDate).getTime());
+        setDailyLogs(list);
     };
 
-    const loadDailyLogs = async (department: string) => {
-        if (!department) {
-            setDailyLogs([]);
-            return;
-        }
-        const response = await fetch(`${API_BASE}/api/labour-daily-logs?status=PENDING_REVIEW&department=${encodeURIComponent(department)}`);
+    const loadMonthlyPerformance = async () => {
+        const params = new URLSearchParams();
+        if (campusFilter.trim()) params.set('campus', campusFilter.trim());
+        if (positionFilter.trim()) params.set('roleTitle', positionFilter.trim());
+        if (monthFilter.trim()) params.set('month', monthFilter.trim());
+        const response = await fetch(`${API_BASE}/api/labour-daily-logs/monthly-performance?${params.toString()}`);
         const data = await response.json().catch(() => []);
-        setDailyLogs(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setMonthlyPerformance(list);
+        setSelectedStudentPerformance(list[0] ?? null);
+    };
+
+    const loadActivities = async () => {
+        const response = await fetch(`${API_BASE}/api/labour-activities`);
+        const data = await response.json().catch(() => []);
+        setActivities(Array.isArray(data) ? data : []);
     };
 
     useEffect(() => {
-        loadDepartments();
+        loadApplications();
+        loadDailyLogs();
+        loadActivities();
     }, []);
 
     useEffect(() => {
-        if (!selectedDepartment) {
-            return;
+        if (activeView === 'daily-logs') {
+            loadMonthlyPerformance();
         }
-        loadApplications(selectedDepartment);
-        loadDailyLogs(selectedDepartment);
-    }, [selectedDepartment]);
+    }, [activeView, campusFilter, positionFilter, monthFilter]);
 
     const handleReviewApplication = async (id: number, decision: 'APPROVED' | 'REJECTED') => {
         setError('');
         try {
+            const app = applications.find((item) => item.id === id);
             const response = await fetch(`${API_BASE}/api/labour-applications/${id}/review`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     decision,
-                    reviewerDepartment: selectedDepartment,
+                    reviewerDepartment: app?.department ?? '',
                     notes: reviewNotes[id] ?? '',
                 }),
             });
@@ -105,164 +159,445 @@ const DeanLabourManagement: React.FC = () => {
             if (!response.ok) {
                 throw new Error(data.error ?? 'Failed to review application.');
             }
-            await loadApplications(selectedDepartment);
+            await loadApplications();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to review application.');
         }
     };
 
-    const handleReviewLog = async (id: number, decision: 'VERIFIED' | 'REJECTED') => {
+    const handleDownloadLabourReport = () => {
+        const params = new URLSearchParams();
+        if (roleReportFilter.trim()) params.set('roleTitle', roleReportFilter.trim());
+        const query = params.toString();
+        window.open(`${API_BASE}/api/labour-daily-logs/report/pdf${query ? `?${query}` : ''}`, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleGenerateSpecificReport = () => {
+        setError('');
+        if (!reportCampus) {
+            setError('Please choose report campus first.');
+            return;
+        }
+        const params = new URLSearchParams();
+        params.set('department', reportCampus);
+        if (reportPosition.trim()) params.set('roleTitle', reportPosition.trim());
+        window.open(`${API_BASE}/api/labour-daily-logs/report/pdf?${params.toString()}`, '_blank', 'noopener,noreferrer');
+        setReportModalOpen(false);
+    };
+
+    const reportPositions = useMemo(() => {
+        const source = activities
+            .filter((a) => !reportCampus || a.department.toLowerCase() === reportCampus.toLowerCase())
+            .map((a) => a.title.trim())
+            .filter((v) => v.length > 0);
+        return Array.from(new Set(source)).sort((a, b) => a.localeCompare(b));
+    }, [activities, reportCampus]);
+
+    const handleCreateActivity = async (e: React.FormEvent) => {
+        e.preventDefault();
         setError('');
         try {
-            const response = await fetch(`${API_BASE}/api/labour-daily-logs/${id}/review`, {
+            const response = await fetch(`${API_BASE}/api/labour-activities`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    decision,
-                    reviewerDepartment: selectedDepartment,
-                    notes: reviewNotes[id] ?? '',
+                    title: newActivity.title,
+                    department: newActivity.department,
+                    description: newActivity.description,
+                    minSemester: Number(newActivity.minSemester),
+                    minGpa: Number(newActivity.minGpa),
+                    requiresSatisfactoryDiscipline: newActivity.requiresSatisfactoryDiscipline,
+                    active: true,
                 }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.error ?? 'Failed to review daily log.');
+                throw new Error(data.error ?? 'Failed to create activity.');
             }
-            await loadDailyLogs(selectedDepartment);
+            setNewActivity({
+                title: '',
+                department: 'Gishushu',
+                description: '',
+                minSemester: '1',
+                minGpa: '14',
+                requiresSatisfactoryDiscipline: true,
+            });
+            await loadActivities();
+            setPositionFormOpen(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to review daily log.');
+            setError(err instanceof Error ? err.message : 'Failed to create activity.');
+        }
+    };
+
+    const handleApproveLateBackfill = async () => {
+        if (!selectedApplication) return;
+        setError('');
+        try {
+            const response = await fetch(`${API_BASE}/api/labour-daily-logs/backfill/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentNumber: selectedApplication.studentNumber,
+                    approvalNote: backfillNote,
+                    approvedBy: 'Dean',
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to approve late backfill.');
+            }
+            setBackfillNote('');
+            alert(data.message ?? 'Late backfill approved.');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to approve late backfill.');
         }
     };
 
     return (
-        <div className="dean-labour">
-            <header className="dean-header">
+        <div className="dean-labour-page">
+            <header className="dean-page-header">
+                <span>Administrator Portal</span>
                 <h1>Student Labour Management</h1>
-                <p>Oversight of campus student employment and daily activity logs.</p>
+                <p>Review labour applications, manage approvals, and track pending departmental activity logs.</p>
             </header>
 
-            <section className="dean-summary">
-                <div className="summary-item">
-                    <span className="summary-label">Pending Applications</span>
-                    <span className="summary-val">{pendingApplicationsCount} <UserCheck size={24} style={{ opacity: 0.3 }} /></span>
+            {error && <div className="dean-alert">{error}</div>}
+
+            <section className="dean-top-layout">
+                <div className="dean-main-metrics">
+                    <section className="dean-stats-row">
+                        <article className="stat-box">
+                            <div className="stat-icon"><UserCheck size={18} /></div>
+                            <div className="stat-content">
+                                <strong>{pendingApplicationsCount}</strong>
+                                <span>Pending Applications</span>
+                            </div>
+                        </article>
+                        <article className="stat-box">
+                            <div className="stat-icon"><FileText size={18} /></div>
+                            <div className="stat-content">
+                                <strong>{pendingLogsCount}</strong>
+                                <span>Daily Logs Pending</span>
+                            </div>
+                        </article>
+                        <article className="stat-box dark">
+                            <div className="stat-icon"><Clock size={18} /></div>
+                            <div className="stat-content">
+                                <strong>{totalDailyHours.toFixed(1)}</strong>
+                                <span>Daily Recorded Hours</span>
+                            </div>
+                        </article>
+                    </section>
                 </div>
-                <div className="summary-item">
-                    <span className="summary-label">Daily Logs Pending</span>
-                    <span className="summary-val">{pendingLogsCount} <FileText size={24} style={{ opacity: 0.3 }} /></span>
-                </div>
-                <div className="summary-item">
-                    <span className="summary-label">Daily Recorded Hours</span>
-                    <span className="summary-val">{totalDailyHours.toFixed(1)} <Clock size={24} style={{ opacity: 0.3 }} /></span>
-                </div>
+
+                <aside className="dean-quick-actions">
+                    <h3>Quick Actions</h3>
+                    <button className="report-selector-btn" onClick={() => setReportModalOpen(true)}>
+                        Student Labour Report
+                    </button>
+                    <button className="create-position-btn" onClick={() => setPositionFormOpen((prev) => !prev)}>
+                        {positionFormOpen ? 'Close Position Form' : 'Create Labour Position'}
+                    </button>
+                    <button className="report-download-btn" onClick={handleDownloadLabourReport}>
+                        <Download size={16} />
+                        Download Labour PDF Report
+                    </button>
+                </aside>
             </section>
 
-            {error && (
-                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                    {error}
+            <section className="dean-controls-row">
+                <div className="toggle-group">
+                    <button className={activeView === 'applications' ? 'active' : ''} onClick={() => setActiveView('applications')}>
+                        Pending Applications
+                    </button>
+                    <button className={activeView === 'daily-logs' ? 'active' : ''} onClick={() => setActiveView('daily-logs')}>
+                        Monthly Labour Records
+                    </button>
+                </div>
+                <input
+                    className="report-role-filter"
+                    placeholder="Filter report by position"
+                    value={roleReportFilter}
+                    onChange={(e) => setRoleReportFilter(e.target.value)}
+                />
+            </section>
+
+            {reportModalOpen && (
+                <div className="position-modal-overlay" onClick={() => setReportModalOpen(false)}>
+                    <section className="activity-create-panel position-modal-card report-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="position-modal-header">
+                            <h3>Student Labour Report</h3>
+                            <button type="button" className="position-close-btn" onClick={() => setReportModalOpen(false)}>Close</button>
+                        </div>
+                        <div className="report-campus-row">
+                            <button
+                                type="button"
+                                className={`campus-choice-btn ${reportCampus === 'Gishushu' ? 'active' : ''}`}
+                                onClick={() => setReportCampus('Gishushu')}
+                            >
+                                Gishushu
+                            </button>
+                            <button
+                                type="button"
+                                className={`campus-choice-btn ${reportCampus === 'Masoro' ? 'active' : ''}`}
+                                onClick={() => setReportCampus('Masoro')}
+                            >
+                                Masoro
+                            </button>
+                        </div>
+                        <div className="field-group">
+                            <label>Position</label>
+                            <select value={reportPosition} onChange={(e) => setReportPosition(e.target.value)} disabled={!reportCampus}>
+                                <option value="">All positions in selected campus</option>
+                                {reportPositions.map((position) => (
+                                    <option key={position} value={position}>{position}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <button type="button" className="generate-report-btn" onClick={handleGenerateSpecificReport}>
+                            Generate Report
+                        </button>
+                    </section>
                 </div>
             )}
 
-            <div className="dean-view-toggle" style={{ alignItems: 'center', gap: '1rem' }}>
-                <span
-                    className={`toggle-link ${activeView === 'applications' ? 'active' : ''}`}
-                    onClick={() => setActiveView('applications')}
-                >
-                    PENDING APPLICATIONS
-                </span>
-                <span
-                    className={`toggle-link ${activeView === 'daily-logs' ? 'active' : ''}`}
-                    onClick={() => setActiveView('daily-logs')}
-                >
-                    DAILY ACTIVITY LOGS
-                </span>
-                <div style={{ marginLeft: 'auto' }}>
-                    <select
-                        className="custom-select"
-                        value={selectedDepartment}
-                        onChange={(e) => setSelectedDepartment(e.target.value)}
-                    >
-                        {departments.map((dept) => (
-                            <option key={dept.id} value={dept.name}>{dept.name}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            <div className="view-content fade-in">
-                {activeView === 'applications' ? (
-                    <div className="applications-list">
-                        {applications.map(app => (
-                            <div key={app.id} className="application-entry">
-                                <div className="applicant-info">
-                                    <span className="applicant-name">{app.studentName}</span>
-                                    <div className="applicant-details">
-                                        <span>{app.department}</span>
-                                        <span>Student: <span className="dt-badge">{app.studentNumber}</span></span>
-                                        <span>Applied: {new Date(app.submittedAt).toLocaleDateString()}</span>
-                                    </div>
-                                    {app.coverLetterText && (
-                                        <div style={{ marginTop: '0.75rem', color: '#64748b' }}>
-                                            <strong>Cover Letter:</strong> {app.coverLetterText}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="action-group">
-                                    <button className="btn-ghost"><Eye size={16} /> Documents</button>
-                                    <button className="btn-outline-primary" onClick={() => handleReviewApplication(app.id, 'APPROVED')}>Approve</button>
-                                    <button className="btn-outline-primary" onClick={() => handleReviewApplication(app.id, 'REJECTED')}>Reject</button>
-                                    <div style={{ width: '100%', marginTop: '0.5rem' }}>
-                                        <textarea
-                                            className="log-textarea"
-                                            rows={2}
-                                            placeholder="Review notes"
-                                            value={reviewNotes[app.id] ?? ''}
-                                            onChange={(e) => setReviewNotes((prev) => ({ ...prev, [app.id]: e.target.value }))}
-                                        />
-                                    </div>
-                                </div>
+            {positionFormOpen && (
+                <div className="position-modal-overlay" onClick={() => setPositionFormOpen(false)}>
+                    <section className="activity-create-panel position-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="position-modal-header">
+                            <h3>Create Available Labour Activity</h3>
+                            <button type="button" className="position-close-btn" onClick={() => setPositionFormOpen(false)}>Close</button>
+                        </div>
+                        <form className="activity-create-form" onSubmit={handleCreateActivity}>
+                            <div className="field-group field-role">
+                                <label>Role Title</label>
+                                <input
+                                    placeholder="e.g. Library Assistant"
+                                    value={newActivity.title}
+                                    onChange={(e) => setNewActivity((prev) => ({ ...prev, title: e.target.value }))}
+                                    required
+                                />
                             </div>
+                            <div className="field-group field-campus">
+                                <label>Campus</label>
+                                <select
+                                    value={newActivity.department}
+                                    onChange={(e) => setNewActivity((prev) => ({ ...prev, department: e.target.value }))}
+                                    required
+                                >
+                                    <option value="Gishushu">Gishushu</option>
+                                    <option value="Masoro">Masoro</option>
+                                </select>
+                            </div>
+                            <div className="field-group field-description">
+                                <label>Activity Description</label>
+                                <input
+                                    placeholder="Short description of this labour activity"
+                                    value={newActivity.description}
+                                    onChange={(e) => setNewActivity((prev) => ({ ...prev, description: e.target.value }))}
+                                />
+                            </div>
+                            <div className="field-group field-semester">
+                                <label>Minimum Semester</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="e.g. 1"
+                                    value={newActivity.minSemester}
+                                    onChange={(e) => setNewActivity((prev) => ({ ...prev, minSemester: e.target.value }))}
+                                />
+                            </div>
+                            <div className="field-group field-gpa">
+                                <label>Minimum GPA</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    placeholder="e.g. 14.0"
+                                    value={newActivity.minGpa}
+                                    onChange={(e) => setNewActivity((prev) => ({ ...prev, minGpa: e.target.value }))}
+                                />
+                            </div>
+                            <button type="submit">Publish Activity</button>
+                        </form>
+                        <div className="activity-list-inline">
+                            {activities.slice(0, 6).map((item) => (
+                                <span key={item.id}>{item.title} · {item.department}</span>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {activeView === 'applications' ? (
+                <section className="review-layout">
+                    <aside className="candidate-list-panel">
+                        <h3>Candidate Queue</h3>
+                        {applications.length === 0 && <p className="muted">No pending applications.</p>}
+                        {applications.map((app) => (
+                            <button
+                                key={app.id}
+                                className={`candidate-item ${selectedApplication?.id === app.id ? 'active' : ''}`}
+                                onClick={() => setSelectedApplicationId(app.id)}
+                            >
+                                <strong>{app.studentName}</strong>
+                                <span>{app.studentNumber}</span>
+                                <small>{app.roleTitle || 'Role pending'}</small>
+                                <small>{app.department}</small>
+                            </button>
                         ))}
+                    </aside>
+
+                    <div className="candidate-review-panel">
+                        {selectedApplication ? (
+                            <>
+                                <div className="review-top">
+                                    <div>
+                                        <h2>{selectedApplication.studentName}</h2>
+                                        <p>
+                                            ID: {selectedApplication.studentNumber} · Role: {selectedApplication.roleTitle || 'N/A'} · Department: {selectedApplication.department}
+                                        </p>
+                                    </div>
+                                    <span className="status-chip">{selectedApplication.status}</span>
+                                </div>
+
+                                <div className="cover-letter-box">
+                                    <h4>Cover Letter</h4>
+                                    <p>{selectedApplication.coverLetterText || 'No cover letter text provided.'}</p>
+                                </div>
+
+                                <div className="review-docs-row">
+                                    <a
+                                        className={`doc-btn ${selectedApplication.coverLetterPath ? '' : 'disabled'}`}
+                                        href={selectedApplication.coverLetterPath ? `${API_BASE}${selectedApplication.coverLetterPath}` : '#'}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={(e) => {
+                                            if (!selectedApplication.coverLetterPath) e.preventDefault();
+                                        }}
+                                    >
+                                        <Eye size={16} /> View Cover Letter
+                                    </a>
+                                    <a
+                                        className={`doc-btn ${selectedApplication.transcriptPath ? '' : 'disabled'}`}
+                                        href={selectedApplication.transcriptPath ? `${API_BASE}${selectedApplication.transcriptPath}` : '#'}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={(e) => {
+                                            if (!selectedApplication.transcriptPath) e.preventDefault();
+                                        }}
+                                    >
+                                        <FileText size={16} /> View Transcript
+                                    </a>
+                                </div>
+
+                                <div className="notes-box">
+                                    <label>Review Notes</label>
+                                    <textarea
+                                        rows={5}
+                                        placeholder="Add internal observations regarding candidate suitability..."
+                                        value={reviewNotes[selectedApplication.id] ?? ''}
+                                        onChange={(e) => setReviewNotes((prev) => ({ ...prev, [selectedApplication.id]: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="notes-box">
+                                    <label>Late Backfill Approval Note</label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Reason for allowing up to 2 missed daily logs."
+                                        value={backfillNote}
+                                        onChange={(e) => setBackfillNote(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="review-actions">
+                                    <button className="backfill-btn" onClick={handleApproveLateBackfill}>
+                                        Approve Late Backfill
+                                    </button>
+                                    <button className="reject-btn" onClick={() => handleReviewApplication(selectedApplication.id, 'REJECTED')}>
+                                        Reject Application
+                                    </button>
+                                    <button className="approve-btn" onClick={() => handleReviewApplication(selectedApplication.id, 'APPROVED')}>
+                                        <BadgeCheck size={16} /> Approve Candidate
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="empty-state">Select a candidate to review details.</div>
+                        )}
                     </div>
-                ) : (
-                    <div className="logs-container">
-                        <table className="log-table">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Student Worker</th>
-                                    <th>Department</th>
-                                    <th>Hours</th>
-                                    <th>Activity Description</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {dailyLogs.map(log => (
-                                    <tr key={log.id}>
-                                        <td><Calendar size={14} /> {new Date(log.logDate).toLocaleDateString()}</td>
-                                        <td><strong>{log.studentName}</strong></td>
-                                        <td>{log.department}</td>
-                                        <td>{log.hoursWorked}</td>
-                                        <td style={{ color: '#64748b' }}>{log.taskDescription}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                <button className="view-btn" onClick={() => handleReviewLog(log.id, 'VERIFIED')}>Verify</button>
-                                                <button className="view-btn" onClick={() => handleReviewLog(log.id, 'REJECTED')}>Reject</button>
-                                            </div>
-                                            <textarea
-                                                className="log-textarea"
-                                                rows={2}
-                                                placeholder="Verification note"
-                                                value={reviewNotes[log.id] ?? ''}
-                                                onChange={(e) => setReviewNotes((prev) => ({ ...prev, [log.id]: e.target.value }))}
-                                            />
-                                        </td>
-                                    </tr>
+                </section>
+            ) : (
+                <section className="logs-panel">
+                    <h3>Monthly Labour Performance</h3>
+                    <div className="monthly-filter-row">
+                        <select value={campusFilter} onChange={(e) => setCampusFilter(e.target.value)}>
+                            <option value="">All Campuses</option>
+                            <option value="Gishushu">Gishushu</option>
+                            <option value="Masoro">Masoro</option>
+                        </select>
+                        <input
+                            placeholder="Filter by position"
+                            value={positionFilter}
+                            onChange={(e) => setPositionFilter(e.target.value)}
+                        />
+                        <input type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} />
+                    </div>
+                    {monthlyPerformance.length === 0 && <p className="muted">No monthly records found.</p>}
+                    {monthlyPerformance.length > 0 && (
+                        <div className="monthly-performance-grid">
+                            <div className="monthly-list">
+                                {monthlyPerformance.map((item) => (
+                                    <button
+                                        key={`${item.studentNumber}-${item.position}`}
+                                        className={`candidate-item ${selectedStudentPerformance?.studentNumber === item.studentNumber ? 'active' : ''}`}
+                                        onClick={() => setSelectedStudentPerformance(item)}
+                                    >
+                                        <strong>{item.studentName}</strong>
+                                        <span>{item.studentNumber}</span>
+                                        <small>{item.campus} · {item.position}</small>
+                                        <small>Present {item.daysPresent}/{item.expectedWorkDays} · Missed {item.daysMissed}</small>
+                                    </button>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
+                            </div>
+                            <div className="monthly-detail">
+                                {selectedStudentPerformance && (
+                                    <>
+                                        <h4>{selectedStudentPerformance.studentName}</h4>
+                                        <p>{selectedStudentPerformance.studentNumber} · {selectedStudentPerformance.campus}</p>
+                                        <p>Position: {selectedStudentPerformance.position}</p>
+                                        <p>Total Hours: {selectedStudentPerformance.totalHours}</p>
+                                        <p>Days Present: {selectedStudentPerformance.daysPresent}</p>
+                                        <p>Days Missed: {selectedStudentPerformance.daysMissed}</p>
+                                        <p className={selectedStudentPerformance.daysMissed === 0 ? 'perfect-attendance' : 'needs-attention'}>
+                                            {selectedStudentPerformance.daysMissed === 0 ? 'Never missed this month.' : 'Has missed days this month.'}
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    <h3>All Daily Logs (Auto-verified by system)</h3>
+                    {dailyLogs.map((log) => (
+                        <article key={log.id} className="log-entry-card">
+                            <div className="log-head">
+                                <strong>{log.studentName}</strong>
+                                <span><Calendar size={14} /> {new Date(log.logDate).toLocaleDateString()}</span>
+                            </div>
+                            <p className="log-meta">{log.department} · {log.hoursWorked} hours</p>
+                            <p className="log-description">{log.taskDescription}</p>
+                            {log.lateSubmissionReason && (
+                                <p className="log-late-reason">Late reason: {log.lateSubmissionReason}</p>
+                            )}
+                            {log.locationValidated === false && (
+                                <p className="log-late-reason">Location check failed.</p>
+                            )}
+                            <p className="muted">Status: {log.status}</p>
+                        </article>
+                    ))}
+                </section>
+            )}
         </div>
     );
 };

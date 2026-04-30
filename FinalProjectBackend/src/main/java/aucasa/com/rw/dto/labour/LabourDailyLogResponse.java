@@ -10,6 +10,8 @@ public class LabourDailyLogResponse {
     private String hoursWorked;
     private String taskDescription;
     private String status;
+    private Boolean locationValidated;
+    private String lateSubmissionReason;
 
     public LabourDailyLogResponse(
             Long id,
@@ -18,7 +20,9 @@ public class LabourDailyLogResponse {
             LocalDate logDate,
             String hoursWorked,
             String taskDescription,
-            String status
+            String status,
+            Boolean locationValidated,
+            String lateSubmissionReason
     ) {
         this.id = id;
         this.studentName = studentName;
@@ -27,6 +31,8 @@ public class LabourDailyLogResponse {
         this.hoursWorked = hoursWorked;
         this.taskDescription = taskDescription;
         this.status = status;
+        this.locationValidated = locationValidated;
+        this.lateSubmissionReason = lateSubmissionReason;
     }
 
     public Long getId() {
@@ -55,5 +61,13 @@ public class LabourDailyLogResponse {
 
     public String getStatus() {
         return status;
+    }
+
+    public Boolean getLocationValidated() {
+        return locationValidated;
+    }
+
+    public String getLateSubmissionReason() {
+        return lateSubmissionReason;
     }
 }

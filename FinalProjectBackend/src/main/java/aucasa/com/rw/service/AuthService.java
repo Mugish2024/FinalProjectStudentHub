@@ -64,6 +64,9 @@ public class AuthService {
         Optional<StudentProfile> studentOpt = studentProfileRepository.findByUserAccountId(user.getId());
         if (studentOpt.isEmpty()) {
             return new LoginResponse(
+                    user.getId(),
+                    null,
+                    user.getUsername(),
                     user.getFirstName() + " " + user.getLastName(),
                     "",
                     "",
@@ -87,6 +90,9 @@ public class AuthService {
         String disciplineStatus = student.getDisciplineStatus() != null ? student.getDisciplineStatus().name() : "";
 
         return new LoginResponse(
+                user.getId(),
+                student.getId(),
+                user.getUsername(),
                 user.getFirstName() + " " + user.getLastName(),
                 student.getStudentNumber(),
                 faculty,

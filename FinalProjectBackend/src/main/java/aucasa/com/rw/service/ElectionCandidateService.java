@@ -132,6 +132,22 @@ public class ElectionCandidateService {
     }
 
     @Transactional(readOnly = true)
+    public List<ElectionCandidateResponse> listApprovedByStatus(String electionStatus) {
+        if (isBlank(electionStatus)) {
+            return listApproved();
+        }
+        ElectionStatus status;
+        try {
+            status = ElectionStatus.valueOf(electionStatus.trim().toUpperCase());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid electionStatus value.");
+        }
+        return candidateRepository.findByApprovedTrueAndElectionStatus(status).stream()
+                .map(this::toPublicResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<ElectionCandidateAdminResponse> listPending() {
         return candidateRepository.findByApprovedFalse().stream().map(this::toAdminResponse).toList();
     }

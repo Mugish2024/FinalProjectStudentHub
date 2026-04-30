@@ -1,6 +1,7 @@
 package aucasa.com.rw.repository;
 
 import aucasa.com.rw.domain.Payment;
+import aucasa.com.rw.domain.enums.PaymentReceiptStatus;
 import aucasa.com.rw.domain.enums.PaymentStatus;
 import java.util.Collection;
 import java.util.List;
@@ -13,7 +14,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByStudentIdAndTermId(Long studentId, Long termId);
     boolean existsByStudentIdAndTermId(Long studentId, Long termId);
     Optional<Payment> findByReceiptNumber(String receiptNumber);
+    Optional<Payment> findByExternalReference(String externalReference);
     List<Payment> findByStatus(PaymentStatus status);
+    List<Payment> findByReceiptStatus(PaymentReceiptStatus status);
+    List<Payment> findByReceiptFilePathIsNotNullOrderByReceiptIssuedAtDesc();
     long countByTermId(Long termId);
     long countByTermIdAndStatusIn(Long termId, Collection<PaymentStatus> statuses);
     List<Payment> findByTermIdAndStatusNotIn(Long termId, Collection<PaymentStatus> statuses);

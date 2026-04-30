@@ -1,6 +1,7 @@
 package aucasa.com.rw.controller;
 
 import aucasa.com.rw.dto.attendance.AttendanceCheckInRequest;
+import aucasa.com.rw.dto.attendance.AttendanceQrTokenResponse;
 import aucasa.com.rw.dto.attendance.AttendanceRecordAdminResponse;
 import aucasa.com.rw.dto.attendance.AttendanceRecordResponse;
 import aucasa.com.rw.dto.attendance.AttendanceSessionResponse;
@@ -24,6 +25,43 @@ public class AttendanceRecordController {
     @GetMapping("/sessions")
     public List<AttendanceSessionResponse> getSessions(@RequestParam(defaultValue = "true") boolean active) {
         return service.listSessions(active);
+    }
+
+    @PatchMapping("/sessions/{id}/active")
+    public ResponseEntity<?> updateSessionStatus(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+        try {
+            boolean active = body.getOrDefault("active", true);
+            AttendanceSessionResponse result = service.toggleSessionActive(id, active);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/sessions/{id}/qr-token")
+    public ResponseEntity<?> generateSessionQrToken(@PathVariable Long id) {
+        try {
+            AttendanceQrTokenResponse result = service.generateSessionQrToken(id);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/sessions/active/qr-token")
+    public ResponseEntity<?> generateActiveSessionQrToken() {
+        try {
+            AttendanceQrTokenResponse result = service.generateActiveSessionQrToken();
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @GetMapping("/records")

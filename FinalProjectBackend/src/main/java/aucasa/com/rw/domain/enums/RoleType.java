@@ -4,5 +4,7 @@ public enum RoleType {
     STUDENT,
     STAFF,
     DEAN,
-    ADMIN
+    ADMIN,
+    FINANCE,
+    GUILD_PRESIDENT
 }

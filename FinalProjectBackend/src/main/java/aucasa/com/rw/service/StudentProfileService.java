@@ -143,20 +143,6 @@ public class StudentProfileService {
     }
 
     @Transactional
-    public List<StudentRegistrationResponse> registerDemoStudents() {
-        List<StudentRegistrationRequest> requests = List.of(
-                buildRequest("AUCA/UG/001/26", "Alice", "Mugabo", "Faculty of Information Technology", "Software Engineering"),
-                buildRequest("AUCA/UG/002/26", "Brian", "Nshimiyimana", "Faculty of Business", "Accounting"),
-                buildRequest("AUCA/UG/003/26", "Chantal", "Uwimana", "Faculty of Theology", "Pastoral Studies")
-        );
-
-        List<StudentRegistrationResponse> result = new ArrayList<>();
-        for (StudentRegistrationRequest request : requests) {
-            result.add(registerStudent(request));
-        }
-        return result;
-    }
-
     private void validateRequest(StudentRegistrationRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Request body is required.");
@@ -218,24 +204,6 @@ public class StudentProfileService {
             return 0;
         }
         return credits;
-    }
-
-    private StudentRegistrationRequest buildRequest(
-            String studentNumber,
-            String firstName,
-            String lastName,
-            String faculty,
-            String department
-    ) {
-        StudentRegistrationRequest request = new StudentRegistrationRequest();
-        request.setStudentNumber(studentNumber);
-        request.setFirstName(firstName);
-        request.setLastName(lastName);
-        request.setFaculty(faculty);
-        request.setDepartment(department);
-        request.setProgram("Day");
-        request.setCredits(12);
-        return request;
     }
 
     private StudentRegistrationResponse toRegistrationResponse(StudentProfile student) {

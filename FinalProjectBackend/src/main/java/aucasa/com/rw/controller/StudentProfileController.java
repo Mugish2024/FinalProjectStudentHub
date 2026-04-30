@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/students")
-@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
+@CrossOrigin(originPatterns = {"http://localhost:5173", "https://localhost:5173", "http://127.0.0.1:5173", "https://127.0.0.1:5173", "http://10.*.*.*:5173", "https://10.*.*.*:5173", "https://*.loca.lt", "https://*.trycloudflare.com"})
 public class StudentProfileController {
     private final StudentProfileService service;
 
@@ -60,13 +60,10 @@ public class StudentProfileController {
     }
 
     @PostMapping("/register/demo")
-    public ResponseEntity<List<StudentRegistrationResponse>> registerDemoStudents() {
-        return ResponseEntity.ok(service.registerDemoStudents());
-    }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
+

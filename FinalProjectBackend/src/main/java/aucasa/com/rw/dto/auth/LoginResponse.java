@@ -1,6 +1,9 @@
 package aucasa.com.rw.dto.auth;
 
 public class LoginResponse {
+    private Long userId;
+    private Long studentId;
+    private String username;
     private String fullName;
     private String studentNumber;
     private String faculty;
@@ -13,6 +16,9 @@ public class LoginResponse {
     private String disciplineStatus;
 
     public LoginResponse(
+            Long userId,
+            Long studentId,
+            String username,
             String fullName,
             String studentNumber,
             String faculty,
@@ -24,6 +30,9 @@ public class LoginResponse {
             Integer semester,
             String disciplineStatus
     ) {
+        this.userId = userId;
+        this.studentId = studentId;
+        this.username = username;
         this.fullName = fullName;
         this.studentNumber = studentNumber;
         this.faculty = faculty;
@@ -38,6 +47,18 @@ public class LoginResponse {
 
     public String getFullName() {
         return fullName;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public Long getStudentId() {
+        return studentId;
+    }
+
+    public String getUsername() {
+        return username;
     }
 
     public String getStudentNumber() {

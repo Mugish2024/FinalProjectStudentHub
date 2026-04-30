@@ -36,6 +36,9 @@ public class LabourApplication extends BaseEntity {
     @Column(length = 4000)
     private String coverLetterText;
 
+    @Column(length = 180)
+    private String roleTitle;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private LabourApplicationStatus status = LabourApplicationStatus.PENDING;
@@ -99,6 +102,14 @@ public class LabourApplication extends BaseEntity {
 
     public void setCoverLetterText(String coverLetterText) {
         this.coverLetterText = coverLetterText;
+    }
+
+    public String getRoleTitle() {
+        return roleTitle;
+    }
+
+    public void setRoleTitle(String roleTitle) {
+        this.roleTitle = roleTitle;
     }
 
     public LabourApplicationStatus getStatus() {

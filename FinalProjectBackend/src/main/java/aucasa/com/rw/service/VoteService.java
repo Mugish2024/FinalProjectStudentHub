@@ -58,6 +58,13 @@ public class VoteService {
         if (election.getStatus() != ElectionStatus.VOTING) {
             throw new IllegalArgumentException("Voting is not open.");
         }
+        LocalDateTime now = LocalDateTime.now();
+        if (election.getVotingStart() != null && now.isBefore(election.getVotingStart())) {
+            throw new IllegalArgumentException("Voting has not started yet.");
+        }
+        if (election.getVotingEnd() != null && now.isAfter(election.getVotingEnd())) {
+            throw new IllegalArgumentException("Voting period has ended.");
+        }
 
         if (voteRepository.findByElectionIdAndVoterId(election.getId(), voter.getId()).isPresent()) {
             throw new IllegalArgumentException("You have already voted in this election.");
@@ -67,7 +74,7 @@ public class VoteService {
         vote.setElection(election);
         vote.setCandidate(candidate);
         vote.setVoter(voter);
-        vote.setVotedAt(LocalDateTime.now());
+        vote.setVotedAt(now);
 
         try {
             voteRepository.save(vote);
@@ -75,7 +82,8 @@ public class VoteService {
             throw new IllegalArgumentException("You have already voted in this election.");
         }
 
-        election.setTotalVotes(election.getTotalVotes() + 1);
+        int totalVotes = election.getTotalVotes() != null ? election.getTotalVotes() : 0;
+        election.setTotalVotes(totalVotes + 1);
         electionRepository.save(election);
 
         return new VoteResponse("ok", "Vote recorded successfully.");

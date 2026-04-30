@@ -1,0 +1,171 @@
+.dean-attendance-simple {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+}
+
+.dean-simple-head h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.dean-simple-head p {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+}
+
+.dean-simple-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+}
+
+.dean-simple-controls {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    align-items: end;
+}
+
+.control-group {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.control-group label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.control-group select {
+    min-width: 280px;
+    height: 42px;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    padding: 0 0.75rem;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.btn-dark,
+.btn-danger,
+.btn-success {
+    border: none;
+    border-radius: 9px;
+    height: 42px;
+    padding: 0 1rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+}
+
+.btn-dark {
+    background: #0f172a;
+    color: #fff;
+}
+
+.btn-danger {
+    background: #991b1b;
+    color: #fff;
+}
+
+.btn-success {
+    background: #059669;
+    color: #fff;
+}
+
+.simple-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.7rem;
+}
+
+.metric-card {
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.metric-card.dark {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
+}
+
+.metric-card.green {
+    background: #065f46;
+    border-color: #065f46;
+    color: #fff;
+}
+
+.metric-card .kicker {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+    margin-bottom: 0.45rem;
+}
+
+.metric-card strong {
+    font-size: 1.15rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.metric-card p {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+
+.simple-qr-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.9rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.simple-qr-panel img {
+    width: 210px;
+    height: 210px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.qr-meta h3 {
+    margin: 0;
+}
+
+.qr-meta p {
+    margin: 0.45rem 0 0.8rem;
+    color: #64748b;
+}
+
+@media (max-width: 980px) {
+    .simple-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .simple-qr-panel {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

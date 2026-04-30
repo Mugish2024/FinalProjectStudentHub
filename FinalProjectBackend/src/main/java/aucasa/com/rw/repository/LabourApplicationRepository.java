@@ -12,4 +12,5 @@ public interface LabourApplicationRepository extends JpaRepository<LabourApplica
     List<LabourApplication> findByStudentStudentNumber(String studentNumber);
     List<LabourApplication> findByStatusAndDepartmentNameIgnoreCase(LabourApplicationStatus status, String departmentName);
     Optional<LabourApplication> findFirstByStudentIdAndStatusOrderBySubmittedAtDesc(Long studentId, LabourApplicationStatus status);
+    boolean existsByStudentIdAndStatusIn(Long studentId, List<LabourApplicationStatus> statuses);
 }

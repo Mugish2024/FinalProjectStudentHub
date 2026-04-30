@@ -6,13 +6,16 @@ import './Login.css';
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
 
 type LoginProfile = {
+    userId: number;
+    studentId?: number | null;
+    username: string;
     fullName: string;
     studentNumber: string;
     faculty: string;
     department: string;
     program: string;
     credits: number;
-    role: 'student' | 'staff' | 'dean' | 'admin';
+    role: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president';
     gpa: string;
     semester: number;
     disciplineStatus: string;

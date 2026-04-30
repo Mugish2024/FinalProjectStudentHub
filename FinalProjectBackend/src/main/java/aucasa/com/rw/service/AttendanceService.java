@@ -10,6 +10,7 @@ import aucasa.com.rw.domain.enums.AttendanceVerificationStatus;
 import aucasa.com.rw.dto.attendance.AttendanceCheckInRequest;
 import aucasa.com.rw.dto.attendance.AttendanceRecordAdminResponse;
 import aucasa.com.rw.dto.attendance.AttendanceRecordResponse;
+import aucasa.com.rw.dto.attendance.AttendanceQrTokenResponse;
 import aucasa.com.rw.dto.attendance.AttendanceSessionResponse;
 import aucasa.com.rw.dto.attendance.AttendanceVerificationRequest;
 import aucasa.com.rw.repository.AttendanceRecordRepository;
@@ -19,11 +20,20 @@ import aucasa.com.rw.repository.UserAccountRepository;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.stream.Stream;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +46,12 @@ public class AttendanceService {
     private final UserAccountRepository userAccountRepository;
     private final List<String> allowedCidrs;
     private final boolean enforceNetworkForWifi;
+    private final boolean enforceMockLocationCheck;
+    private final double maxLocationAccuracyMeters;
+    private final long biometricMaxAgeSeconds;
+    private final String qrSecret;
+    private final long qrTtlMinutes;
+    private final String qrFrontendBaseUrl;
 
     public AttendanceService(
             AttendanceSessionRepository sessionRepository,
@@ -43,7 +59,13 @@ public class AttendanceService {
             StudentProfileRepository studentProfileRepository,
             UserAccountRepository userAccountRepository,
             @Value("${app.attendance.allowed-cidrs:}") String allowedCidrs,
-            @Value("${app.attendance.enforce-network:true}") boolean enforceNetworkForWifi
+            @Value("${app.attendance.enforce-network:true}") boolean enforceNetworkForWifi,
+            @Value("${app.attendance.enforce-mock-location-check:true}") boolean enforceMockLocationCheck,
+            @Value("${app.attendance.max-location-accuracy-meters:50}") double maxLocationAccuracyMeters,
+            @Value("${app.attendance.biometric-max-age-seconds:120}") long biometricMaxAgeSeconds,
+            @Value("${app.attendance.qr-secret:aucasa-attendance-secret}") String qrSecret,
+            @Value("${app.attendance.qr-ttl-minutes:20}") long qrTtlMinutes,
+            @Value("${app.attendance.qr-frontend-base-url:https://localhost:5173}") String qrFrontendBaseUrl
     ) {
         this.sessionRepository = sessionRepository;
         this.recordRepository = recordRepository;
@@ -54,10 +76,17 @@ public class AttendanceService {
                 .filter(value -> !value.isEmpty())
                 .toList();
         this.enforceNetworkForWifi = enforceNetworkForWifi;
+        this.enforceMockLocationCheck = enforceMockLocationCheck;
+        this.maxLocationAccuracyMeters = maxLocationAccuracyMeters;
+        this.biometricMaxAgeSeconds = biometricMaxAgeSeconds;
+        this.qrSecret = qrSecret;
+        this.qrTtlMinutes = qrTtlMinutes;
+        this.qrFrontendBaseUrl = qrFrontendBaseUrl;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AttendanceSessionResponse> listSessions(boolean activeOnly) {
+        autoCloseExpiredSessions();
         List<AttendanceSession> sessions = activeOnly ? sessionRepository.findByActiveTrue() : sessionRepository.findAll();
         return sessions.stream()
                 .map(session -> new AttendanceSessionResponse(
@@ -69,6 +98,29 @@ public class AttendanceService {
                         Boolean.TRUE.equals(session.getActive())
                 ))
                 .toList();
+    }
+
+    @Transactional
+    public AttendanceSessionResponse toggleSessionActive(Long sessionId, boolean active) {
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found."));
+        session.setActive(active);
+        if (active) {
+            LocalDateTime now = LocalDateTime.now();
+            if (session.getEndsAt() == null || session.getEndsAt().isBefore(now)) {
+                session.setStartsAt(now);
+                session.setEndsAt(now.plusHours(1));
+            }
+        }
+        session = sessionRepository.save(session);
+        return new AttendanceSessionResponse(
+                session.getId(),
+                session.getTitle(),
+                session.getCampus() != null ? session.getCampus().getName() : "",
+                session.getStartsAt(),
+                session.getEndsAt(),
+                Boolean.TRUE.equals(session.getActive())
+        );
     }
 
     @Transactional(readOnly = true)
@@ -83,6 +135,7 @@ public class AttendanceService {
 
     @Transactional
     public AttendanceRecordResponse checkIn(AttendanceCheckInRequest request, String clientIp) {
+        autoCloseExpiredSessions();
         if (request == null || request.getSessionId() == null || isBlank(request.getStudentNumber()) || isBlank(request.getMethod())) {
             throw new IllegalArgumentException("studentNumber, sessionId, and method are required.");
         }
@@ -111,6 +164,38 @@ public class AttendanceService {
             throw new IllegalArgumentException("Wi-Fi check-in is only allowed on campus network.");
         }
 
+        if (method == AttendanceMethod.MANUAL) {
+            if (isBlank(request.getQrToken())) {
+                throw new IllegalArgumentException("qrToken is required for QR check-in.");
+            }
+            validateQrToken(request.getQrToken().trim(), session);
+        }
+
+        if (method == AttendanceMethod.BIOMETRIC) {
+            validateBiometricProof(request);
+        }
+
+        if (method == AttendanceMethod.MANUAL || method == AttendanceMethod.BIOMETRIC) {
+            validateLocationProof(request, method == AttendanceMethod.BIOMETRIC ? "Biometric" : "QR");
+            validateCampusGeofence(session, request.getLatitude(), request.getLongitude());
+        }
+
+        String normalizedDeviceInfo = safeTrim(request.getDeviceInfo());
+        if (!isBlank(normalizedDeviceInfo)) {
+            Optional<AttendanceRecord> existingByDevice = recordRepository.findBySessionIdAndDeviceInfo(
+                    session.getId(),
+                    normalizedDeviceInfo
+            );
+            if (existingByDevice.isPresent()) {
+                AttendanceRecord otherRecord = existingByDevice.get();
+                if (otherRecord.getStudent() != null
+                        && student.getId() != null
+                        && !student.getId().equals(otherRecord.getStudent().getId())) {
+                    throw new IllegalArgumentException("This device has already been used for attendance in this session.");
+                }
+            }
+        }
+
         AttendanceRecord record = recordRepository.findByStudentIdAndSessionId(student.getId(), session.getId())
                 .orElseGet(AttendanceRecord::new);
         record.setStudent(student);
@@ -118,9 +203,9 @@ public class AttendanceService {
         record.setCheckInAt(now);
         record.setMethod(method);
         record.setStatus(AttendanceStatus.PRESENT);
-        record.setVerificationStatus(AttendanceVerificationStatus.PENDING);
+        record.setVerificationStatus(AttendanceVerificationStatus.CONFIRMED);
         record.setWifiSsid(wifiSsid);
-        record.setDeviceInfo(safeTrim(request.getDeviceInfo()));
+        record.setDeviceInfo(normalizedDeviceInfo);
         record.setIpAddress(safeTrim(clientIp));
 
         record = recordRepository.save(record);
@@ -128,7 +213,50 @@ public class AttendanceService {
     }
 
     @Transactional(readOnly = true)
+    public AttendanceQrTokenResponse generateSessionQrToken(Long sessionId) {
+        autoCloseExpiredSessions();
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found."));
+
+        if (!Boolean.TRUE.equals(session.getActive())) {
+            throw new IllegalArgumentException("Session is not active.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = now.plusMinutes(Math.max(1, qrTtlMinutes));
+        String campus = session.getCampus() != null ? safeTrim(session.getCampus().getName()) : null;
+        String token = signQrToken(session.getId(), campus, expiresAt);
+        String payload = qrFrontendBaseUrl + "/?attendanceQr="
+                + URLEncoder.encode(token, StandardCharsets.UTF_8)
+                + "&attendanceSession="
+                + session.getId();
+
+        return new AttendanceQrTokenResponse(
+                session.getId(),
+                session.getTitle(),
+                campus != null ? campus : "",
+                token,
+                payload,
+                expiresAt.toString()
+        );
+    }
+
+    @Transactional
+    public AttendanceQrTokenResponse generateActiveSessionQrToken() {
+        autoCloseExpiredSessions();
+        List<AttendanceSession> activeSessions = sessionRepository.findByActiveTrue();
+        if (activeSessions.isEmpty()) {
+            throw new IllegalArgumentException("No active session available.");
+        }
+        AttendanceSession activeSession = activeSessions.stream()
+                .min((a, b) -> a.getStartsAt().compareTo(b.getStartsAt()))
+                .orElse(activeSessions.get(0));
+        return generateSessionQrToken(activeSession.getId());
+    }
+
+    @Transactional
     public List<AttendanceRecordAdminResponse> listAdminRecords(Long sessionId, String method, String status, String verificationStatus) {
+        autoCloseExpiredSessions();
         List<AttendanceRecord> records = recordRepository.findAll();
         if (sessionId != null) {
             records = records.stream()
@@ -272,6 +400,40 @@ public class AttendanceService {
         return false;
     }
 
+    private void validateBiometricProof(AttendanceCheckInRequest request) {
+        if (!Boolean.TRUE.equals(request.getBiometricVerified())) {
+            throw new IllegalArgumentException("Biometric verification is required.");
+        }
+        if (isBlank(request.getBiometricProvider())) {
+            throw new IllegalArgumentException("biometricProvider is required for biometric check-in.");
+        }
+        if (isBlank(request.getBiometricVerifiedAt())) {
+            throw new IllegalArgumentException("biometricVerifiedAt is required for biometric check-in.");
+        }
+
+        LocalDateTime verifiedAt = parseDateTime(request.getBiometricVerifiedAt().trim());
+        LocalDateTime now = LocalDateTime.now();
+        if (verifiedAt.isAfter(now.plusSeconds(10))) {
+            throw new IllegalArgumentException("Invalid biometric verification time.");
+        }
+        if (verifiedAt.isBefore(now.minusSeconds(Math.max(1, biometricMaxAgeSeconds)))) {
+            throw new IllegalArgumentException("Biometric verification has expired. Please try again.");
+        }
+    }
+
+    private void validateLocationProof(AttendanceCheckInRequest request, String methodLabel) {
+        if (request.getLatitude() == null || request.getLongitude() == null) {
+            throw new IllegalArgumentException("Latitude and longitude are required for " + methodLabel + " check-in.");
+        }
+        if (enforceMockLocationCheck && Boolean.TRUE.equals(request.getMockLocation())) {
+            throw new IllegalArgumentException("Mock location is not allowed for attendance check-in.");
+        }
+        if (request.getLocationAccuracyMeters() != null
+                && request.getLocationAccuracyMeters() > Math.max(1d, maxLocationAccuracyMeters)) {
+            throw new IllegalArgumentException("Location accuracy is too low for attendance verification.");
+        }
+    }
+
     private boolean cidrMatches(String ip, String cidr) {
         try {
             String[] parts = cidr.split("/");
@@ -296,5 +458,135 @@ public class AttendanceService {
         BigInteger mask = BigInteger.ONE.shiftLeft(bits).subtract(BigInteger.ONE)
                 .xor(BigInteger.ONE.shiftLeft(bits - prefix).subtract(BigInteger.ONE));
         return mask;
+    }
+
+    private String signQrToken(Long sessionId, String campusName, LocalDateTime expiresAt) {
+        long exp = expiresAt.atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
+        String payload = sessionId + ":" + exp + ":" + normalizeCampus(campusName);
+        String sig = hmacSha256Base64Url(payload, qrSecret);
+        return sessionId + "." + exp + "." + sig;
+    }
+
+    private void validateQrToken(String rawTokenOrPayload, AttendanceSession expectedSession) {
+        String token = rawTokenOrPayload.startsWith("AUCASA_QR:")
+                ? rawTokenOrPayload.substring("AUCASA_QR:".length()).trim()
+                : rawTokenOrPayload.trim();
+        String[] parts = token.split("\\.");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("Invalid QR token format.");
+        }
+
+        long sessionId;
+        long exp;
+        try {
+            sessionId = Long.parseLong(parts[0]);
+            exp = Long.parseLong(parts[1]);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid QR token values.");
+        }
+
+        if (!sessionIdEquals(expectedSession, sessionId)) {
+            throw new IllegalArgumentException("QR token does not match selected session.");
+        }
+
+        long nowEpoch = LocalDateTime.now().atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
+        if (nowEpoch > exp) {
+            throw new IllegalArgumentException("QR token has expired.");
+        }
+
+        String campus = expectedSession.getCampus() != null ? safeTrim(expectedSession.getCampus().getName()) : null;
+        String expectedPayload = sessionId + ":" + exp + ":" + normalizeCampus(campus);
+        String expectedSig = hmacSha256Base64Url(expectedPayload, qrSecret);
+
+        if (!MessageDigest.isEqual(expectedSig.getBytes(StandardCharsets.UTF_8), parts[2].getBytes(StandardCharsets.UTF_8))) {
+            throw new IllegalArgumentException("Invalid QR token signature.");
+        }
+    }
+
+    private void validateCampusGeofence(AttendanceSession session, double latitude, double longitude) {
+        String campusName = session.getCampus() != null ? safeTrim(session.getCampus().getName()) : null;
+        if (isBlank(campusName)) {
+            throw new IllegalArgumentException("Session campus is not configured.");
+        }
+
+        GeoFence geoFence = resolveGeoFence(campusName);
+        if (geoFence == null) {
+            throw new IllegalArgumentException("Campus geofence is not configured.");
+        }
+
+        double distance = distanceMeters(latitude, longitude, geoFence.lat(), geoFence.lng());
+        if (distance > geoFence.radiusMeters()) {
+            throw new IllegalArgumentException("You are outside " + campusName + " campus boundary.");
+        }
+    }
+
+    private GeoFence resolveGeoFence(String campusName) {
+        String normalized = normalizeCampus(campusName);
+        if (normalized.contains("gishushu")) {
+            return new GeoFence(-1.9559, 30.1041, 2000);
+        }
+        if (normalized.contains("masoro")) {
+            return new GeoFence(-1.9452, 30.1431, 2000);
+        }
+        return null;
+    }
+
+    private double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
+        double earth = 6371000d;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earth * c;
+    }
+
+    private String normalizeCampus(String campusName) {
+        return isBlank(campusName) ? "" : campusName.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean sessionIdEquals(AttendanceSession session, long sessionId) {
+        return session != null && session.getId() != null && session.getId().equals(sessionId);
+    }
+
+    private String hmacSha256Base64Url(String value, String secret) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal(value.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Failed to generate QR token.");
+        }
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        try {
+            return OffsetDateTime.parse(value).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        } catch (Exception ignored) {
+            try {
+                return LocalDateTime.parse(value);
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("Invalid biometricVerifiedAt timestamp format.");
+            }
+        }
+    }
+
+    @Transactional
+    protected void autoCloseExpiredSessions() {
+        LocalDateTime now = LocalDateTime.now();
+        List<AttendanceSession> activeSessions = sessionRepository.findByActiveTrue();
+        for (AttendanceSession session : activeSessions) {
+            if (session.getEndsAt() != null && session.getEndsAt().isBefore(now)) {
+                session.setActive(false);
+            }
+        }
+        if (!activeSessions.isEmpty()) {
+            sessionRepository.saveAll(activeSessions);
+        }
+    }
+
+    private record GeoFence(double lat, double lng, double radiusMeters) {
     }
 }

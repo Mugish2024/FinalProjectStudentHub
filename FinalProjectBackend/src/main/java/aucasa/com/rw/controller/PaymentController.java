@@ -6,22 +6,36 @@ import aucasa.com.rw.dto.payment.MobileMoneyCallbackRequest;
 import aucasa.com.rw.dto.payment.PaymentGateResponse;
 import aucasa.com.rw.dto.payment.PaymentReportResponse;
 import aucasa.com.rw.dto.payment.PaymentResponse;
+import aucasa.com.rw.dto.payment.TransactionImportResponse;
+import aucasa.com.rw.dto.payment.ReceiptVerificationRequest;
 import aucasa.com.rw.dto.payment.SubmitPaymentRequest;
 import aucasa.com.rw.dto.payment.VerifyPaymentRequest;
+import aucasa.com.rw.dto.payment.ReceiptOcrResponse;
+import aucasa.com.rw.domain.enums.PaymentMethod;
+import aucasa.com.rw.domain.enums.PaymentReceiptStatus;
 import aucasa.com.rw.service.PaymentService;
+import aucasa.com.rw.service.PaymentReceiptOcrService;
+import aucasa.com.rw.service.PaymentTransactionService;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/payments")
-@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
+@CrossOrigin(originPatterns = {"http://localhost:5173", "https://localhost:5173", "http://127.0.0.1:5173", "https://127.0.0.1:5173", "http://10.*.*.*:5173", "https://10.*.*.*:5173", "https://*.loca.lt", "https://*.trycloudflare.com"})
 public class PaymentController {
     private final PaymentService service;
+    private final PaymentReceiptOcrService ocrService;
 
-    public PaymentController(PaymentService service) {
+    public PaymentController(PaymentService service, PaymentReceiptOcrService ocrService) {
         this.service = service;
+        this.ocrService = ocrService;
     }
 
     @GetMapping
@@ -113,6 +127,184 @@ public class PaymentController {
         }
     }
 
+    @PostMapping("/{paymentId}/receipt")
+    public ResponseEntity<?> uploadReceipt(
+            @PathVariable Long paymentId,
+            @RequestParam String paidDate,
+            @RequestParam String validUntil,
+            @RequestParam MultipartFile receiptFile
+    ) {
+        try {
+            LocalDate paid = LocalDate.parse(paidDate);
+            LocalDate valid = LocalDate.parse(validUntil);
+            Payment payment = service.uploadReceipt(paymentId, paid, valid, receiptFile);
+            return ResponseEntity.ok(toResponse(payment));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/{paymentId}/receipt/submit")
+    public ResponseEntity<?> submitUrubutoReceipt(
+            @PathVariable Long paymentId,
+            @RequestParam String phoneNumber,
+            @RequestParam(required = false) String transactionId,
+            @RequestParam(required = false) BigDecimal amount,
+            @RequestParam(required = false) String paidDate,
+            @RequestParam(required = false) String method,
+            @RequestParam(required = false, defaultValue = "false") boolean autoVerify,
+            @RequestParam MultipartFile receiptFile
+    ) {
+        try {
+            PaymentMethod paymentMethod = method != null && !method.isBlank()
+                    ? PaymentMethod.valueOf(method.toUpperCase())
+                    : PaymentMethod.URUBUTO_PAY;
+            ReceiptOcrResponse ocr = null;
+            if (isBlank(transactionId) || amount == null || isBlank(paidDate)) {
+                ocr = ocrService.scanReceipt(receiptFile);
+            }
+
+            String resolvedTransactionId = !isBlank(transactionId) ? transactionId
+                    : (ocr != null ? ocr.getTransactionId() : null);
+            BigDecimal resolvedAmount = amount != null ? amount
+                    : (ocr != null && !isBlank(ocr.getAmount()) ? new BigDecimal(ocr.getAmount()) : null);
+            String resolvedPaidDate = !isBlank(paidDate) ? paidDate
+                    : (ocr != null ? ocr.getPaidDate() : null);
+
+            if (isBlank(resolvedTransactionId)) {
+                throw new IllegalArgumentException("transactionId is required or must be detected from OCR.");
+            }
+            if (resolvedAmount == null) {
+                throw new IllegalArgumentException("amount is required or must be detected from OCR.");
+            }
+            if (isBlank(resolvedPaidDate)) {
+                throw new IllegalArgumentException("paidDate is required or must be detected from OCR.");
+            }
+
+            LocalDate paid = LocalDate.parse(resolvedPaidDate);
+            Payment payment = service.submitUrubutoReceipt(
+                    paymentId,
+                    paymentMethod,
+                    phoneNumber,
+                    resolvedTransactionId,
+                    resolvedAmount,
+                    paid,
+                    ocr != null ? ocr.getName() : null,
+                    ocr != null ? ocr.getTransactionId() : null,
+                    ocr != null ? ocr.getPhoneNumber() : null,
+                    ocr != null ? ocr.getAmount() : null,
+                    ocr != null ? ocr.getPaidDate() : null,
+                    ocr != null ? ocr.getPurpose() : null,
+                    ocr != null ? ocr.getStudentNumber() : null,
+                    receiptFile,
+                    autoVerify
+            );
+            return ResponseEntity.ok(toResponse(payment));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    @GetMapping("/receipts/report")
+    public ResponseEntity<?> exportReceiptReport() {
+        try {
+            String csv = service.buildReceiptReportCsv();
+            String filename = "payment-receipts-" + LocalDate.now() + ".csv";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(csv);
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/receipts/report/pdf")
+    public ResponseEntity<?> exportReceiptReportPdf() {
+        try {
+            byte[] pdf = service.buildReceiptReportPdf();
+            String filename = "payment-receipts-" + LocalDate.now() + ".pdf";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.CONTENT_TYPE, "application/pdf")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(pdf);
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/receipts/scan")
+    public ResponseEntity<ReceiptOcrResponse> scanReceipt(@RequestParam MultipartFile receiptFile) {
+        return ResponseEntity.ok(ocrService.scanReceipt(receiptFile));
+    }
+
+    @GetMapping("/receipts/review")
+    public List<PaymentResponse> reviewReceipts() {
+        return service.listReceiptReviews().stream().map(this::toResponse).toList();
+    }
+
+    @PostMapping("/transactions/import")
+    public ResponseEntity<?> importTransactions(@RequestParam MultipartFile file) {
+        try {
+            TransactionImportResponse response = service.importTransactionList(file);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/{paymentId}/receipt/verify")
+    public ResponseEntity<?> verifyReceipt(@PathVariable Long paymentId, @RequestBody ReceiptVerificationRequest request) {
+        try {
+            PaymentReceiptStatus decision = PaymentReceiptStatus.valueOf(request.getDecision().toUpperCase());
+            Payment payment = service.verifyReceipt(paymentId, decision, request.getNotes(), request.getVerifiedByUserId());
+            return ResponseEntity.ok(toResponse(payment));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{paymentId}/receipt/file")
+    public ResponseEntity<?> downloadReceipt(@PathVariable Long paymentId) {
+        try {
+            Resource resource = service.loadReceiptFile(paymentId);
+            String filename = resource.getFilename() != null ? resource.getFilename() : "receipt";
+            String contentType = "application/octet-stream";
+            try {
+                if (resource.getFile() != null) {
+                    String detected = java.nio.file.Files.probeContentType(resource.getFile().toPath());
+                    if (detected != null) {
+                        contentType = detected;
+                    }
+                }
+            } catch (Exception ignored) {
+                // fallback to octet-stream
+            }
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .body(resource);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @GetMapping("/access-gate")
     public ResponseEntity<?> checkAccessGate(@RequestParam Long studentId, @RequestParam(required = false) Long termId) {
         try {
@@ -161,6 +353,27 @@ public class PaymentController {
         response.setExternalReference(payment.getExternalReference());
         response.setPayerPhoneNumber(payment.getPayerPhoneNumber());
         response.setPaidAt(payment.getPaidAt());
+        response.setReceiptIssuedAt(payment.getReceiptIssuedAt());
+        response.setReceiptValidUntil(payment.getReceiptValidUntil());
+        response.setReceiptStatus(payment.getReceiptStatus() != null ? payment.getReceiptStatus().name() : null);
+        response.setReceiptFilePath(payment.getReceiptFilePath());
+        response.setReceiptVerifiedAt(payment.getReceiptVerifiedAt());
+        response.setReceiptNotes(payment.getReceiptNotes());
+        response.setOcrName(payment.getOcrName());
+        response.setOcrTransactionId(payment.getOcrTransactionId());
+        response.setOcrPhoneNumber(payment.getOcrPhoneNumber());
+        response.setOcrAmount(payment.getOcrAmount());
+        response.setOcrPaidDate(payment.getOcrPaidDate());
+        response.setOcrPurpose(payment.getOcrPurpose());
+        response.setOcrStudentNumber(payment.getOcrStudentNumber());
+        if (payment.getStudent() != null && payment.getStudent().getUserAccount() != null) {
+            response.setStudentName(payment.getStudent().getUserAccount().getFirstName() + " " +
+                    payment.getStudent().getUserAccount().getLastName());
+        }
+        PaymentTransactionService.MatchResult match = service.getTransactionMatch(payment);
+        response.setRegistryMatchStatus(match.getStatus());
+        response.setRegistryMatchMessage(match.getMessage());
         return response;
     }
 }
+

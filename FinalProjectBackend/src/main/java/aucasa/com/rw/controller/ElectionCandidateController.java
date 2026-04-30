@@ -57,8 +57,12 @@ public class ElectionCandidateController {
     }
 
     @GetMapping("/approved")
-    public List<ElectionCandidateResponse> getApproved() {
-        return service.listApproved();
+    public ResponseEntity<?> getApproved(@RequestParam(required = false) String electionStatus) {
+        try {
+            return ResponseEntity.ok(service.listApprovedByStatus(electionStatus));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @GetMapping("/pending")

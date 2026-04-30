@@ -75,12 +75,13 @@ public class LabourApplicationService {
     public LabourApplicationResponse submitApplication(
             String studentNumber,
             String departmentName,
+            String roleTitle,
             String coverLetterText,
             MultipartFile coverLetterFile,
             MultipartFile transcriptFile
     ) {
-        if (isBlank(studentNumber) || isBlank(departmentName)) {
-            throw new IllegalArgumentException("studentNumber and department are required.");
+        if (isBlank(studentNumber)) {
+            throw new IllegalArgumentException("studentNumber is required.");
         }
 
         StudentProfile student = studentProfileRepository
@@ -90,11 +91,12 @@ public class LabourApplicationService {
         AcademicTerm term = academicTermRepository.findByActiveTrue()
                 .orElseThrow(() -> new IllegalArgumentException("Active academic term not found."));
 
-        Department department = departmentRepository.findByNameIgnoreCase(departmentName.trim())
+        String resolvedDepartmentName = resolveDepartmentName(student, departmentName);
+        Department department = departmentRepository.findByNameIgnoreCase(resolvedDepartmentName)
                 .orElseGet(() -> {
                     Department d = new Department();
-                    d.setName(departmentName.trim());
-                    d.setCode(generateCode(departmentName.trim()));
+                    d.setName(resolvedDepartmentName);
+                    d.setCode(generateCode(resolvedDepartmentName));
                     d.setFaculty(student.getFaculty());
                     d.setCampus(student.getCampus());
                     return departmentRepository.save(d);
@@ -108,11 +110,20 @@ public class LabourApplicationService {
             throw new IllegalArgumentException("You already have a pending application.");
         }
 
+        boolean hasActiveOrPending = repository.existsByStudentIdAndStatusIn(
+                student.getId(),
+                List.of(LabourApplicationStatus.PENDING, LabourApplicationStatus.APPROVED)
+        );
+        if (hasActiveOrPending) {
+            throw new IllegalArgumentException("You already have an active or pending labour job application.");
+        }
+
         LabourApplication application = new LabourApplication();
         application.setStudent(student);
         application.setDepartment(department);
         application.setTerm(term);
         application.setCoverLetterText(safeTrim(coverLetterText));
+        application.setRoleTitle(safeTrim(roleTitle));
         application.setSubmittedAt(LocalDateTime.now());
 
         if (coverLetterFile != null && !coverLetterFile.isEmpty()) {
@@ -172,6 +183,7 @@ public class LabourApplicationService {
                 application.getCoverLetterPath(),
                 application.getTranscriptPath(),
                 application.getCoverLetterText(),
+                application.getRoleTitle(),
                 application.getReviewedAt(),
                 application.getReviewNotes()
         );
@@ -216,6 +228,16 @@ public class LabourApplicationService {
         String lettersOnly = text.toUpperCase().replaceAll("[^A-Z]", "");
         String base = lettersOnly.length() >= 3 ? lettersOnly.substring(0, 3) : "DEP";
         return base + System.currentTimeMillis() % 100000;
+    }
+
+    private String resolveDepartmentName(StudentProfile student, String requestedDepartment) {
+        if (!isBlank(requestedDepartment)) {
+            return requestedDepartment.trim();
+        }
+        if (student.getDepartment() != null && !isBlank(student.getDepartment().getName())) {
+            return student.getDepartment().getName().trim();
+        }
+        return "GENERAL LABOUR";
     }
 
     private boolean isBlank(String value) {

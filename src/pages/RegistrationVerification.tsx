@@ -175,7 +175,7 @@ const RegistrationVerification: React.FC = () => {
                 {result && (
                     <div style={{ background: '#dcfce7', color: '#166534', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
                         <strong>Student registered successfully.</strong><br />
-                        Internal ID: {result.studentId} | Student ID: {result.studentNumber} | Name: {result.fullName}
+                        Student ID: {result.studentNumber} | Name: {result.fullName}
                     </div>
                 )}
 
@@ -292,7 +292,7 @@ const RegistrationVerification: React.FC = () => {
                         <strong>Demo students ready:</strong>
                         {demoResults.map((item) => (
                             <div key={item.studentId}>
-                                Internal ID: {item.studentId} | Student ID: {item.studentNumber} | Name: {item.fullName}
+                                Student ID: {item.studentNumber} | Name: {item.fullName}
                             </div>
                         ))}
                     </div>
@@ -343,7 +343,7 @@ const RegistrationVerification: React.FC = () => {
                 <div className="status-row" style={{ justifyContent: 'flex-start' }}>
                     <div className="status-pill success">
                         <div className="check-circle"><Check size={12} /></div>
-                        <span>After registration, use returned Internal ID in Payments page.</span>
+                        <span>After registration, continue to Payments and follow the UrubutoPay instructions.</span>
                     </div>
                 </div>
             </section>

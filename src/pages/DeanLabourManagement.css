@@ -1,199 +1,730 @@
-.dean-labour {
-    padding: 2.5rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: #ffffff;
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap');
+
+.dean-labour-page {
+    padding: 2rem;
+    background: #f7f8fc;
+    color: #0f172a;
+    font-family: 'Manrope', sans-serif;
 }
 
-.dean-header {
-    border-bottom: 2px solid #01447B;
-    padding-bottom: 2rem;
-    margin-bottom: 3rem;
-}
-
-.dean-header h1 {
-    font-size: 2rem;
-    font-weight: 900;
-    color: #01447B;
-    margin: 0;
-}
-
-.dean-header p {
-    color: #64748b;
-    margin-top: 0.5rem;
-}
-
-/* Summary Blocks */
-.dean-summary {
-    display: flex;
-    gap: 5rem;
-    margin-bottom: 4rem;
-}
-
-.summary-item {
-    display: flex;
-    flex-direction: column;
-}
-
-.summary-val {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: #01447B;
-}
-
-.summary-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #94a3b8;
+.dean-page-header span {
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.12em;
+    color: #0f766e;
+    font-size: 0.74rem;
+    font-weight: 800;
 }
 
-/* Application List - Professional Style */
-.applications-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+.dean-page-header h1 {
+    margin: 0.3rem 0 0.6rem;
+    font-size: 3rem;
+    color: #0b1b3a;
 }
 
-.application-entry {
+.dean-page-header p {
+    margin: 0;
+    color: #475569;
+    max-width: 760px;
+    font-size: 1.05rem;
+}
+
+.dean-alert {
+    margin-top: 1rem;
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+}
+
+.dean-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 0;
+}
+
+.dean-top-layout {
+    margin-top: 1.4rem;
+    display: grid;
+    grid-template-columns: 1.5fr 0.7fr;
+    gap: 1rem;
+    align-items: stretch;
+}
+
+.dean-main-metrics {
+    min-width: 0;
+}
+
+.dean-quick-actions {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-left: 4px solid #01447B;
-    /* Professional accent */
-    border-radius: 8px;
-    padding: 1.5rem 2rem;
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    display: grid;
+    align-content: start;
+    gap: 0.65rem;
+}
+
+.dean-quick-actions h3 {
+    margin: 0 0 0.2rem;
+    color: #0b1b3a;
+    font-size: 1.35rem;
+}
+
+.stat-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1rem;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    transition: box-shadow 0.2s;
+    gap: 0.85rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
 
-.application-entry:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+.stat-box.dark {
+    background: #0d285d;
+    border-color: #0d285d;
+    color: #ffffff;
 }
 
-.applicant-info {
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: #ecfeff;
+    color: #0f766e;
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    align-items: center;
+    justify-content: center;
 }
 
-.applicant-name {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e293b;
+.stat-box.dark .stat-icon {
+    background: rgba(255, 255, 255, 0.15);
+    color: #dbeafe;
 }
 
-.applicant-details {
-    font-size: 0.9rem;
+.stat-content strong {
+    display: block;
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.stat-content span {
     color: #64748b;
-    display: flex;
-    gap: 1.5rem;
-}
-
-.dt-badge {
-    background: #f1f5f9;
-    padding: 0.1rem 0.6rem;
-    border-radius: 4px;
     font-weight: 600;
-    color: #475569;
 }
 
-.action-group {
+.stat-box.dark .stat-content span {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.dean-controls-row {
+    margin-top: 0.45rem;
     display: flex;
+    justify-content: flex-start;
+    align-items: center;
     gap: 1rem;
 }
 
-.btn-ghost {
-    background: none;
+.toggle-group {
+    display: flex;
+    gap: 0.75rem;
+    transform: translateY(-8px);
+}
+
+.toggle-group button {
+    border: none;
+    border-radius: 16px;
+    padding: 0.68rem 1.25rem;
+    background: #dbe3ef;
+    color: #334155;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1.02rem;
+    line-height: 1.1;
+    min-height: 56px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    transition: all 0.2s ease;
+}
+
+.toggle-group button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+}
+
+.toggle-group button.active {
+    background: linear-gradient(135deg, #95f1df 0%, #6de2cf 100%);
+    color: #0f766e;
+    font-weight: 800;
+}
+
+.report-download-btn {
+    align-items: center;
+    background: #0d285d;
+    border: none;
+    border-radius: 12px;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    font-weight: 800;
+    gap: 0.4rem;
+    padding: 0.72rem 1.05rem;
+    min-height: 46px;
+}
+
+.dean-quick-actions .report-download-btn,
+.dean-quick-actions .create-position-btn,
+.dean-quick-actions .report-selector-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 52px;
+    font-size: 1.02rem;
+}
+
+.dean-actions-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-left: auto;
+}
+
+.create-position-btn {
+    border: none;
+    border-radius: 12px;
+    background: #0f766e;
+    color: #ffffff;
+    font-weight: 800;
+    padding: 0.72rem 1.05rem;
+    min-height: 46px;
+    cursor: pointer;
+}
+
+.report-selector-btn {
+    border: none;
+    border-radius: 12px;
+    background: #1f3f78;
+    color: #ffffff;
+    font-weight: 800;
+    padding: 0.72rem 1.05rem;
+    min-height: 46px;
+    cursor: pointer;
+}
+
+.report-role-filter {
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    padding: 0.56rem 0.9rem;
+    min-width: 240px;
+    font-family: inherit;
+}
+
+.activity-create-panel {
+    margin-top: 1rem;
+    background: #ffffff;
     border: 1px solid #e2e8f0;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.activity-create-panel h3 {
+    margin: 0 0 0.75rem;
+}
+
+.activity-create-form {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+.activity-create-form input,
+.activity-create-form select,
+.activity-create-form button {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0.58rem 0.72rem;
+    font-family: inherit;
+}
+
+.field-group {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.field-group label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.field-role {
+    grid-column: span 4;
+}
+
+.field-campus {
+    grid-column: span 2;
+}
+
+.field-description {
+    grid-column: span 4;
+}
+
+.field-semester,
+.field-gpa {
+    grid-column: span 1;
+}
+
+.activity-create-form button {
+    grid-column: span 12;
+    border: none;
+    background: #0d285d;
+    color: #ffffff;
+    font-weight: 800;
+    cursor: pointer;
+    min-height: 46px;
+}
+
+.activity-list-inline {
+    margin-top: 0.7rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.activity-list-inline span {
+    font-size: 0.78rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 0.28rem 0.6rem;
+}
+
+.position-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: grid;
+    place-items: center;
+    z-index: 1700;
+    padding: 1rem;
+}
+
+.position-modal-card {
+    width: min(980px, 96vw);
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.position-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    margin-bottom: 0.7rem;
+}
+
+.position-close-btn {
+    border: none;
+    border-radius: 10px;
+    background: #e2e8f0;
+    color: #334155;
+    font-weight: 700;
+    padding: 0.46rem 0.85rem;
+    cursor: pointer;
+}
+
+.report-modal-card {
+    width: min(560px, 94vw);
+}
+
+.report-campus-row {
+    margin-bottom: 0.8rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+
+.campus-choice-btn {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #334155;
+    padding: 0.6rem 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.campus-choice-btn.active {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #ffffff;
+}
+
+.generate-report-btn {
+    margin-top: 0.7rem;
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    background: #0d285d;
+    color: #ffffff;
+    font-weight: 800;
+    padding: 0.72rem 1rem;
+    cursor: pointer;
+}
+
+.review-layout {
+    margin-top: 1.2rem;
+    display: grid;
+    grid-template-columns: 0.62fr 1.38fr;
+    gap: 1rem;
+}
+
+.candidate-list-panel,
+.candidate-review-panel,
+.logs-panel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.candidate-list-panel h3,
+.logs-panel h3 {
+    margin: 0 0 0.8rem;
+}
+
+.candidate-item {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 0.7rem;
+    display: grid;
+    text-align: left;
+    gap: 0.2rem;
+    cursor: pointer;
+    margin-bottom: 0.6rem;
+}
+
+.candidate-item strong {
+    font-size: 1rem;
+}
+
+.candidate-item span {
+    font-size: 0.84rem;
+    color: #475569;
+}
+
+.candidate-item small {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.candidate-item.active {
+    border-color: #0f766e;
+    background: #ecfeff;
+}
+
+.review-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+}
+
+.review-top h2 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.review-top p {
+    margin: 0.3rem 0 0;
+    color: #64748b;
+}
+
+.status-chip {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.cover-letter-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.cover-letter-box h4 {
+    margin: 0 0 0.45rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.cover-letter-box p {
+    margin: 0;
+    color: #334155;
+    line-height: 1.65;
+}
+
+.review-docs-row {
+    margin-top: 0.9rem;
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.doc-btn {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0.5rem 0.8rem;
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.doc-btn.disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.notes-box {
+    margin-top: 0.9rem;
+}
+
+.notes-box label {
+    display: block;
+    font-size: 0.8rem;
     font-weight: 700;
     color: #475569;
-    cursor: pointer;
-    transition: all 0.2s;
+    margin-bottom: 0.4rem;
 }
 
-.btn-ghost:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-}
-
-.btn-outline-primary {
-    background: none;
-    border: 1px solid #01447B;
-    padding: 0.5rem 1.5rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #01447B;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-outline-primary:hover {
-    background: #01447B;
-    color: white;
-}
-
-/* Daily Report Table - Minimalist */
-.log-table {
+.notes-box textarea,
+.log-entry-card textarea {
     width: 100%;
-    border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    font-family: inherit;
 }
 
-.log-table th {
-    text-align: left;
-    padding: 1rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    color: #94a3b8;
-    border-bottom: 2px solid #f1f5f9;
-}
-
-.log-table td {
-    padding: 1.25rem 1rem;
-    border-bottom: 1px solid #f8fafc;
-    font-size: 0.95rem;
-}
-
-.log-table tr:hover {
-    background: #fdfdfd;
-}
-
-.view-btn {
-    color: #01447B;
-    font-weight: 700;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0;
-}
-
-.view-btn:hover {
-    text-decoration: underline;
-}
-
-/* Tab Toggle */
-.dean-view-toggle {
+.review-actions {
+    margin-top: 0.8rem;
     display: flex;
-    gap: 2rem;
-    margin-bottom: 3rem;
+    justify-content: flex-end;
+    gap: 0.7rem;
 }
 
-.toggle-link {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #94a3b8;
+.reject-btn,
+.approve-btn,
+.backfill-btn,
+.ghost-action,
+.primary-action {
+    border: none;
+    border-radius: 10px;
+    padding: 0.62rem 0.95rem;
+    font-weight: 800;
     cursor: pointer;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid transparent;
 }
 
-.toggle-link.active {
-    color: #01447B;
-    border-bottom-color: #01447B;
+.reject-btn,
+.ghost-action {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.approve-btn,
+.primary-action {
+    background: #0d285d;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.backfill-btn {
+    background: #0f766e;
+    color: #ffffff;
+}
+
+.empty-state,
+.muted {
+    color: #64748b;
+}
+
+.logs-panel {
+    margin-top: 1.2rem;
+}
+
+.log-entry-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.9rem;
+    margin-bottom: 0.7rem;
+    background: #f8fafc;
+}
+
+.log-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.log-head span {
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.log-meta {
+    margin: 0.35rem 0;
+    color: #475569;
+    font-size: 0.88rem;
+}
+
+.log-description {
+    margin: 0 0 0.55rem;
+    color: #334155;
+}
+
+.log-late-reason {
+    margin: 0 0 0.5rem;
+    color: #9a3412;
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.log-actions {
+    margin-top: 0.6rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.monthly-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+}
+
+.monthly-filter-row input,
+.monthly-filter-row select {
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 0.58rem 0.72rem;
+    font-family: inherit;
+}
+
+.monthly-performance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.monthly-list {
+    max-height: 360px;
+    overflow: auto;
+    padding-right: 0.2rem;
+}
+
+.monthly-detail {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.8rem;
+    background: #f8fafc;
+}
+
+.monthly-detail h4 {
+    margin: 0 0 0.35rem;
+}
+
+.monthly-detail p {
+    margin: 0.35rem 0;
+}
+
+.perfect-attendance {
+    color: #166534;
+    font-weight: 700;
+}
+
+.needs-attention {
+    color: #9a3412;
+    font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+    .dean-top-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .dean-stats-row {
+        grid-template-columns: 1fr;
+    }
+
+    .review-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .dean-controls-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .monthly-filter-row,
+    .monthly-performance-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .activity-create-form {
+        grid-template-columns: 1fr;
+    }
+
+    .field-role,
+    .field-campus,
+    .field-description,
+    .field-semester,
+    .field-gpa,
+    .activity-create-form button {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 720px) {
+    .dean-labour-page {
+        padding: 1rem;
+    }
+
+    .dean-page-header h1 {
+        font-size: 2.2rem;
+    }
+
+    .review-top {
+        flex-direction: column;
+    }
+
+    .review-actions {
+        justify-content: stretch;
+        flex-direction: column;
+    }
 }

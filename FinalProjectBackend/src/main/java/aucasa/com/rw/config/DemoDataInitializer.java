@@ -4,21 +4,21 @@ import aucasa.com.rw.domain.AcademicTerm;
 import aucasa.com.rw.domain.AttendanceSession;
 import aucasa.com.rw.domain.Campus;
 import aucasa.com.rw.domain.Election;
+import aucasa.com.rw.domain.FinanceBudget;
 import aucasa.com.rw.domain.Faculty;
 import aucasa.com.rw.domain.Role;
-import aucasa.com.rw.domain.StudentProfile;
 import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.domain.enums.AccountStatus;
-import aucasa.com.rw.domain.enums.DisciplineStatus;
 import aucasa.com.rw.domain.enums.ElectionStatus;
+import aucasa.com.rw.domain.enums.FinanceBudgetStatus;
 import aucasa.com.rw.domain.enums.RoleType;
 import aucasa.com.rw.repository.AcademicTermRepository;
 import aucasa.com.rw.repository.AttendanceSessionRepository;
 import aucasa.com.rw.repository.CampusRepository;
 import aucasa.com.rw.repository.ElectionRepository;
+import aucasa.com.rw.repository.FinanceBudgetRepository;
 import aucasa.com.rw.repository.FacultyRepository;
 import aucasa.com.rw.repository.RoleRepository;
-import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,10 +35,10 @@ public class DemoDataInitializer implements CommandLineRunner {
     private final CampusRepository campusRepository;
     private final FacultyRepository facultyRepository;
     private final UserAccountRepository userAccountRepository;
-    private final StudentProfileRepository studentProfileRepository;
     private final AcademicTermRepository academicTermRepository;
     private final AttendanceSessionRepository attendanceSessionRepository;
     private final ElectionRepository electionRepository;
+    private final FinanceBudgetRepository financeBudgetRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DemoDataInitializer(
@@ -46,20 +46,20 @@ public class DemoDataInitializer implements CommandLineRunner {
             CampusRepository campusRepository,
             FacultyRepository facultyRepository,
             UserAccountRepository userAccountRepository,
-            StudentProfileRepository studentProfileRepository,
             AcademicTermRepository academicTermRepository,
             AttendanceSessionRepository attendanceSessionRepository,
             ElectionRepository electionRepository,
+            FinanceBudgetRepository financeBudgetRepository,
             PasswordEncoder passwordEncoder
     ) {
         this.roleRepository = roleRepository;
         this.campusRepository = campusRepository;
         this.facultyRepository = facultyRepository;
         this.userAccountRepository = userAccountRepository;
-        this.studentProfileRepository = studentProfileRepository;
         this.academicTermRepository = academicTermRepository;
         this.attendanceSessionRepository = attendanceSessionRepository;
         this.electionRepository = electionRepository;
+        this.financeBudgetRepository = financeBudgetRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -67,10 +67,39 @@ public class DemoDataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         seedActiveTermIfMissing();
-        seedStudentIfMissing();
+        seedAdminIfMissing();
         seedDeanIfMissing();
         seedAttendanceSessionsIfMissing();
         seedElectionIfMissing();
+        seedFinanceIfMissing();
+        seedGuildPresidentIfMissing();
+        seedFinanceBudgetIfMissing();
+    }
+
+    private void seedAdminIfMissing() {
+        String adminUsername = "admin1";
+        String adminEmail = "admin1@auca.ac.rw";
+
+        if (userAccountRepository.findByUsername(adminUsername).isPresent()
+                || userAccountRepository.findByEmail(adminEmail).isPresent()) {
+            return;
+        }
+
+        Role adminRole = roleRepository.findByName(RoleType.ADMIN).orElseGet(() -> {
+            Role role = new Role();
+            role.setName(RoleType.ADMIN);
+            return roleRepository.save(role);
+        });
+
+        UserAccount admin = new UserAccount();
+        admin.setUsername(adminUsername);
+        admin.setEmail(adminEmail);
+        admin.setPasswordHash(passwordEncoder.encode("admin123"));
+        admin.setFirstName("Demo");
+        admin.setLastName("Admin");
+        admin.setRole(adminRole);
+        admin.setStatus(AccountStatus.ACTIVE);
+        userAccountRepository.save(admin);
     }
 
     private void seedActiveTermIfMissing() {
@@ -86,55 +115,6 @@ public class DemoDataInitializer implements CommandLineRunner {
         term.setEndDate(LocalDate.now().plusMonths(4));
         term.setActive(true);
         academicTermRepository.save(term);
-    }
-
-    private void seedStudentIfMissing() {
-        if (studentProfileRepository.count() > 0) {
-            return;
-        }
-
-        Role studentRole = roleRepository.findByName(RoleType.STUDENT).orElseGet(() -> {
-            Role role = new Role();
-            role.setName(RoleType.STUDENT);
-            return roleRepository.save(role);
-        });
-
-        Campus campus = campusRepository.findByCode("MAS").orElseGet(() -> {
-            Campus c = new Campus();
-            c.setCode("MAS");
-            c.setName("Masoro Campus");
-            return campusRepository.save(c);
-        });
-
-        Faculty faculty = facultyRepository.findByCode("IT").orElseGet(() -> {
-            Faculty f = new Faculty();
-            f.setCode("IT");
-            f.setName("Information Technology");
-            return facultyRepository.save(f);
-        });
-
-        UserAccount user = new UserAccount();
-        user.setUsername("student1");
-        user.setEmail("student1@auca.ac.rw");
-        user.setPasswordHash(passwordEncoder.encode("demo123"));
-        user.setFirstName("Demo");
-        user.setLastName("Student");
-        user.setRole(studentRole);
-        user.setStatus(AccountStatus.ACTIVE);
-        user = userAccountRepository.save(user);
-
-        StudentProfile student = new StudentProfile();
-        student.setUserAccount(user);
-        student.setStudentNumber("AUCA/TEST/001");
-        student.setCampus(campus);
-        student.setFaculty(faculty);
-        student.setGpa(new BigDecimal("15.50"));
-        student.setSemester(4);
-        student.setDisciplineScore(75);
-        student.setDisciplineStatus(DisciplineStatus.SATISFACTORY);
-        student.setProgram("Day");
-        student.setCredits(15);
-        studentProfileRepository.save(student);
     }
 
     private void seedDeanIfMissing() {
@@ -207,9 +187,9 @@ public class DemoDataInitializer implements CommandLineRunner {
         upcomingSession.setTitle("Masoro General Assembly");
         upcomingSession.setCampus(masoro);
         upcomingSession.setTerm(term);
-        upcomingSession.setStartsAt(LocalDateTime.now().plusDays(2).withHour(14).withMinute(0));
-        upcomingSession.setEndsAt(LocalDateTime.now().plusDays(2).withHour(16).withMinute(0));
-        upcomingSession.setActive(false);
+        upcomingSession.setStartsAt(LocalDateTime.now().minusMinutes(10));
+        upcomingSession.setEndsAt(LocalDateTime.now().plusHours(4));
+        upcomingSession.setActive(true);
         attendanceSessionRepository.save(upcomingSession);
     }
 
@@ -231,5 +211,73 @@ public class DemoDataInitializer implements CommandLineRunner {
         election.setTotalVotes(0);
         election.setStatus(ElectionStatus.VOTING);
         electionRepository.save(election);
+    }
+
+    private void seedFinanceIfMissing() {
+        String financeUsername = "finance1";
+        String financeEmail = "finance1@auca.ac.rw";
+
+        if (userAccountRepository.findByUsername(financeUsername).isPresent()
+                || userAccountRepository.findByEmail(financeEmail).isPresent()) {
+            return;
+        }
+
+        Role financeRole = roleRepository.findByName(RoleType.FINANCE).orElseGet(() -> {
+            Role role = new Role();
+            role.setName(RoleType.FINANCE);
+            return roleRepository.save(role);
+        });
+
+        UserAccount finance = new UserAccount();
+        finance.setUsername(financeUsername);
+        finance.setEmail(financeEmail);
+        finance.setPasswordHash(passwordEncoder.encode("finance123"));
+        finance.setFirstName("Demo");
+        finance.setLastName("Finance");
+        finance.setRole(financeRole);
+        finance.setStatus(AccountStatus.ACTIVE);
+        userAccountRepository.save(finance);
+    }
+
+    private void seedGuildPresidentIfMissing() {
+        String guildUsername = "guild1";
+        String guildEmail = "guild1@auca.ac.rw";
+
+        if (userAccountRepository.findByUsername(guildUsername).isPresent()
+                || userAccountRepository.findByEmail(guildEmail).isPresent()) {
+            return;
+        }
+
+        Role guildRole = roleRepository.findByName(RoleType.GUILD_PRESIDENT).orElseGet(() -> {
+            Role role = new Role();
+            role.setName(RoleType.GUILD_PRESIDENT);
+            return roleRepository.save(role);
+        });
+
+        UserAccount guild = new UserAccount();
+        guild.setUsername(guildUsername);
+        guild.setEmail(guildEmail);
+        guild.setPasswordHash(passwordEncoder.encode("guild123"));
+        guild.setFirstName("Demo");
+        guild.setLastName("Guild");
+        guild.setRole(guildRole);
+        guild.setStatus(AccountStatus.ACTIVE);
+        userAccountRepository.save(guild);
+    }
+
+    private void seedFinanceBudgetIfMissing() {
+        if (financeBudgetRepository.count() > 0) {
+            return;
+        }
+
+        FinanceBudget budget = new FinanceBudget();
+        budget.setTitle("AUCASA Core Operations");
+        budget.setDepartment("Finance Office");
+        budget.setFiscalYear("2025/2026");
+        budget.setAssignedAmount(new BigDecimal("12000000.00"));
+        budget.setUsedAmount(new BigDecimal("0.00"));
+        budget.setStatus(FinanceBudgetStatus.ACTIVE);
+        budget.setNotes("Primary assigned budget for student association operations.");
+        financeBudgetRepository.save(budget);
     }
 }

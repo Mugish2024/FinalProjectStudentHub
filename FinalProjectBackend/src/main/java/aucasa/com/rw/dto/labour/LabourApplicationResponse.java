@@ -12,6 +12,7 @@ public class LabourApplicationResponse {
     private String coverLetterPath;
     private String transcriptPath;
     private String coverLetterText;
+    private String roleTitle;
     private LocalDateTime reviewedAt;
     private String reviewNotes;
 
@@ -25,6 +26,7 @@ public class LabourApplicationResponse {
             String coverLetterPath,
             String transcriptPath,
             String coverLetterText,
+            String roleTitle,
             LocalDateTime reviewedAt,
             String reviewNotes
     ) {
@@ -37,6 +39,7 @@ public class LabourApplicationResponse {
         this.coverLetterPath = coverLetterPath;
         this.transcriptPath = transcriptPath;
         this.coverLetterText = coverLetterText;
+        this.roleTitle = roleTitle;
         this.reviewedAt = reviewedAt;
         this.reviewNotes = reviewNotes;
     }
@@ -75,6 +78,10 @@ public class LabourApplicationResponse {
 
     public String getCoverLetterText() {
         return coverLetterText;
+    }
+
+    public String getRoleTitle() {
+        return roleTitle;
     }
 
     public LocalDateTime getReviewedAt() {

@@ -79,6 +79,19 @@ const Discipline: React.FC = () => {
 
     const config = getStatusConfig(disciplineData.status);
     const StatusIcon = config.icon;
+    const statusLabelClass =
+        disciplineData.status === 'grand-distinction'
+            ? 'status-text-grand-distinction'
+            : disciplineData.status === 'satisfaction'
+                ? 'status-text-satisfaction'
+                : 'status-text-unsatisfactory';
+
+    const statusIndex =
+        disciplineData.status === 'unsatisfactory'
+            ? 0
+            : disciplineData.status === 'satisfaction'
+                ? 1
+                : 2;
 
     return (
         <div className="discipline-container">
@@ -91,26 +104,26 @@ const Discipline: React.FC = () => {
             <section className="status-hero">
                 <div className="status-badge-container">
                     <div className={`status-badge ${config.colorClass}`}>
-                        <StatusIcon size={64} />
+                        <StatusIcon size={58} />
                     </div>
                 </div>
 
-                <h2 className="status-label" style={{ color: disciplineData.status === 'grand-distinction' ? '#dcb14a' : (disciplineData.status === 'satisfaction' ? '#60a5fa' : '#f87171') }}>
+                <h2 className={`status-label ${statusLabelClass}`}>
                     {config.label}
                 </h2>
                 <p className="status-desc">{config.description}</p>
 
                 {/* Progress Stepper */}
                 <div className="status-stepper">
-                    <div className={`step-item ${disciplineData.status === 'unsatisfactory' ? 'active' : ''} ${disciplineData.score > 30 ? 'completed' : ''}`}>
+                    <div className={`step-item ${statusIndex === 0 ? 'active' : ''} ${statusIndex > 0 ? 'completed' : ''}`}>
                         <div className="step-dot"></div>
                         <span className="step-label">Unsatisfactory</span>
                     </div>
-                    <div className={`step-item ${disciplineData.status === 'satisfaction' ? 'active' : ''} ${disciplineData.score > 80 ? 'completed' : ''}`}>
+                    <div className={`step-item ${statusIndex === 1 ? 'active' : ''} ${statusIndex > 1 ? 'completed' : ''}`}>
                         <div className="step-dot"></div>
                         <span className="step-label">Satisfaction</span>
                     </div>
-                    <div className={`step-item ${disciplineData.status === 'grand-distinction' ? 'active' : ''}`}>
+                    <div className={`step-item ${statusIndex === 2 ? 'active' : ''}`}>
                         <div className="step-dot"></div>
                         <span className="step-label">Grand Distinction</span>
                     </div>
@@ -124,7 +137,7 @@ const Discipline: React.FC = () => {
                         <Info size={24} color="#dcb14a" />
                         <h3 className="card-title">Status Analysis</h3>
                     </div>
-                    <p style={{ marginBottom: '1rem', color: '#94a3b8' }}>Why do I have this status?</p>
+                    <p className="card-lead">Why do I have this status?</p>
 
                     <div className="reason-list">
                         {disciplineData.reasons.map((reason, index) => (
@@ -162,8 +175,8 @@ const Discipline: React.FC = () => {
                         </p>
                     </div>
 
-                    <div style={{ marginTop: '1.5rem' }}>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>Steps to achieve Grand Distinction:</h4>
+                    <div className="tips-section">
+                        <h4 className="tips-title">Steps to achieve Grand Distinction:</h4>
                         <ul className="tip-list">
                             {disciplineData.tips.map((tip, index) => (
                                 <li key={index} className="tip-item">{tip}</li>
@@ -172,21 +185,7 @@ const Discipline: React.FC = () => {
                     </div>
 
                     {disciplineData.status !== 'grand-distinction' && (
-                        <button style={{
-                            width: '100%',
-                            marginTop: '1.5rem',
-                            padding: '0.75rem',
-                            backgroundColor: 'var(--surface-highlight)',
-                            color: 'var(--text-main)',
-                            border: '1px solid var(--border)',
-                            borderRadius: 'var(--radius)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.5rem',
-                            transition: 'background-color 0.2s'
-                        }}>
+                        <button className="policy-btn">
                             View Full Policy
                         </button>
                     )}

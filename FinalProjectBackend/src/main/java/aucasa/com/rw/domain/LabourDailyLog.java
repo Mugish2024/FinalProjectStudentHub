@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "labour_daily_logs")
@@ -26,6 +27,12 @@ public class LabourDailyLog extends BaseEntity {
 
     @Column(nullable = false, precision = 4, scale = 1)
     private BigDecimal hoursWorked;
+
+    @Column
+    private LocalTime workStartTime;
+
+    @Column
+    private LocalTime workEndTime;
 
     @Column(nullable = false, length = 1500)
     private String taskDescription;
@@ -43,6 +50,18 @@ public class LabourDailyLog extends BaseEntity {
 
     @Column(length = 800)
     private String verificationNote;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal latitude;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal longitude;
+
+    @Column(nullable = false)
+    private Boolean locationValidated = Boolean.FALSE;
+
+    @Column(length = 500)
+    private String lateSubmissionReason;
 
     public LabourApplication getApplication() {
         return application;
@@ -66,6 +85,22 @@ public class LabourDailyLog extends BaseEntity {
 
     public void setHoursWorked(BigDecimal hoursWorked) {
         this.hoursWorked = hoursWorked;
+    }
+
+    public LocalTime getWorkStartTime() {
+        return workStartTime;
+    }
+
+    public void setWorkStartTime(LocalTime workStartTime) {
+        this.workStartTime = workStartTime;
+    }
+
+    public LocalTime getWorkEndTime() {
+        return workEndTime;
+    }
+
+    public void setWorkEndTime(LocalTime workEndTime) {
+        this.workEndTime = workEndTime;
     }
 
     public String getTaskDescription() {
@@ -106,5 +141,37 @@ public class LabourDailyLog extends BaseEntity {
 
     public void setVerificationNote(String verificationNote) {
         this.verificationNote = verificationNote;
+    }
+
+    public BigDecimal getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(BigDecimal latitude) {
+        this.latitude = latitude;
+    }
+
+    public BigDecimal getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(BigDecimal longitude) {
+        this.longitude = longitude;
+    }
+
+    public Boolean getLocationValidated() {
+        return locationValidated;
+    }
+
+    public void setLocationValidated(Boolean locationValidated) {
+        this.locationValidated = locationValidated;
+    }
+
+    public String getLateSubmissionReason() {
+        return lateSubmissionReason;
+    }
+
+    public void setLateSubmissionReason(String lateSubmissionReason) {
+        this.lateSubmissionReason = lateSubmissionReason;
     }
 }

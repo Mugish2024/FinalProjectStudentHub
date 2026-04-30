@@ -1,75 +1,105 @@
-import React from 'react';
-import { MessageSquare, LogOut, Menu } from 'lucide-react';
-import aucaLogo from '../assets/auca-logo.png';
+import React, { useMemo, useState } from 'react';
+import { MessageSquare, Search, Bell, Settings } from 'lucide-react';
 import './Header.css';
 
 interface HeaderProps {
     title?: string;
     userName?: string;
     userId?: string;
-    userRole?: 'student' | 'staff' | 'dean' | 'admin' | null;
+    activePage?: string;
+    userRole?: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president' | null;
+    onNavigate?: (page: string) => void;
     onMenuClick?: () => void;
-    onLogout?: () => void;
+    onChatClick?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title = "Student Portal", userName = "Student User", userId = "26701", userRole = "student", onMenuClick, onLogout }) => {
-    const isStaffRole = userRole === 'staff' || userRole === 'dean' || userRole === 'admin';
-    const initials = userName
-        .split(' ')
-        .filter(Boolean)
-        .map((part) => part[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase();
+const Header: React.FC<HeaderProps> = ({
+    title = 'Student Portal',
+    userName = 'Student User',
+    userId = '26701',
+    activePage = 'dashboard',
+    userRole = 'student',
+    onNavigate,
+    onChatClick,
+}) => {
+    const isStaffRole = userRole === 'staff' || userRole === 'dean' || userRole === 'admin' || userRole === 'finance' || userRole === 'guild_president';
+
+    const [searchText, setSearchText] = useState('');
+    const navItems = useMemo(
+        () => {
+            if (userRole !== 'student') {
+                return [];
+            }
+            return [
+                { label: 'Dashboard', page: 'dashboard' },
+                { label: 'Courses', page: 'courses' },
+                { label: 'Payments', page: 'payments' },
+                { label: 'Events', page: 'events' },
+            ];
+        },
+        [userRole]
+    );
+
+    const navigateFromSearch = () => {
+        const term = searchText.trim().toLowerCase();
+        if (!term || !onNavigate) return;
+        const match = navItems.find((item) => item.label.toLowerCase().includes(term));
+        if (match) {
+            onNavigate(match.page);
+            setSearchText('');
+        }
+    };
 
     return (
         <header className="header">
             <div className="header-left-section">
-                <button className="icon-btn menu-btn" onClick={onMenuClick}>
-                    <Menu size={20} />
-                </button>
-                <div className="header-logo-container">
-                    <img
-                        src={aucaLogo}
-                        alt="AUCA Logo"
-                        className="auca-logo-img-sm"
-                        onError={(e) => {
-                            e.currentTarget.src = "https://ui-avatars.com/api/?name=A&background=01447B&color=fff";
-                        }}
-                    />
-                    <h2 className="header-title">{title}</h2>
-                </div>
+                <h2 className="header-title">{title}</h2>
             </div>
 
-            <div className="header-controls-group">
-                <div className="semester-badge">2025/2</div>
+            <div className="header-center">
+                {navItems.length > 0 && (
+                    <nav className="top-nav-tabs">
+                        {navItems.map((item) => (
+                            <button
+                                key={item.page}
+                                className={`top-nav-tab ${activePage === item.page ? 'active' : ''}`}
+                                onClick={() => onNavigate?.(item.page)}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </nav>
+                )}
 
-                <div className="student-nr-container">
-                    <span className="nr-label">{isStaffRole ? 'Staff ID' : 'Student Nr.'}</span>
-                    <div className="nr-input-wrapper">
-                        <input type="text" value={userId} readOnly />
-                    </div>
+                <div className="global-search">
+                    <Search size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search grades, courses..."
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                navigateFromSearch();
+                            }
+                        }}
+                    />
                 </div>
-
-                <button className="btn-header-fill btn-blue">Fetch</button>
-
-                <button className="btn-header-fill btn-blue">
-                    <MessageSquare size={16} />
-                    <span>Chat</span>
-                    <div className="chat-dot"></div>
-                </button>
             </div>
 
             <div className="header-actions">
-                <div className="user-pill">
-                    <div className="user-avatar-small">{initials}</div>
-                    <span className="user-name-small">{userName}</span>
-                </div>
-
-                <button className="btn-logout-slate" onClick={onLogout}>
-                    <LogOut size={16} style={{ marginRight: '6px' }} />
-                    <span>Logout</span>
+                <button className="icon-btn top-icon-btn" aria-label="Notifications">
+                    <Bell size={18} />
                 </button>
+                <button className="icon-btn top-icon-btn" aria-label="Settings">
+                    <Settings size={18} />
+                </button>
+                {onChatClick && (
+                    <button className="btn-header-fill btn-blue" onClick={onChatClick}>
+                        <MessageSquare size={16} />
+                        <span>Chat</span>
+                    </button>
+                )}
             </div>
         </header>
     );

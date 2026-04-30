@@ -1,49 +1,101 @@
-import React, { useState } from 'react';
-import { CreditCard, Smartphone, Check, ArrowRight, ShieldCheck, ChevronLeft } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+    ShieldCheck,
+    Landmark,
+    ArrowUpRight,
+} from 'lucide-react';
+import urubutoPayLogo from '../assets/urubutopay.png';
 import './Payments.css';
-
-type PaymentStep = 'initial' | 'methods' | 'details' | 'success';
 
 interface PaymentRecord {
     id: number;
+    studentNumber?: string;
     receiptNumber: string;
     status: string;
     amount: number;
     paidAt?: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+interface TransparencySummary {
+    totalCollected: number;
+    totalApproved: number;
+    totalSpent: number;
+    remainingBalance: number;
+    activeApprovedRequests: number;
+    latestUpdates: Array<{
+        id: number;
+        title: string;
+        message: string;
+        publishedBy: string;
+        createdAt: string;
+    }>;
+}
 
-const Payments: React.FC = () => {
-    const [step, setStep] = useState<PaymentStep>('initial');
-    const [selectedMethod, setSelectedMethod] = useState<string>('');
-    const [isProcessing, setIsProcessing] = useState(false);
+interface PaymentsProps {
+    studentId: number | null;
+    studentNumber: string;
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const URUBUTO_PAY_URL = 'https://urubutopay.rw/pay-now/initiate?origin=internal';
+const URUBUTO_MERCHANT_CODE = 'TH61132546';
+const BK_ACCOUNT_CODE = '00040 - 00280275 - 75';
+const formatRwf = (value?: number) => new Intl.NumberFormat('en-RW').format(Number(value ?? 0));
+const STUDENT_ASSOCIATION_FEE_LABEL = 'Student Association fee';
+
+const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
+    const resolvedStudentId = studentId ?? 0;
+
+    const [isLoading, setIsLoading] = useState(false);
     const [payment, setPayment] = useState<PaymentRecord | null>(null);
-    const [studentId, setStudentId] = useState<number>(1);
-    const [termId, setTermId] = useState<string>('');
-    const [phoneNumber, setPhoneNumber] = useState('');
+    const [selectedMethod, setSelectedMethod] = useState<'URUBUTO_PAY' | 'BANK_TRANSFER'>('URUBUTO_PAY');
     const [error, setError] = useState('');
     const [info, setInfo] = useState('');
-    const [awaitingMobileApproval, setAwaitingMobileApproval] = useState(false);
+    const [transparency, setTransparency] = useState<TransparencySummary | null>(null);
+
+    const resolvedPayerCode = (studentNumber ?? '').trim()
+        || (payment?.studentNumber ?? '').trim()
+        || String(resolvedStudentId || '');
+
+    const defaultAmount = useMemo(() => {
+        if (payment?.amount) return String(payment.amount);
+        return '3000';
+    }, [payment?.amount]);
+
+    const urubutoInitiateUrl = useMemo(() => {
+        const amount = Number(defaultAmount || 3000);
+        const externalReference = `AUCASA-${resolvedPayerCode}-${Date.now()}`;
+        const params = new URLSearchParams({
+            origin: 'internal',
+            merchantCode: URUBUTO_MERCHANT_CODE,
+            payerCode: resolvedPayerCode,
+            amount: String(Number.isFinite(amount) ? amount : 3000),
+            feeName: STUDENT_ASSOCIATION_FEE_LABEL,
+            purpose: STUDENT_ASSOCIATION_FEE_LABEL,
+            description: STUDENT_ASSOCIATION_FEE_LABEL,
+            narration: STUDENT_ASSOCIATION_FEE_LABEL,
+            externalReference,
+            reference: externalReference,
+        });
+        return `https://urubutopay.rw/pay-now/initiate?${params.toString()}`;
+    }, [defaultAmount, resolvedPayerCode]);
 
     const ensureObligation = async (): Promise<PaymentRecord> => {
         const response = await fetch(`${API_BASE}/api/payments/obligations/student`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                studentId,
-                termId: termId ? Number(termId) : null,
-            }),
+            body: JSON.stringify({ studentId: resolvedStudentId }),
         });
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
-            throw new Error(err.error ?? 'Failed to create/find mandatory payment obligation.');
+            throw new Error(err.error ?? 'Failed to create/find payment obligation.');
         }
 
         const data = await response.json();
         const mapped: PaymentRecord = {
             id: data.id,
+            studentNumber: data.studentNumber,
             receiptNumber: data.receiptNumber,
             status: data.status,
             amount: data.amount,
@@ -53,341 +105,187 @@ const Payments: React.FC = () => {
         return mapped;
     };
 
-    const startPaymentFlow = async () => {
-        setError('');
-        setInfo('');
-        try {
-            setIsProcessing(true);
-            await ensureObligation();
-            setStep('methods');
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Could not start payment flow.');
-        } finally {
-            setIsProcessing(false);
+    const loadTransparencySummary = async () => {
+        const response = await fetch(`${API_BASE}/api/finance/transparency/summary`);
+        if (!response.ok) {
+            return;
         }
+        const data = await response.json().catch(() => null);
+        setTransparency(data);
     };
 
-    const handleMethodSelect = (method: string) => {
-        setSelectedMethod(method);
-        setError('');
-        setInfo('');
-        setStep('details');
-    };
-
-    const handlePayment = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setInfo('');
-        setIsProcessing(true);
-
-        try {
-            const current = payment ?? await ensureObligation();
-            const method = selectedMethod === 'mobile' ? 'MOBILE_MONEY' : 'CARD';
-
-            const response = await fetch(`${API_BASE}/api/payments/${current.id}/submit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    method,
-                    phoneNumber: selectedMethod === 'mobile' ? phoneNumber : null,
-                    externalReference: selectedMethod === 'card' ? `WEB-CARD-${Date.now()}` : null,
-                }),
-            });
-
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data.error ?? 'Payment submission failed.');
+    useEffect(() => {
+        const run = async () => {
+            setError('');
+            setInfo('');
+            setPayment(null);
+            if (!resolvedStudentId) {
+                setError('Your student profile is missing. Please sign in again.');
+                return;
             }
-
-            const nextPayment: PaymentRecord = {
-                id: data.id,
-                receiptNumber: data.receiptNumber,
-                status: data.status,
-                amount: data.amount,
-                paidAt: data.paidAt,
-            };
-            setPayment(nextPayment);
-
-            if (selectedMethod === 'mobile') {
-                const isSimulated = typeof data.externalReference === 'string' && data.externalReference.startsWith('SIM-');
-                if (isSimulated) {
-                    setAwaitingMobileApproval(false);
-                    setInfo('Simulation mode is active on backend. No real MTN prompt is sent. Configure provider credentials and disable simulate mode.');
-                } else {
-                    setAwaitingMobileApproval(true);
-                    setInfo('Payment prompt sent to your phone. Approve it, then click "I have approved on phone".');
-                }
-            } else {
-                setAwaitingMobileApproval(false);
-                setInfo('Card payment submitted successfully.');
+            try {
+                setIsLoading(true);
+                await ensureObligation();
+                await loadTransparencySummary();
+            } catch (e) {
+                setError(e instanceof Error ? e.message : 'Could not load payment page.');
+            } finally {
+                setIsLoading(false);
             }
-
-            setStep('success');
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Payment failed.');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const confirmMobileOnPhone = async () => {
-        if (!payment) return;
-
-        setError('');
-        setIsProcessing(true);
-        try {
-            const callbackResp = await fetch(`${API_BASE}/api/payments/mobile-money/callback`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    receiptNumber: payment.receiptNumber,
-                    providerReference: `SIM-CB-${Date.now()}`,
-                    success: true,
-                }),
-            });
-
-            if (!callbackResp.ok) {
-                const err = await callbackResp.json().catch(() => ({}));
-                throw new Error(err.error ?? 'Callback confirmation failed.');
-            }
-
-            const verifyResp = await fetch(`${API_BASE}/api/payments/${payment.id}/verify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
-            });
-
-            if (!verifyResp.ok) {
-                const err = await verifyResp.json().catch(() => ({}));
-                throw new Error(err.error ?? 'Verification failed.');
-            }
-
-            const verified = await verifyResp.json();
-            setPayment({
-                id: verified.id,
-                receiptNumber: verified.receiptNumber,
-                status: verified.status,
-                amount: verified.amount,
-                paidAt: verified.paidAt,
-            });
-            setAwaitingMobileApproval(false);
-            setInfo('Mobile money payment verified successfully.');
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Could not confirm phone payment.');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const renderInitial = () => (
-        <div className="payment-hero">
-            <h2 className="hero-title">Support Your Association</h2>
-            <p className="hero-subtitle">
-                Your contributions help us organize better events, improve student services, and create a vibrant campus life.
-            </p>
-
-            <div className="amount-card">
-                <div className="amount-label">Outstanding Balance</div>
-                <div className="amount-value">3,000 RWF</div>
-                <div className="fee-info">Annual Membership Fee</div>
-            </div>
-
-            <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto 1rem' }}>
-                <div className="input-group">
-                    <label>Student Internal ID</label>
-                    <input
-                        type="number"
-                        className="input-field"
-                        value={studentId}
-                        onChange={(e) => setStudentId(Number(e.target.value || 1))}
-                        min={1}
-                    />
-                </div>
-                <div className="input-group">
-                    <label>Term ID (optional)</label>
-                    <input
-                        type="number"
-                        className="input-field"
-                        placeholder="Leave blank to use active term"
-                        value={termId}
-                        onChange={(e) => setTermId(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            <div>
-                <button className="btn-pay-large" onClick={startPaymentFlow} disabled={isProcessing}>
-                    Pay Now <ArrowRight size={20} />
-                </button>
-            </div>
-        </div>
-    );
-
-    const renderMethods = () => (
-        <div className="payment-hero">
-            <button className="btn-back" onClick={() => setStep('initial')} style={{ position: 'absolute', left: '0', top: '0' }}>
-                <ChevronLeft size={24} /> Back
-            </button>
-            <h2 className="hero-title">Select Payment Method</h2>
-            <p className="hero-subtitle">Choose how you would like to complete your payment.</p>
-
-            <div className="methods-grid">
-                <div className="method-card" onClick={() => handleMethodSelect('mobile')}>
-                    <div className="method-icon">
-                        <Smartphone size={32} />
-                    </div>
-                    <h3>Mobile Money</h3>
-                    <p style={{ color: 'var(--text-grey)', fontSize: '0.9rem' }}>MTN / Airtel Money</p>
-                </div>
-
-                <div className="method-card" onClick={() => handleMethodSelect('card')}>
-                    <div className="method-icon">
-                        <CreditCard size={32} />
-                    </div>
-                    <h3>Card Payment</h3>
-                    <p style={{ color: 'var(--text-grey)', fontSize: '0.9rem' }}>Visa / Mastercard</p>
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderDetails = () => (
-        <div className="payment-hero">
-            <button className="btn-back" onClick={() => setStep('methods')} style={{ position: 'absolute', left: '0', top: '0' }}>
-                <ChevronLeft size={24} /> Back
-            </button>
-
-            <h2 className="hero-title">
-                {selectedMethod === 'mobile' ? 'Mobile Money Details' : 'Card Details'}
-            </h2>
-
-            <form className="payment-form-container" onSubmit={handlePayment}>
-                <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                    <div className="amount-value" style={{ fontSize: '2.5rem' }}>3,000 RWF</div>
-                    <div style={{ color: 'var(--text-grey)' }}>To: AUCASA Association</div>
-                </div>
-
-                {selectedMethod === 'mobile' ? (
-                    <div className="input-group">
-                        <label>Phone Number</label>
-                        <input
-                            type="text"
-                            placeholder="078..."
-                            className="input-field"
-                            required
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                        />
-                    </div>
-                ) : (
-                    <>
-                        <div className="input-group">
-                            <label>Card Number</label>
-                            <input type="text" placeholder="0000 0000 0000 0000" className="input-field" required />
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <div className="input-group" style={{ flex: 1 }}>
-                                <label>Expiry</label>
-                                <input type="text" placeholder="MM/YY" className="input-field" required />
-                            </div>
-                            <div className="input-group" style={{ flex: 1 }}>
-                                <label>CVC</label>
-                                <input type="text" placeholder="123" className="input-field" required />
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                <button
-                    className="btn-pay-large"
-                    style={{ width: '100%', justifyContent: 'center' }}
-                    disabled={isProcessing}
-                >
-                    {isProcessing ? 'Processing...' : 'Pay 3,000 RWF'}
-                </button>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '1.5rem', color: 'var(--text-grey)', fontSize: '0.85rem' }}>
-                    <ShieldCheck size={16} /> Secure Payment
-                </div>
-            </form>
-        </div>
-    );
-
-    const renderSuccess = () => (
-        <div className="success-container">
-            <div className="success-icon">
-                <Check size={48} color="white" strokeWidth={3} />
-            </div>
-            <h2 className="hero-title" style={{ fontSize: '2rem' }}>
-                {awaitingMobileApproval ? 'Awaiting Phone Confirmation' : 'Payment Successful!'}
-            </h2>
-            <p className="hero-subtitle">
-                {awaitingMobileApproval
-                    ? 'Approve the mobile money prompt on your phone to complete payment.'
-                    : 'Your payment has been processed successfully. A receipt has been generated.'}
-            </p>
-
-            <div className="amount-card" style={{ padding: '1.5rem', marginTop: '1rem', width: '100%', maxWidth: '400px', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
-                    <span style={{ color: 'var(--text-grey)' }}>Transaction ID</span>
-                    <span style={{ fontWeight: 600 }}>{payment?.receiptNumber ?? '-'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
-                    <span style={{ color: 'var(--text-grey)' }}>Status</span>
-                    <span style={{ fontWeight: 600 }}>{payment?.status ?? '-'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-grey)' }}>Amount</span>
-                    <span style={{ color: '#22c55e', fontWeight: '800' }}>3,000 RWF</span>
-                </div>
-            </div>
-
-            {awaitingMobileApproval && (
-                <button
-                    className="btn-pay-large"
-                    style={{ marginBottom: '1rem' }}
-                    onClick={confirmMobileOnPhone}
-                    disabled={isProcessing}
-                >
-                    I have approved on phone
-                </button>
-            )}
-
-            <div>
-                <button
-                    className="btn-pay-large"
-                    onClick={() => {
-                        setStep('initial');
-                        setSelectedMethod('');
-                        setPhoneNumber('');
-                        setAwaitingMobileApproval(false);
-                        setInfo('');
-                        setError('');
-                    }}
-                >
-                    Return to Dashboard
-                </button>
-            </div>
-        </div>
-    );
+        };
+        run();
+    }, [resolvedStudentId, studentNumber]);
 
     return (
-        <div className="payments-container">
-            {error && (
-                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                    {error}
-                </div>
-            )}
-            {info && (
-                <div style={{ background: '#e0f2fe', color: '#075985', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                    {info}
-                </div>
-            )}
+        <div className="finance-page">
+            {error && <div className="finance-alert error">{error}</div>}
+            {info && <div className="finance-alert info">{info}</div>}
 
-            {step === 'initial' && renderInitial()}
-            {step === 'methods' && renderMethods()}
-            {step === 'details' && renderDetails()}
-            {step === 'success' && renderSuccess()}
+            <section className="finance-hero">
+                <span className="hero-kicker">Financial Portal</span>
+                <h1>Payment Verification</h1>
+                <p>
+                    Pay using UrubutoPay or Bank of Kigali, then submit your receipt for secure finance validation.
+                    Every receipt is tracked and reviewed by the AUCASA finance team.
+                </p>
+            </section>
+
+            <section className="finance-grid">
+                <div className="finance-main">
+                    <article className="panel methods-panel">
+                        <div className="panel-head">
+                            <div>
+                                <h2>Payment Methods</h2>
+                                <p>Choose your preferred payment channel and continue.</p>
+                            </div>
+                            <ShieldCheck size={18} />
+                        </div>
+
+                        <div className="method-cards">
+                            <button
+                                className={`method-card ${selectedMethod === 'URUBUTO_PAY' ? 'active' : ''}`}
+                                onClick={() => setSelectedMethod('URUBUTO_PAY')}
+                            >
+                                <div className="method-icon logo">
+                                    <img src={urubutoPayLogo} alt="UrubutoPay" />
+                                </div>
+                                <h3>UrubutoPay</h3>
+                                <p>Fast mobile and web payment processing.</p>
+                                <span className="method-link">Recommended</span>
+                            </button>
+
+                            <button
+                                className={`method-card ${selectedMethod === 'BANK_TRANSFER' ? 'active' : ''}`}
+                                onClick={() => setSelectedMethod('BANK_TRANSFER')}
+                            >
+                                <div className="method-icon">
+                                    <Landmark size={20} />
+                                </div>
+                                <h3>Bank of Kigali</h3>
+                                <p>Direct bank transfer using official account details.</p>
+                                <span className="method-link">Bank transfer details</span>
+                            </button>
+                        </div>
+
+                        <div className="code-strip">
+                            <div>
+                                <span>Urubuto Merchant Code</span>
+                                <strong>{URUBUTO_MERCHANT_CODE}</strong>
+                            </div>
+                            <div>
+                                <span>BK Account Code</span>
+                                <strong>{BK_ACCOUNT_CODE}</strong>
+                            </div>
+                        </div>
+
+                        <div className="method-actions">
+                            <button
+                                className="primary-btn"
+                                onClick={() => window.open(urubutoInitiateUrl || URUBUTO_PAY_URL, '_blank', 'noopener,noreferrer')}
+                            >
+                                Continue with Urubuto <ArrowUpRight size={16} />
+                            </button>
+                            <p style={{ marginTop: '0.45rem', color: '#55657f', fontSize: '0.82rem' }}>
+                                Merchant code, payer code (your student number), amount, and fee purpose are auto-filled.
+                            </p>
+                        </div>
+                    </article>
+
+                    <article className="panel info-panel">
+                        <h2>Payment Information</h2>
+                        <div className="info-grid">
+                            <div>
+                                <span>Payer Code (Student Number)</span>
+                                <strong>{resolvedPayerCode || '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Reference</span>
+                                <strong>{payment?.receiptNumber ?? '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Status</span>
+                                <strong>{payment?.status ?? (isLoading ? 'Loading...' : 'Pending')}</strong>
+                            </div>
+                            <div>
+                                <span>Amount</span>
+                                <strong>{payment?.amount ? `${payment.amount} RWF` : '3,000 RWF'}</strong>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article className="panel transactions-panel">
+                        <div className="panel-head">
+                            <h2>Recent Transactions</h2>
+                        </div>
+                        <div className="tx-table">
+                            <div className="tx-row header">
+                                <span>Date</span>
+                                <span>Reference</span>
+                                <span>Status</span>
+                                <span>Amount</span>
+                            </div>
+                            <div className="tx-row">
+                                <span>{payment?.paidAt ? new Date(payment.paidAt).toLocaleDateString() : '-'}</span>
+                                <span>{payment?.receiptNumber ?? '-'}</span>
+                                <span>{payment?.status ?? 'PENDING'}</span>
+                                <span>{payment?.amount ? `${payment.amount} RWF` : '3,000 RWF'}</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article className="panel info-panel">
+                        <h2>Student Finance Transparency</h2>
+                        <div className="info-grid">
+                            <div>
+                                <span>Total Collected</span>
+                                <strong>{transparency ? `${formatRwf(transparency.totalCollected)} RWF` : '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Total Approved</span>
+                                <strong>{transparency ? `${formatRwf(transparency.totalApproved)} RWF` : '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Total Spent</span>
+                                <strong>{transparency ? `${formatRwf(transparency.totalSpent)} RWF` : '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Remaining Balance</span>
+                                <strong>{transparency ? `${formatRwf(transparency.remainingBalance)} RWF` : '-'}</strong>
+                            </div>
+                        </div>
+                        <div style={{ marginTop: '0.75rem' }}>
+                            <strong style={{ color: '#12335f', fontSize: '0.9rem' }}>Latest updates from Finance</strong>
+                            {(transparency?.latestUpdates ?? []).slice(0, 3).map((item) => (
+                                <div key={item.id} style={{ marginTop: '0.45rem', borderTop: '1px solid #e2e8f0', paddingTop: '0.45rem' }}>
+                                    <div style={{ fontWeight: 700, color: '#1f3357', fontSize: '0.85rem' }}>{item.title}</div>
+                                    <div style={{ color: '#52627c', fontSize: '0.82rem' }}>{item.message}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </article>
+                </div>
+
+            </section>
         </div>
     );
 };

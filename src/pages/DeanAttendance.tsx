@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import './DeanLabourManagement.css';
+import { useEffect, useMemo, useState } from 'react';
+import { Clock3, QrCode as QrIcon, Users } from 'lucide-react';
+import './DeanAttendance.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
 
@@ -8,167 +9,218 @@ type SessionItem = {
     title: string;
     campus: string;
     startsAt: string;
-};
-
-type AdminRecord = {
-    id: number;
-    studentName: string;
-    studentNumber: string;
-    sessionTitle: string;
-    campus: string;
-    checkInAt: string;
-    method: string;
-    status: string;
-    verificationStatus: string;
-    wifiSsid?: string;
-    ipAddress?: string;
-    deviceInfo?: string;
+    endsAt: string;
+    active: boolean;
 };
 
 const DeanAttendance = () => {
     const [sessions, setSessions] = useState<SessionItem[]>([]);
-    const [records, setRecords] = useState<AdminRecord[]>([]);
     const [sessionId, setSessionId] = useState<string>('');
-    const [verificationStatus, setVerificationStatus] = useState<string>('PENDING');
+    const [presentCount, setPresentCount] = useState(0);
+    const [qrPayload, setQrPayload] = useState('');
+    const [qrExpiry, setQrExpiry] = useState('');
     const [error, setError] = useState('');
-    const [notes, setNotes] = useState<Record<number, string>>({});
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const loadSessions = async () => {
-        const response = await fetch(`${API_BASE}/api/attendance/sessions?active=false`);
-        const data = await response.json().catch(() => []);
-        const list = Array.isArray(data) ? data : [];
-        setSessions(list);
-        if (!sessionId && list.length > 0) {
-            setSessionId(String(list[0].id));
+        try {
+            const response = await fetch(`${API_BASE}/api/attendance/sessions?active=false`);
+            const data = await response.json().catch(() => []);
+            const list = Array.isArray(data) ? data : [];
+            setSessions(list);
+            if (!sessionId && list.length > 0) {
+                const active = list.find((s: SessionItem) => s.active);
+                setSessionId(String((active ?? list[0]).id));
+            }
+        } catch {
+            setError('Failed to load sessions.');
         }
     };
 
-    const loadRecords = async (sessionFilter: string, verificationFilter: string) => {
-        const params = new URLSearchParams();
-        if (sessionFilter) {
-            params.set('sessionId', sessionFilter);
+    const loadPresentCount = async (selectedSessionId: string) => {
+        if (!selectedSessionId) {
+            setPresentCount(0);
+            return;
         }
-        if (verificationFilter) {
-            params.set('verificationStatus', verificationFilter);
+        try {
+            const response = await fetch(
+                `${API_BASE}/api/attendance/admin/records?sessionId=${selectedSessionId}&status=PRESENT`
+            );
+            const data = await response.json().catch(() => []);
+            setPresentCount(Array.isArray(data) ? data.length : 0);
+        } catch {
+            setError('Failed to load attendance count.');
         }
-        const response = await fetch(`${API_BASE}/api/attendance/admin/records?${params.toString()}`);
-        const data = await response.json().catch(() => []);
-        setRecords(Array.isArray(data) ? data : []);
     };
 
     useEffect(() => {
-        loadSessions();
+        void loadSessions();
+        const poll = setInterval(() => {
+            void loadSessions();
+            if (sessionId) {
+                void loadPresentCount(sessionId);
+            }
+        }, 15000);
+        return () => clearInterval(poll);
     }, []);
 
     useEffect(() => {
-        loadRecords(sessionId, verificationStatus);
-    }, [sessionId, verificationStatus]);
+        void loadPresentCount(sessionId);
+    }, [sessionId]);
 
-    const handleVerify = async (id: number, decision: 'CONFIRMED' | 'REJECTED') => {
+    const handleGenerateQr = async () => {
+        if (!sessionId) return;
         setError('');
         try {
-            const response = await fetch(`${API_BASE}/api/attendance/records/${id}/verify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    decision,
-                    notes: notes[id] ?? '',
-                }),
-            });
+            const response = await fetch(`${API_BASE}/api/attendance/sessions/${sessionId}/qr-token`);
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.error ?? 'Failed to verify attendance.');
+                throw new Error(data.error ?? 'Failed to generate QR token.');
             }
-            await loadRecords(sessionId, verificationStatus);
+            setQrPayload(data.payload ?? '');
+            setQrExpiry(data.expiresAt ?? '');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to verify attendance.');
+            setError(err instanceof Error ? err.message : 'Failed to generate QR token.');
         }
     };
 
+    const handleToggleSession = async (active: boolean) => {
+        if (!sessionId) return;
+        setError('');
+        try {
+            const response = await fetch(`${API_BASE}/api/attendance/sessions/${sessionId}/active`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? `Failed to ${active ? 'open' : 'close'} session.`);
+            }
+            await loadSessions();
+            await loadPresentCount(sessionId);
+            if (!active) {
+                setQrPayload('');
+                setQrExpiry('');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : `Failed to ${active ? 'open' : 'close'} session.`);
+        }
+    };
+
+    const selectedSession = sessions.find((s) => String(s.id) === sessionId);
+
+    const elapsedLabel = useMemo(() => {
+        if (!selectedSession?.startsAt || !selectedSession.active) return '00:00:00';
+        const start = new Date(selectedSession.startsAt).getTime();
+        const diff = Math.max(0, Math.floor((now.getTime() - start) / 1000));
+        const hh = String(Math.floor(diff / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+        const ss = String(diff % 60).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+    }, [selectedSession, now]);
+
+    const dateTimeLabel = useMemo(
+        () =>
+            now.toLocaleString([], {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            }),
+        [now]
+    );
+
     return (
-        <div className="dean-labour">
-            <header className="dean-header">
+        <div className="dean-attendance-simple">
+            <header className="dean-simple-head">
                 <h1>Attendance Review</h1>
-                <p>Verify attendance records and confirm Wi-Fi submissions.</p>
+                <p>Session control, live attendance count, and real-time timing.</p>
             </header>
 
-            {error && (
-                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                    {error}
-                </div>
-            )}
+            {error && <div className="dean-simple-error">{error}</div>}
 
-            <div className="dean-view-toggle" style={{ alignItems: 'center', gap: '1rem' }}>
-                <span className="toggle-link active">Attendance Records</span>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.75rem' }}>
-                    <select
-                        className="custom-select"
-                        value={sessionId}
-                        onChange={(e) => setSessionId(e.target.value)}
-                    >
-                        {sessions.map((session) => (
-                            <option key={session.id} value={session.id}>
-                                {session.title} ({session.campus})
+            <section className="dean-simple-controls">
+                <div className="control-group">
+                    <label>Session</label>
+                    <select value={sessionId} onChange={(e) => setSessionId(e.target.value)}>
+                        {sessions.map((s) => (
+                            <option key={s.id} value={s.id}>
+                                {s.title} ({s.campus}) {s.active ? '- Open' : '- Closed'}
                             </option>
                         ))}
                     </select>
-                    <select
-                        className="custom-select"
-                        value={verificationStatus}
-                        onChange={(e) => setVerificationStatus(e.target.value)}
-                    >
-                        <option value="PENDING">Pending</option>
-                        <option value="CONFIRMED">Confirmed</option>
-                        <option value="REJECTED">Rejected</option>
-                    </select>
                 </div>
-            </div>
 
-            <div className="view-content fade-in">
-                <div className="logs-container">
-                    <table className="log-table">
-                        <thead>
-                            <tr>
-                                <th>Student</th>
-                                <th>Session</th>
-                                <th>Check-in</th>
-                                <th>Method</th>
-                                <th>Wi-Fi</th>
-                                <th>Verification</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {records.map((record) => (
-                                <tr key={record.id}>
-                                    <td><strong>{record.studentName}</strong><br />{record.studentNumber}</td>
-                                    <td>{record.sessionTitle}<br />{record.campus}</td>
-                                    <td>{record.checkInAt}</td>
-                                    <td>{record.method}</td>
-                                    <td>{record.wifiSsid || '-'}</td>
-                                    <td>{record.verificationStatus}</td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                            <button className="view-btn" onClick={() => handleVerify(record.id, 'CONFIRMED')}>Confirm</button>
-                                            <button className="view-btn" onClick={() => handleVerify(record.id, 'REJECTED')}>Reject</button>
-                                        </div>
-                                        <textarea
-                                            className="log-textarea"
-                                            rows={2}
-                                            placeholder="Verification notes"
-                                            value={notes[record.id] ?? ''}
-                                            onChange={(e) => setNotes((prev) => ({ ...prev, [record.id]: e.target.value }))}
-                                        />
-                                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-                                            IP: {record.ipAddress || '-'} • Device: {record.deviceInfo ? record.deviceInfo.slice(0, 35) + '...' : '-'}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="control-buttons">
+                    {selectedSession?.active ? (
+                        <>
+                            <button className="btn-dark" onClick={handleGenerateQr}>
+                                <QrIcon size={16} /> Generate QR
+                            </button>
+                            <button className="btn-danger" onClick={() => handleToggleSession(false)}>
+                                Close Session
+                            </button>
+                        </>
+                    ) : (
+                        <button className="btn-success" onClick={() => handleToggleSession(true)}>
+                            Open Session (Auto-closes in 1h)
+                        </button>
+                    )}
                 </div>
-            </div>
+            </section>
+
+            <section className="simple-metrics-grid">
+                <article className="metric-card dark">
+                    <span className="kicker">Live Attendance</span>
+                    <strong><Users size={18} /> {presentCount}</strong>
+                    <p>Students marked present in this session</p>
+                </article>
+
+                <article className="metric-card green">
+                    <span className="kicker">Exact Date & Time</span>
+                    <strong><Clock3 size={18} /> {dateTimeLabel}</strong>
+                    <p>Live clock for attendance oversight</p>
+                </article>
+
+                <article className="metric-card">
+                    <span className="kicker">Session Running Time</span>
+                    <strong>{elapsedLabel}</strong>
+                    <p>Elapsed since session was opened</p>
+                </article>
+            </section>
+
+            {qrPayload && (
+                <section className="simple-qr-panel">
+                    <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=230x230&data=${encodeURIComponent(qrPayload)}`}
+                        alt="Attendance QR"
+                    />
+                    <div className="qr-meta">
+                        <h3>Current Session QR</h3>
+                        <p>Expires at: {qrExpiry || 'N/A'}</p>
+                        <button
+                            className="btn-dark"
+                            onClick={() => {
+                                const a = document.createElement('a');
+                                a.href = `https://api.qrserver.com/v1/create-qr-code/?size=900x900&data=${encodeURIComponent(qrPayload)}`;
+                                a.download = 'attendance-session-qr.png';
+                                a.click();
+                            }}
+                        >
+                            Download QR
+                        </button>
+                    </div>
+                </section>
+            )}
         </div>
     );
 };

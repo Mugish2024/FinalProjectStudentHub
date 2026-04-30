@@ -30,7 +30,8 @@ public class LabourApplicationController {
     @PostMapping("/submit")
     public ResponseEntity<?> submit(
             @RequestParam String studentNumber,
-            @RequestParam String department,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String roleTitle,
             @RequestParam(required = false) String coverLetterText,
             @RequestParam(required = false) MultipartFile coverLetterFile,
             @RequestParam(required = false) MultipartFile transcriptFile
@@ -39,6 +40,7 @@ public class LabourApplicationController {
             LabourApplicationResponse response = service.submitApplication(
                     studentNumber,
                     department,
+                    roleTitle,
                     coverLetterText,
                     coverLetterFile,
                     transcriptFile

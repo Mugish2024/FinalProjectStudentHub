@@ -1,159 +1,251 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Users } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BriefcaseBusiness, ClipboardCheck, Clock3, ShieldAlert, Users } from 'lucide-react';
 import './DeanDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
 
-type StudentSummary = {
-    studentId: number;
-    studentNumber: string;
-    fullName: string;
-    faculty: string;
-    department: string;
-    program: string;
-    credits: number;
+type LabourApplication = {
+    id: number;
+    status: string;
+};
+
+type LabourLog = {
+    id: number;
+    hoursWorked: string;
+    status: string;
+};
+
+type AttendanceAdminRecord = {
+    id: number;
+    studentName?: string;
+    studentNumber?: string;
+    status?: string;
+    verificationStatus?: string;
+};
+
+const safeList = async <T,>(url: string): Promise<T[]> => {
+    try {
+        const response = await fetch(url);
+        const data = await response.json().catch(() => []);
+        if (!response.ok) return [];
+        return Array.isArray(data) ? (data as T[]) : [];
+    } catch {
+        return [];
+    }
 };
 
 const DeanDashboard: React.FC = () => {
-    const [query, setQuery] = useState('');
-    const [students, setStudents] = useState<StudentSummary[]>([]);
-    const [searchResult, setSearchResult] = useState<StudentSummary | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
-
-    const fetchAllStudents = async () => {
-        setIsLoading(true);
-        setError('');
-        setSearchResult(null);
-        try {
-            const response = await fetch(`${API_BASE}/api/students/summary`);
-            const data = await response.json().catch(() => []);
-            if (!response.ok) {
-                throw new Error('Failed to load students.');
-            }
-            setStudents(Array.isArray(data) ? (data as StudentSummary[]) : []);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load students.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const trimmed = query.trim();
-        if (!trimmed) {
-            fetchAllStudents();
-            return;
-        }
-
-        setIsLoading(true);
-        setError('');
-        setSearchResult(null);
-        try {
-            const response = await fetch(`${API_BASE}/api/students/summary/search?studentNumber=${encodeURIComponent(trimmed)}`);
-            if (response.status === 404) {
-                setSearchResult(null);
-                setStudents([]);
-                setError('No student found with that ID.');
-                return;
-            }
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error('Search failed.');
-            }
-            setSearchResult(data as StudentSummary);
-            setStudents([]);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Search failed.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const [pendingApplications, setPendingApplications] = useState<LabourApplication[]>([]);
+    const [approvedApplications, setApprovedApplications] = useState<LabourApplication[]>([]);
+    const [rejectedApplications, setRejectedApplications] = useState<LabourApplication[]>([]);
+    const [pendingLogs, setPendingLogs] = useState<LabourLog[]>([]);
+    const [verifiedLogs, setVerifiedLogs] = useState<LabourLog[]>([]);
+    const [absentAttendanceRecords, setAbsentAttendanceRecords] = useState<AttendanceAdminRecord[]>([]);
+    const [pendingDisciplineReviews, setPendingDisciplineReviews] = useState<AttendanceAdminRecord[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetchAllStudents();
+        const loadData = async () => {
+            setIsLoading(true);
+            const [
+                pendingApps,
+                approvedApps,
+                rejectedApps,
+                logsPending,
+                logsVerified,
+                absentRecords,
+                pendingAbsenceReviews,
+            ] = await Promise.all([
+                safeList<LabourApplication>(`${API_BASE}/api/labour-applications?status=PENDING`),
+                safeList<LabourApplication>(`${API_BASE}/api/labour-applications?status=APPROVED`),
+                safeList<LabourApplication>(`${API_BASE}/api/labour-applications?status=REJECTED`),
+                safeList<LabourLog>(`${API_BASE}/api/labour-daily-logs?status=PENDING_REVIEW`),
+                safeList<LabourLog>(`${API_BASE}/api/labour-daily-logs?status=VERIFIED`),
+                safeList<AttendanceAdminRecord>(`${API_BASE}/api/attendance/admin/records?status=ABSENT`),
+                safeList<AttendanceAdminRecord>(`${API_BASE}/api/attendance/admin/records?status=ABSENT&verificationStatus=PENDING`),
+            ]);
+
+            setPendingApplications(pendingApps);
+            setApprovedApplications(approvedApps);
+            setRejectedApplications(rejectedApps);
+            setPendingLogs(logsPending);
+            setVerifiedLogs(logsVerified);
+            setAbsentAttendanceRecords(absentRecords);
+            setPendingDisciplineReviews(pendingAbsenceReviews);
+            setIsLoading(false);
+        };
+
+        void loadData();
     }, []);
 
-    const visibleStudents = searchResult ? [searchResult] : students;
+    const metrics = useMemo(() => {
+        const totalApplications =
+            pendingApplications.length + approvedApplications.length + rejectedApplications.length;
+        const approvalRate =
+            totalApplications === 0 ? 0 : Math.round((approvedApplications.length / totalApplications) * 100);
+        const rejectionRate =
+            totalApplications === 0 ? 0 : Math.round((rejectedApplications.length / totalApplications) * 100);
+
+        const totalVerifiedHours = verifiedLogs.reduce(
+            (sum, log) => sum + Number(log.hoursWorked || 0),
+            0
+        );
+        const totalLogs = pendingLogs.length + verifiedLogs.length;
+        const reviewCompletion =
+            totalLogs === 0 ? 0 : Math.round((verifiedLogs.length / totalLogs) * 100);
+
+        const labourHealthScore = Math.round(
+            Math.max(0, Math.min(100, approvalRate * 0.45 + reviewCompletion * 0.55 - rejectionRate * 0.2))
+        );
+
+        return {
+            totalApplications,
+            approvalRate,
+            rejectionRate,
+            totalVerifiedHours: totalVerifiedHours.toFixed(1),
+            totalLogs,
+            reviewCompletion,
+            labourHealthScore,
+        };
+    }, [pendingApplications, approvedApplications, rejectedApplications, pendingLogs, verifiedLogs]);
 
     return (
-        <div className="dean-dashboard">
-            <header className="dean-dashboard-header">
+        <div className="dean-labour-dashboard">
+            <section className="dean-labour-hero">
                 <div>
-                    <h1>Dean Dashboard</h1>
-                    <p>Search students by ID and review their academic profile.</p>
+                    <span className="hero-kicker">Dean Console</span>
+                    <h1>Student Labour Management Overview</h1>
+                    <p>
+                        A focused summary of labour operations: approvals, pending reviews, verified hours, and
+                        compliance health for quick executive action.
+                    </p>
                 </div>
-                <div className="dean-dashboard-metric">
-                    <Users size={20} />
-                    <span>{visibleStudents.length}</span>
-                    <small>Students</small>
+                <div className="hero-status-chip">
+                    <BriefcaseBusiness size={18} />
+                    <span>{isLoading ? 'Loading labour data...' : 'Live labour analytics'}</span>
                 </div>
-            </header>
+            </section>
 
-            <form className="dean-search" onSubmit={handleSearch}>
-                <div className="dean-search-input">
-                    <Search size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search by Student ID (e.g AUCA/UG/123/020)"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                    />
-                </div>
-                <button className="btn-dean-primary" type="submit" disabled={isLoading}>
-                    {isLoading ? 'Searching...' : 'Search'}
-                </button>
-                <button
-                    className="btn-dean-ghost"
-                    type="button"
-                    onClick={fetchAllStudents}
-                    disabled={isLoading}
-                >
-                    Fetch All
-                </button>
-            </form>
+            <section className="labour-kpi-grid">
+                <article className="labour-kpi">
+                    <div className="kpi-head">
+                        <Users size={18} />
+                        <span>Applications Pending</span>
+                    </div>
+                    <strong>{isLoading ? '...' : pendingApplications.length}</strong>
+                    <p>Waiting for dean action</p>
+                </article>
 
-            {error && (
-                <div className="dean-alert dean-alert-error">{error}</div>
-            )}
+                <article className="labour-kpi">
+                    <div className="kpi-head">
+                        <ClipboardCheck size={18} />
+                        <span>Approval Rate</span>
+                    </div>
+                    <strong>{isLoading ? '...' : `${metrics.approvalRate}%`}</strong>
+                    <p>Across reviewed applications</p>
+                </article>
 
-            <section className="dean-table-card">
-                <div className="dean-table-header">
-                    <h3>Student Records</h3>
-                    <span className="dean-table-subtitle">Updated on demand from the backend.</span>
-                </div>
+                <article className="labour-kpi">
+                    <div className="kpi-head">
+                        <Clock3 size={18} />
+                        <span>Verified Labour Hours</span>
+                    </div>
+                    <strong>{isLoading ? '...' : metrics.totalVerifiedHours}</strong>
+                    <p>Total verified work output</p>
+                </article>
 
-                {isLoading ? (
-                    <div className="dean-empty">Loading students...</div>
-                ) : visibleStudents.length === 0 ? (
-                    <div className="dean-empty">No students to display.</div>
-                ) : (
-                    <table className="dean-table">
-                        <thead>
-                            <tr>
-                                <th>Student ID</th>
-                                <th>Full Name</th>
-                                <th>Faculty</th>
-                                <th>Department</th>
-                                <th>Program</th>
-                                <th>Credits</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {visibleStudents.map((student) => (
-                                <tr key={student.studentId}>
-                                    <td>{student.studentNumber}</td>
-                                    <td>{student.fullName}</td>
-                                    <td>{student.faculty}</td>
-                                    <td>{student.department}</td>
-                                    <td>{student.program}</td>
-                                    <td>{student.credits}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                <article className="labour-kpi">
+                    <div className="kpi-head">
+                        <ShieldAlert size={18} />
+                        <span>Review Completion</span>
+                    </div>
+                    <strong>{isLoading ? '...' : `${metrics.reviewCompletion}%`}</strong>
+                    <p>Daily logs reviewed</p>
+                </article>
+            </section>
+
+            <section className="labour-summary-row">
+                <article className="summary-card">
+                    <h3>Labour Health Score</h3>
+                    <div className="score-row">
+                        <strong>{isLoading ? '...' : `${metrics.labourHealthScore}/100`}</strong>
+                        <span>Overall programme stability</span>
+                    </div>
+                    <div className="score-bar">
+                        <div style={{ width: `${isLoading ? 0 : metrics.labourHealthScore}%` }} />
+                    </div>
+                </article>
+
+                <article className="summary-card">
+                    <h3>Operational Snapshot</h3>
+                    <div className="snap-grid">
+                        <div>
+                            <span>Total Applications</span>
+                            <strong>{isLoading ? '...' : metrics.totalApplications}</strong>
+                        </div>
+                        <div>
+                            <span>Rejected</span>
+                            <strong>{isLoading ? '...' : `${metrics.rejectionRate}%`}</strong>
+                        </div>
+                        <div>
+                            <span>Pending Logs</span>
+                            <strong>{isLoading ? '...' : pendingLogs.length}</strong>
+                        </div>
+                        <div>
+                            <span>Total Logs</span>
+                            <strong>{isLoading ? '...' : metrics.totalLogs}</strong>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <section className="discipline-review-row">
+                <article className="summary-card attention-card">
+                    <h3><AlertTriangle size={16} /> Discipline Review Queue</h3>
+                    <div className="score-row">
+                        <strong>{isLoading ? '...' : pendingDisciplineReviews.length}</strong>
+                        <span>Cases waiting dean verification</span>
+                    </div>
+                    <p className="discipline-note">
+                        Review and validate high-priority discipline cases before final status updates are applied.
+                    </p>
+                    <div className="quick-cases">
+                        {(isLoading ? [] : pendingDisciplineReviews.slice(0, 3)).map((item) => (
+                            <span key={item.id}>
+                                {item.studentNumber || item.studentName || `Record #${item.id}`}
+                            </span>
+                        ))}
+                        {!isLoading && pendingDisciplineReviews.length === 0 && (
+                            <span>No pending discipline attendance cases.</span>
+                        )}
+                    </div>
+                </article>
+
+                <article className="summary-card">
+                    <h3>Discipline Oversight Snapshot</h3>
+                    <div className="snap-grid">
+                        <div>
+                            <span>Total Discipline Inputs</span>
+                            <strong>{isLoading ? '...' : absentAttendanceRecords.length}</strong>
+                        </div>
+                        <div>
+                            <span>Pending Review</span>
+                            <strong>{isLoading ? '...' : pendingDisciplineReviews.length}</strong>
+                        </div>
+                        <div>
+                            <span>Reviewed Cases</span>
+                            <strong>
+                                {isLoading
+                                    ? '...'
+                                    : Math.max(0, absentAttendanceRecords.length - pendingDisciplineReviews.length)}
+                            </strong>
+                        </div>
+                        <div>
+                            <span>Dean Action Needed</span>
+                            <strong>{isLoading ? '...' : pendingDisciplineReviews.length > 0 ? 'YES' : 'NO'}</strong>
+                        </div>
+                    </div>
+                </article>
             </section>
         </div>
     );
