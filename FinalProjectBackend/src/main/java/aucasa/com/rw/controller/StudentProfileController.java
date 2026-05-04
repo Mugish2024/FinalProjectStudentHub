@@ -60,6 +60,26 @@ public class StudentProfileController {
     }
 
     @PostMapping("/register/demo")
+    public ResponseEntity<?> registerDemoStudents() {
+        try {
+            return ResponseEntity.ok(service.createDemoStudents());
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody StudentRegistrationRequest request) {
+        try {
+            StudentRegistrationResponse response = service.updateStudent(id, request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);

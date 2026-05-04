@@ -12,6 +12,8 @@ interface RegistrationResult {
     department: string;
     program: string;
     credits: number;
+    semester: number;
+    gpa: number;
 }
 
 const RegistrationVerification: React.FC = () => {
@@ -22,6 +24,10 @@ const RegistrationVerification: React.FC = () => {
     const [department, setDepartment] = useState('');
     const [program, setProgram] = useState('');
     const [credits, setCredits] = useState('');
+    const [semester, setSemester] = useState('1');
+    const [gpa, setGpa] = useState('0');
+    const [students, setStudents] = useState<RegistrationResult[]>([]);
+    const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCreatingDemo, setIsCreatingDemo] = useState(false);
     const [error, setError] = useState('');
@@ -31,6 +37,15 @@ const RegistrationVerification: React.FC = () => {
     const [accountPassword, setAccountPassword] = useState('');
     const [accountStatus, setAccountStatus] = useState('');
     const [isSettingUpAccount, setIsSettingUpAccount] = useState(false);
+
+    const loadStudents = async () => {
+        const response = await fetch(`${API_BASE}/api/students/summary`);
+        if (!response.ok) {
+            throw new Error('Failed to load students.');
+        }
+        const data = await response.json().catch(() => []);
+        setStudents(Array.isArray(data) ? data : []);
+    };
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,6 +66,8 @@ const RegistrationVerification: React.FC = () => {
                     department,
                     program,
                     credits: credits ? Number(credits) : 0,
+                    semester: semester ? Number(semester) : 1,
+                    gpa: gpa ? Number(gpa) : 0,
                 }),
             });
 
@@ -68,6 +85,9 @@ const RegistrationVerification: React.FC = () => {
             setDepartment('');
             setProgram('');
             setCredits('');
+            setSemester('1');
+            setGpa('0');
+            await loadStudents();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registration failed.');
         } finally {
@@ -122,12 +142,94 @@ const RegistrationVerification: React.FC = () => {
             }
 
             setDemoResults(Array.isArray(data) ? (data as RegistrationResult[]) : []);
+            await loadStudents();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create demo students.');
         } finally {
             setIsCreatingDemo(false);
         }
     };
+
+    const resetForm = () => {
+        setStudentNumber('');
+        setFirstName('');
+        setLastName('');
+        setFaculty('');
+        setDepartment('');
+        setProgram('');
+        setCredits('');
+        setSemester('1');
+        setGpa('0');
+        setEditingStudentId(null);
+    };
+
+    const handleEditStudent = (item: RegistrationResult) => {
+        setEditingStudentId(item.studentId);
+        setStudentNumber(item.studentNumber ?? '');
+        const nameParts = (item.fullName ?? '').trim().split(' ');
+        setFirstName(nameParts[0] ?? '');
+        setLastName(nameParts.slice(1).join(' ') ?? '');
+        setFaculty(item.faculty ?? '');
+        setDepartment(item.department ?? '');
+        setProgram(item.program ?? '');
+        setCredits(String(item.credits ?? 0));
+        setSemester(String(item.semester ?? 1));
+        setGpa(String(item.gpa ?? 0));
+    };
+
+    const handleUpdateStudent = async () => {
+        if (!editingStudentId) return;
+        setError('');
+        setIsSubmitting(true);
+        try {
+            const response = await fetch(`${API_BASE}/api/students/${editingStudentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentNumber,
+                    firstName,
+                    lastName,
+                    faculty,
+                    department,
+                    program,
+                    credits: credits ? Number(credits) : 0,
+                    semester: semester ? Number(semester) : 1,
+                    gpa: gpa ? Number(gpa) : 0,
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Update failed.');
+            }
+            setResult(data as RegistrationResult);
+            resetForm();
+            await loadStudents();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Update failed.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteStudent = async (id: number) => {
+        setError('');
+        try {
+            const response = await fetch(`${API_BASE}/api/students/${id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                throw new Error('Delete failed.');
+            }
+            if (editingStudentId === id) {
+                resetForm();
+            }
+            await loadStudents();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Delete failed.');
+        }
+    };
+
+    React.useEffect(() => {
+        loadStudents().catch(() => undefined);
+    }, []);
 
     const handleAccountSetup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -273,9 +375,56 @@ const RegistrationVerification: React.FC = () => {
                         </div>
                     </div>
 
+                    <div className="search-row" style={{ marginBottom: '1rem', gap: '1rem' }}>
+                        <div className="search-input-wrapper" style={{ flex: 1 }}>
+                            <input
+                                type="number"
+                                placeholder="Semester (e.g. 1)"
+                                className="search-input"
+                                value={semester}
+                                onChange={(e) => setSemester(e.target.value)}
+                                min={1}
+                            />
+                        </div>
+                        <div className="search-input-wrapper" style={{ flex: 1 }}>
+                            <input
+                                type="number"
+                                placeholder="GPA (0.00 - 5.00)"
+                                className="search-input"
+                                value={gpa}
+                                onChange={(e) => setGpa(e.target.value)}
+                                min={0}
+                                max={5}
+                                step="0.01"
+                            />
+                        </div>
+                    </div>
+
                     <button className="btn-gold" type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Registering...' : 'Register Student'}
+                        {isSubmitting ? 'Saving...' : 'Register Student'}
                     </button>
+                    {editingStudentId && (
+                        <>
+                            <button
+                                className="btn-gold"
+                                type="button"
+                                onClick={handleUpdateStudent}
+                                disabled={isSubmitting}
+                                style={{ marginLeft: '0.75rem' }}
+                            >
+                                {isSubmitting ? 'Updating...' : 'Update Student'}
+                            </button>
+                            <button
+                                className="btn-gold"
+                                type="button"
+                                onClick={resetForm}
+                                disabled={isSubmitting}
+                                style={{ marginLeft: '0.75rem', background: '#64748b' }}
+                            >
+                                Cancel Edit
+                            </button>
+                        </>
+                    )}
                     <button
                         className="btn-gold"
                         type="button"
@@ -297,6 +446,46 @@ const RegistrationVerification: React.FC = () => {
                         ))}
                     </div>
                 )}
+
+                <div style={{ marginTop: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ background: '#f8fafc' }}>
+                            <tr>
+                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Student ID</th>
+                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Name</th>
+                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Semester</th>
+                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>GPA</th>
+                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {students.map((item) => (
+                                <tr key={item.studentId} style={{ borderTop: '1px solid #e2e8f0' }}>
+                                    <td style={{ padding: '0.6rem' }}>{item.studentNumber}</td>
+                                    <td style={{ padding: '0.6rem' }}>{item.fullName}</td>
+                                    <td style={{ padding: '0.6rem' }}>{item.semester ?? 1}</td>
+                                    <td style={{ padding: '0.6rem' }}>{(item.gpa ?? 0).toFixed(2)}</td>
+                                    <td style={{ padding: '0.6rem', display: 'flex', gap: '0.5rem' }}>
+                                        <button className="btn-gold" type="button" onClick={() => handleEditStudent(item)}>Edit</button>
+                                        <button
+                                            className="btn-gold"
+                                            type="button"
+                                            onClick={() => handleDeleteStudent(item.studentId)}
+                                            style={{ background: '#b91c1c' }}
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {students.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} style={{ padding: '0.8rem', color: '#64748b' }}>No students found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section className="section-block" style={{ maxWidth: '900px', margin: '1rem auto 0' }}>

@@ -260,10 +260,10 @@
 }
 
 .network-visual {
-    height: 520px;
+    height: min(900px, 90vw);
     position: relative;
-    width: 520px;
-    max-width: 520px;
+    width: min(900px, 90vw);
+    max-width: 900px;
     filter: drop-shadow(0 8px 32px rgba(37, 99, 235, 0.08));
 }
 
@@ -278,7 +278,7 @@
 .net-signals {
     transform-box: fill-box;
     transform-origin: center;
-    transform: scale(1.14);
+    transform: scale(1.28);
 }
 
 .network-visual::before {

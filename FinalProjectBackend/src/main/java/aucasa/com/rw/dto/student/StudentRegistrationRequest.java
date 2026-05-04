@@ -8,6 +8,8 @@ public class StudentRegistrationRequest {
     private String department;
     private String program;
     private Integer credits;
+    private Integer semester;
+    private Double gpa;
 
     public String getStudentNumber() {
         return studentNumber;
@@ -63,5 +65,21 @@ public class StudentRegistrationRequest {
 
     public void setCredits(Integer credits) {
         this.credits = credits;
+    }
+
+    public Integer getSemester() {
+        return semester;
+    }
+
+    public void setSemester(Integer semester) {
+        this.semester = semester;
+    }
+
+    public Double getGpa() {
+        return gpa;
+    }
+
+    public void setGpa(Double gpa) {
+        this.gpa = gpa;
     }
 }

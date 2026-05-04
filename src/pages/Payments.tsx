@@ -37,11 +37,10 @@ interface PaymentsProps {
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
-const URUBUTO_PAY_URL = 'https://urubutopay.rw/pay-now/initiate?origin=internal';
+const URUBUTO_PAY_URL = 'https://urubutopay.rw/pay-now/initiate';
 const URUBUTO_MERCHANT_CODE = 'TH61132546';
 const BK_ACCOUNT_CODE = '00040 - 00280275 - 75';
 const formatRwf = (value?: number) => new Intl.NumberFormat('en-RW').format(Number(value ?? 0));
-const STUDENT_ASSOCIATION_FEE_LABEL = 'Student Association fee';
 
 const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     const resolvedStudentId = studentId ?? 0;
@@ -53,32 +52,24 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     const [info, setInfo] = useState('');
     const [transparency, setTransparency] = useState<TransparencySummary | null>(null);
 
-    const resolvedPayerCode = (studentNumber ?? '').trim()
-        || (payment?.studentNumber ?? '').trim()
-        || String(resolvedStudentId || '');
-
-    const defaultAmount = useMemo(() => {
-        if (payment?.amount) return String(payment.amount);
-        return '3000';
-    }, [payment?.amount]);
+    const resolvedPayerCode = String(resolvedStudentId || '').trim()
+        || (studentNumber ?? '').trim()
+        || (payment?.studentNumber ?? '').trim();
 
     const urubutoInitiateUrl = useMemo(() => {
-        const amount = Number(defaultAmount || 3000);
         const externalReference = `AUCASA-${resolvedPayerCode}-${Date.now()}`;
         const params = new URLSearchParams({
             origin: 'internal',
             merchantCode: URUBUTO_MERCHANT_CODE,
+            merchant_code: URUBUTO_MERCHANT_CODE,
             payerCode: resolvedPayerCode,
-            amount: String(Number.isFinite(amount) ? amount : 3000),
-            feeName: STUDENT_ASSOCIATION_FEE_LABEL,
-            purpose: STUDENT_ASSOCIATION_FEE_LABEL,
-            description: STUDENT_ASSOCIATION_FEE_LABEL,
-            narration: STUDENT_ASSOCIATION_FEE_LABEL,
+            payer_code: resolvedPayerCode,
             externalReference,
+            external_reference: externalReference,
             reference: externalReference,
         });
-        return `https://urubutopay.rw/pay-now/initiate?${params.toString()}`;
-    }, [defaultAmount, resolvedPayerCode]);
+        return `${URUBUTO_PAY_URL}?${params.toString()}`;
+    }, [resolvedPayerCode]);
 
     const ensureObligation = async (): Promise<PaymentRecord> => {
         const response = await fetch(`${API_BASE}/api/payments/obligations/student`, {
@@ -206,7 +197,7 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                                 Continue with Urubuto <ArrowUpRight size={16} />
                             </button>
                             <p style={{ marginTop: '0.45rem', color: '#55657f', fontSize: '0.82rem' }}>
-                                Merchant code, payer code (your student number), amount, and fee purpose are auto-filled.
+                                Merchant code, payer code (your student ID), amount, and fee purpose are auto-filled.
                             </p>
                         </div>
                     </article>
@@ -215,7 +206,7 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                         <h2>Payment Information</h2>
                         <div className="info-grid">
                             <div>
-                                <span>Payer Code (Student Number)</span>
+                                <span>Payer Code (Student ID)</span>
                                 <strong>{resolvedPayerCode || '-'}</strong>
                             </div>
                             <div>

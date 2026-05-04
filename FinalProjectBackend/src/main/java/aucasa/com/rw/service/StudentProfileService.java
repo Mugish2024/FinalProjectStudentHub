@@ -18,6 +18,7 @@ import aucasa.com.rw.repository.RoleRepository;
 import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -74,6 +75,25 @@ public class StudentProfileService {
     }
 
     @Transactional
+    public List<StudentRegistrationResponse> createDemoStudents() {
+        List<StudentRegistrationResponse> created = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            StudentRegistrationRequest request = new StudentRegistrationRequest();
+            request.setStudentNumber("DEMO/UG/2026/0" + i);
+            request.setFirstName("Demo" + i);
+            request.setLastName("Student");
+            request.setFaculty("Information Technology");
+            request.setDepartment("Software Engineering");
+            request.setProgram("Day");
+            request.setCredits(12);
+            request.setSemester(1);
+            request.setGpa(0.0);
+            created.add(registerStudent(request));
+        }
+        return created;
+    }
+
+    @Transactional
     public StudentRegistrationResponse registerStudent(StudentRegistrationRequest request) {
         validateRequest(request);
 
@@ -87,7 +107,9 @@ public class StudentProfileService {
                     student.getFaculty().getName(),
                     student.getDepartment() != null ? student.getDepartment().getName() : "",
                     normalizeProgram(student.getProgram()),
-                    normalizeCredits(student.getCredits())
+                    normalizeCredits(student.getCredits()),
+                    normalizeSemester(student.getSemester()),
+                    normalizeGpa(student.getGpa()).doubleValue()
             );
         }
 
@@ -123,8 +145,8 @@ public class StudentProfileService {
         student.setFaculty(faculty);
         student.setDepartment(department);
         student.setCampus(campus);
-        student.setGpa(new BigDecimal("0.00"));
-        student.setSemester(1);
+        student.setGpa(normalizeGpa(request.getGpa() != null ? BigDecimal.valueOf(request.getGpa()) : null));
+        student.setSemester(normalizeSemester(request.getSemester()));
         student.setDisciplineScore(0);
         student.setDisciplineStatus(DisciplineStatus.SATISFACTORY);
         student.setProgram(normalizeProgram(request.getProgram()));
@@ -138,8 +160,38 @@ public class StudentProfileService {
                 faculty.getName(),
                 department.getName(),
                 normalizeProgram(student.getProgram()),
-                normalizeCredits(student.getCredits())
+                normalizeCredits(student.getCredits()),
+                normalizeSemester(student.getSemester()),
+                normalizeGpa(student.getGpa()).doubleValue()
         );
+    }
+
+    @Transactional
+    public StudentRegistrationResponse updateStudent(Long id, StudentRegistrationRequest request) {
+        validateRequest(request);
+        StudentProfile student = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found."));
+
+        Faculty faculty = facultyRepository.findByNameIgnoreCase(request.getFaculty().trim())
+                .orElseGet(() -> createFaculty(request.getFaculty().trim()));
+        Department department = departmentRepository.findByFacultyIdAndNameIgnoreCase(faculty.getId(), request.getDepartment().trim())
+                .orElseGet(() -> createDepartment(faculty, request.getDepartment().trim()));
+
+        UserAccount user = student.getUserAccount();
+        user.setFirstName(request.getFirstName().trim());
+        user.setLastName(request.getLastName().trim());
+        userAccountRepository.save(user);
+
+        student.setStudentNumber(request.getStudentNumber().trim());
+        student.setFaculty(faculty);
+        student.setDepartment(department);
+        student.setProgram(normalizeProgram(request.getProgram()));
+        student.setCredits(normalizeCredits(request.getCredits()));
+        student.setSemester(normalizeSemester(request.getSemester()));
+        student.setGpa(normalizeGpa(request.getGpa() != null ? BigDecimal.valueOf(request.getGpa()) : null));
+        student = repository.save(student);
+
+        return toRegistrationResponse(student);
     }
 
     @Transactional
@@ -206,6 +258,21 @@ public class StudentProfileService {
         return credits;
     }
 
+    private Integer normalizeSemester(Integer semester) {
+        if (semester == null || semester < 1) {
+            return 1;
+        }
+        return semester;
+    }
+
+    private BigDecimal normalizeGpa(BigDecimal gpa) {
+        if (gpa == null) {
+            return new BigDecimal("0.00");
+        }
+        BigDecimal normalized = gpa.max(BigDecimal.ZERO).min(new BigDecimal("5.00"));
+        return normalized.setScale(2, RoundingMode.HALF_UP);
+    }
+
     private StudentRegistrationResponse toRegistrationResponse(StudentProfile student) {
         String faculty = student.getFaculty() != null ? student.getFaculty().getName() : "";
         String department = student.getDepartment() != null ? student.getDepartment().getName() : "";
@@ -220,7 +287,9 @@ public class StudentProfileService {
                 faculty,
                 department,
                 program,
-                credits
+                credits,
+                normalizeSemester(student.getSemester()),
+                normalizeGpa(student.getGpa()).doubleValue()
         );
     }
 }
