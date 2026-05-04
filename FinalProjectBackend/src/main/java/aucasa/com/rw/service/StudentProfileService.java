@@ -269,7 +269,7 @@ public class StudentProfileService {
         if (gpa == null) {
             return new BigDecimal("0.00");
         }
-        BigDecimal normalized = gpa.max(BigDecimal.ZERO).min(new BigDecimal("5.00"));
+        BigDecimal normalized = gpa.max(BigDecimal.ZERO).min(new BigDecimal("20.00"));
         return normalized.setScale(2, RoundingMode.HALF_UP);
     }
 

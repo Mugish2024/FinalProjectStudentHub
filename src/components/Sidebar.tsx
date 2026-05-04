@@ -47,7 +47,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const adminTools = [
-    { id: 'admin-dashboard', label: 'Admin Dashboard', icon: LayoutDashboard },
+    { id: 'admin-dashboard', label: 'System Overview', icon: LayoutDashboard },
+    { id: 'user-management', label: 'User Management', icon: Users },
     { id: 'registration', label: 'Registration Verify', icon: FileText },
     { id: 'finance-budgets', label: 'Budget Approvals', icon: WalletCards },
   ];

@@ -47,7 +47,7 @@ type AuthProfile = {
 type UserRole = 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president' | null;
 
 const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam', 'attendance-review', 'students', 'candidate-review']);
-const ADMIN_PAGES = new Set(['admin-dashboard']);
+const ADMIN_PAGES = new Set(['admin-dashboard', 'user-management']);
 const FINANCE_PAGES = new Set(['finance-review', 'finance-budgets', 'finance-expenses', 'finance-receipts', 'finance-reports']);
 const GUILD_PAGES = new Set(['guild-dashboard', 'guild-inbox']);
 const GUILD_EXTRA_ALLOWED_PAGES = new Set(['attendance-review']);
@@ -175,7 +175,9 @@ function App() {
       case 'guild-dashboard':
         return <GuildDashboard userId={profile?.userId ?? 0} onNavigate={navigateWithAuth} />;
       case 'admin-dashboard':
-        return <AdminDashboard fullName={profile?.fullName ?? 'System Admin'} />;
+        return <AdminDashboard fullName={profile?.fullName ?? 'System Admin'} mode="overview" />;
+      case 'user-management':
+        return <AdminDashboard fullName={profile?.fullName ?? 'System Admin'} mode="management" />;
       case 'student-issues':
         return <StudentIssues studentNumber={profile?.studentNumber ?? ''} />;
       case 'exam':
@@ -274,7 +276,7 @@ function App() {
   const isFinance = isFinanceRole(userRole);
   const isGuild = isGuildRole(userRole);
   const headerTitle = isAdmin
-    ? 'Admin Portal'
+    ? (activePage === 'user-management' ? 'User Management' : 'System Overview')
     : isFinance
     ? 'Finance Portal'
     : (isGuild ? 'Guild President Portal' : (isStaff ? 'Dean Portal' : 'Student Portal'));

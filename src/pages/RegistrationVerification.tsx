@@ -29,10 +29,8 @@ const RegistrationVerification: React.FC = () => {
     const [students, setStudents] = useState<RegistrationResult[]>([]);
     const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isCreatingDemo, setIsCreatingDemo] = useState(false);
     const [error, setError] = useState('');
     const [result, setResult] = useState<RegistrationResult | null>(null);
-    const [demoResults, setDemoResults] = useState<RegistrationResult[]>([]);
     const [accountStudentNumber, setAccountStudentNumber] = useState('');
     const [accountPassword, setAccountPassword] = useState('');
     const [accountStatus, setAccountStatus] = useState('');
@@ -51,7 +49,6 @@ const RegistrationVerification: React.FC = () => {
         e.preventDefault();
         setError('');
         setResult(null);
-        setDemoResults([]);
         setIsSubmitting(true);
 
         try {
@@ -123,32 +120,6 @@ const RegistrationVerification: React.FC = () => {
     };
 
     const departments = faculty ? (facultyDepartments[faculty] ?? []) : [];
-
-    const handleCreateDemoStudents = async () => {
-        setError('');
-        setResult(null);
-        setDemoResults([]);
-        setIsCreatingDemo(true);
-
-        try {
-            const response = await fetch(`${API_BASE}/api/students/register/demo`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-
-            const data = await response.json().catch(() => []);
-            if (!response.ok) {
-                throw new Error('Failed to create demo students.');
-            }
-
-            setDemoResults(Array.isArray(data) ? (data as RegistrationResult[]) : []);
-            await loadStudents();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to create demo students.');
-        } finally {
-            setIsCreatingDemo(false);
-        }
-    };
 
     const resetForm = () => {
         setStudentNumber('');
@@ -389,12 +360,12 @@ const RegistrationVerification: React.FC = () => {
                         <div className="search-input-wrapper" style={{ flex: 1 }}>
                             <input
                                 type="number"
-                                placeholder="GPA (0.00 - 5.00)"
+                                placeholder="GPA (0.00 - 20.00)"
                                 className="search-input"
                                 value={gpa}
                                 onChange={(e) => setGpa(e.target.value)}
                                 min={0}
-                                max={5}
+                                max={20}
                                 step="0.01"
                             />
                         </div>
@@ -425,27 +396,7 @@ const RegistrationVerification: React.FC = () => {
                             </button>
                         </>
                     )}
-                    <button
-                        className="btn-gold"
-                        type="button"
-                        onClick={handleCreateDemoStudents}
-                        disabled={isCreatingDemo}
-                        style={{ marginLeft: '0.75rem' }}
-                    >
-                        {isCreatingDemo ? 'Creating...' : 'Create 3 Demo Students'}
-                    </button>
                 </form>
-
-                {demoResults.length > 0 && (
-                    <div style={{ marginTop: '1rem', background: '#eff6ff', color: '#1e3a8a', padding: '0.75rem 1rem', borderRadius: '8px' }}>
-                        <strong>Demo students ready:</strong>
-                        {demoResults.map((item) => (
-                            <div key={item.studentId}>
-                                Student ID: {item.studentNumber} | Name: {item.fullName}
-                            </div>
-                        ))}
-                    </div>
-                )}
 
                 <div style={{ marginTop: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
