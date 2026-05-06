@@ -10,6 +10,9 @@
     top: 0;
     z-index: 90;
     border-bottom: 1px solid #e2e8f0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .header-left-section {
@@ -17,6 +20,7 @@
     align-items: center;
     gap: 0.6rem;
     min-width: 170px;
+    min-height: 0;
 }
 
 .header-menu-btn {
@@ -30,6 +34,9 @@
     text-transform: uppercase;
     letter-spacing: 0.2px;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .header-center {
@@ -38,6 +45,7 @@
     justify-content: center;
     gap: 1.5rem;
     flex: 1;
+    min-width: 0;
 }
 
 .top-nav-tabs {
@@ -96,6 +104,7 @@
     display: flex;
     align-items: center;
     gap: 0.8rem;
+    min-width: 0;
 }
 
 .top-icon-btn {
@@ -239,6 +248,31 @@
 }
 
 @media (max-width: 768px) {
+    .header {
+        padding: 0 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .header-left-section {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .header-title {
+        font-size: 0.95rem;
+    }
+
+    .header-actions {
+        gap: 0.4rem;
+        flex-shrink: 0;
+    }
+
+    .icon-btn,
+    .top-icon-btn {
+        width: 32px;
+        height: 32px;
+    }
+
     .user-pill {
         display: none;
     }

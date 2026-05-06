@@ -105,10 +105,14 @@ public class StudentProfileService {
     @Transactional
     public StudentRegistrationResponse registerStudent(StudentRegistrationRequest request) {
         validateRequest(request);
+        String normalizedStudentNumber = request.getStudentNumber().trim();
+        String usernameFromStudentId = normalizeUsernameFromStudentNumber(normalizedStudentNumber);
+        String emailFromStudentId = usernameFromStudentId + "@auca.ac.rw";
 
-        Optional<StudentProfile> existing = repository.findByStudentNumber(request.getStudentNumber().trim());
+        Optional<StudentProfile> existing = repository.findByStudentNumber(normalizedStudentNumber);
         if (existing.isPresent()) {
             StudentProfile student = existing.get();
+            syncStudentAccountCredentials(student, usernameFromStudentId, emailFromStudentId, student.getId());
             return new StudentRegistrationResponse(
                     student.getId(),
                     student.getStudentNumber(),
@@ -134,14 +138,11 @@ public class StudentProfileService {
         Role studentRole = roleRepository.findByName(RoleType.STUDENT)
                 .orElseGet(this::createStudentRole);
 
-        String normalizedStudentNumber = request.getStudentNumber().trim();
-        String baseUsername = normalizedStudentNumber.toLowerCase().replaceAll("[^a-z0-9]", "");
-        String username = ensureUniqueUsername(baseUsername);
-        String email = ensureUniqueEmail(username + "@auca.ac.rw");
+        assertNoCredentialConflict(usernameFromStudentId, emailFromStudentId, null);
 
         UserAccount user = new UserAccount();
-        user.setUsername(username);
-        user.setEmail(email);
+        user.setUsername(usernameFromStudentId);
+        user.setEmail(emailFromStudentId);
         user.setPasswordHash(passwordEncoder.encode("set-password-later"));
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
@@ -182,6 +183,8 @@ public class StudentProfileService {
         StudentProfile student = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found."));
         String normalizedStudentNumber = request.getStudentNumber().trim();
+        String usernameFromStudentId = normalizeUsernameFromStudentNumber(normalizedStudentNumber);
+        String emailFromStudentId = usernameFromStudentId + "@auca.ac.rw";
         repository.findByStudentNumber(normalizedStudentNumber).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new IllegalArgumentException("Student ID is already used by another student.");
@@ -194,6 +197,9 @@ public class StudentProfileService {
                 .orElseGet(() -> createDepartment(faculty, request.getDepartment().trim()));
 
         UserAccount user = student.getUserAccount();
+        assertNoCredentialConflict(usernameFromStudentId, emailFromStudentId, user.getId());
+        user.setUsername(usernameFromStudentId);
+        user.setEmail(emailFromStudentId);
         user.setFirstName(request.getFirstName().trim());
         user.setLastName(request.getLastName().trim());
         userAccountRepository.save(user);
@@ -260,31 +266,40 @@ public class StudentProfileService {
         return value == null || value.trim().isEmpty();
     }
 
-    private String ensureUniqueUsername(String baseUsername) {
-        String seed = isBlank(baseUsername) ? "student" : baseUsername;
-        String candidate = seed;
-        int suffix = 1;
-        while (userAccountRepository.findByUsername(candidate).isPresent()) {
-            candidate = seed + suffix;
-            suffix++;
+    private String normalizeUsernameFromStudentNumber(String studentNumber) {
+        String normalized = studentNumber.toLowerCase().replaceAll("[^a-z0-9]", "");
+        if (isBlank(normalized)) {
+            throw new IllegalArgumentException("Invalid student ID for username mapping.");
         }
-        return candidate;
+        return normalized;
     }
 
-    private String ensureUniqueEmail(String baseEmail) {
-        if (isBlank(baseEmail)) {
-            return "student@auca.ac.rw";
+    private void assertNoCredentialConflict(String username, String email, Long allowedUserId) {
+        userAccountRepository.findByUsername(username).ifPresent(user -> {
+            if (allowedUserId == null || !user.getId().equals(allowedUserId)) {
+                throw new IllegalArgumentException("Student ID is already used as username by another account.");
+            }
+        });
+        userAccountRepository.findByEmail(email).ifPresent(user -> {
+            if (allowedUserId == null || !user.getId().equals(allowedUserId)) {
+                throw new IllegalArgumentException("Student ID email is already used by another account.");
+            }
+        });
+    }
+
+    private void syncStudentAccountCredentials(StudentProfile student, String expectedUsername, String expectedEmail, Long allowedUserId) {
+        UserAccount user = student.getUserAccount();
+        if (user == null) {
+            throw new IllegalArgumentException("Student account is missing.");
         }
-        String[] parts = baseEmail.split("@", 2);
-        String local = parts[0];
-        String domain = parts.length > 1 ? parts[1] : "auca.ac.rw";
-        String candidate = local + "@" + domain;
-        int suffix = 1;
-        while (userAccountRepository.findByEmail(candidate).isPresent()) {
-            candidate = local + suffix + "@" + domain;
-            suffix++;
+        boolean needsUpdate = !expectedUsername.equals(user.getUsername()) || !expectedEmail.equalsIgnoreCase(user.getEmail());
+        if (!needsUpdate) {
+            return;
         }
-        return candidate;
+        assertNoCredentialConflict(expectedUsername, expectedEmail, user.getId());
+        user.setUsername(expectedUsername);
+        user.setEmail(expectedEmail);
+        userAccountRepository.save(user);
     }
 
     private String normalizeProgram(String program) {

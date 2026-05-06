@@ -2,6 +2,9 @@
     display: flex;
     min-height: 100vh;
     background-color: transparent;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: clip;
 }
 
 .main-content {
@@ -10,6 +13,8 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
     background:
         radial-gradient(circle at top right, rgba(1, 68, 123, 0.08), transparent 45%),
         radial-gradient(circle at bottom left, rgba(207, 98, 24, 0.08), transparent 35%);
@@ -18,7 +23,13 @@
 .content-wrapper {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1rem 1.25rem 1.5rem;
+}
+
+.content-wrapper>* {
+    min-width: 0;
+    max-width: 100%;
 }
 
 .content-wrapper>* {
