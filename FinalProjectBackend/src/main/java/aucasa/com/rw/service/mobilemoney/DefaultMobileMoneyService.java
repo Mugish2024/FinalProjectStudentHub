@@ -1,8 +1,9 @@
 package aucasa.com.rw.service.mobilemoney;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,9 @@ public class DefaultMobileMoneyService implements MobileMoneyService {
 
     @Value("${app.payment.mobile-money.callback-url:}")
     private String callbackUrl;
+
+    @Value("${app.payment.mobile-money.provider:MTN_MOMO_RWA}")
+    private String provider;
 
     public DefaultMobileMoneyService(RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder.build();
@@ -63,11 +67,25 @@ public class DefaultMobileMoneyService implements MobileMoneyService {
         headers.set("Authorization", "Bearer " + apiKey);
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("phoneNumber", normalizedPhone);
-        payload.put("amount", amount);
+        String depositId = UUID.randomUUID().toString();
+        payload.put("depositId", depositId);
+        payload.put("amount", amount.toPlainString());
         payload.put("currency", "RWF");
-        payload.put("reference", receiptNumber);
-        payload.put("callbackUrl", callbackUrl);
+        payload.put("clientReferenceId", receiptNumber);
+
+        Map<String, Object> payer = new HashMap<>();
+        payer.put("type", "MMO");
+        Map<String, Object> accountDetails = new HashMap<>();
+        accountDetails.put("phoneNumber", normalizedPhone);
+        accountDetails.put("provider", provider);
+        payer.put("accountDetails", accountDetails);
+        payload.put("payer", payer);
+
+        List<Map<String, Object>> metadata = new ArrayList<>();
+        Map<String, Object> metaReceipt = new HashMap<>();
+        metaReceipt.put("receiptNumber", receiptNumber);
+        metadata.add(metaReceipt);
+        payload.put("metadata", metadata);
 
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(
@@ -77,8 +95,7 @@ public class DefaultMobileMoneyService implements MobileMoneyService {
             );
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                Object ref = response.getBody() != null ? response.getBody().get("providerReference") : null;
-                String providerReference = ref != null ? ref.toString() : "PROVIDER-" + UUID.randomUUID();
+                String providerReference = depositId;
                 return new MobileMoneyPushResult(true, providerReference, "Push initiated successfully.");
             }
 

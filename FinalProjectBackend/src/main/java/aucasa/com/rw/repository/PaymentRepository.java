@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByStudentId(Long studentId);
+    List<Payment> findByStudentIdOrderByCreatedAtDesc(Long studentId);
     List<Payment> findByTermId(Long termId);
     Optional<Payment> findByStudentIdAndTermId(Long studentId, Long termId);
     boolean existsByStudentIdAndTermId(Long studentId, Long termId);

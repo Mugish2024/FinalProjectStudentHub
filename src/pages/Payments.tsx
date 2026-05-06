@@ -16,6 +16,23 @@ interface PaymentRecord {
     paidAt?: string;
 }
 
+interface WalletInfo {
+    walletName: string;
+    walletCode: string;
+    provider: string;
+    bankAccount: string;
+    currency: string;
+}
+
+interface ReceiptQrResult {
+    goodToGo: boolean;
+    message: string;
+    qrToken: string;
+    studentName: string;
+    studentNumber: string;
+    receiptNumber: string;
+}
+
 interface TransparencySummary {
     totalCollected: number;
     totalApproved: number;
@@ -51,6 +68,15 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     const [error, setError] = useState('');
     const [info, setInfo] = useState('');
     const [transparency, setTransparency] = useState<TransparencySummary | null>(null);
+    const [wallet, setWallet] = useState<WalletInfo | null>(null);
+    const [history, setHistory] = useState<PaymentRecord[]>([]);
+    const [mobilePhone, setMobilePhone] = useState('');
+    const [isStartingPayment, setIsStartingPayment] = useState(false);
+    const [receiptQr, setReceiptQr] = useState<ReceiptQrResult | null>(null);
+    const [isVerifyingReceipt, setIsVerifyingReceipt] = useState(false);
+    const [receiptFile, setReceiptFile] = useState<File | null>(null);
+    const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+    const [showVerifyModal, setShowVerifyModal] = useState(false);
 
     const resolvedPayerCode = String(resolvedStudentId || '').trim()
         || (studentNumber ?? '').trim()
@@ -105,6 +131,143 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
         setTransparency(data);
     };
 
+    const loadWallet = async () => {
+        const response = await fetch(`${API_BASE}/api/payments/wallet`);
+        if (!response.ok) return;
+        const data = await response.json().catch(() => null);
+        setWallet(data);
+    };
+
+    const loadHistory = async () => {
+        if (!resolvedStudentId) return;
+        const response = await fetch(`${API_BASE}/api/payments/history/student/${resolvedStudentId}`);
+        if (!response.ok) return;
+        const data = await response.json().catch(() => []);
+        setHistory(Array.isArray(data) ? data : []);
+    };
+
+    const handleStartMobileMoneyPayment = async () => {
+        if (!payment?.id) {
+            setError('No active payment obligation found.');
+            return;
+        }
+        if (!mobilePhone.trim()) {
+            setError('Phone number is required to start mobile payment.');
+            return;
+        }
+        setError('');
+        setInfo('');
+        setIsStartingPayment(true);
+        try {
+            const response = await fetch(`${API_BASE}/api/payments/${payment.id}/start-mobile-money`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumber: mobilePhone.trim() }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to start payment.');
+            }
+
+            if (data.payment) {
+                setPayment({
+                    id: data.payment.id,
+                    studentNumber: data.payment.studentNumber,
+                    receiptNumber: data.payment.receiptNumber,
+                    status: data.payment.status,
+                    amount: data.payment.amount,
+                    paidAt: data.payment.paidAt,
+                });
+            }
+            setInfo(data.message ?? 'Payment prompt sent. Please confirm on your phone.');
+            await loadHistory();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Failed to start payment.');
+        } finally {
+            setIsStartingPayment(false);
+        }
+    };
+
+    const handleVerifyReceipt = async () => {
+        if (!payment?.id || !resolvedStudentId) {
+            setError('Missing payment/student record for verification.');
+            return;
+        }
+        setError('');
+        setInfo('');
+        setIsVerifyingReceipt(true);
+        try {
+            const response = await fetch(`${API_BASE}/api/payments/${payment.id}/receipt/verify-self`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId: resolvedStudentId }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Receipt verification failed.');
+            }
+            setReceiptQr(data as ReceiptQrResult);
+            setInfo((data as ReceiptQrResult).message || 'Receipt verified.');
+            await loadHistory();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Receipt verification failed.');
+            setReceiptQr(null);
+        } finally {
+            setIsVerifyingReceipt(false);
+        }
+    };
+
+    const handleUploadReceipt = async () => {
+        if (!payment?.id) {
+            setError('No active payment obligation found.');
+            return;
+        }
+        if (!receiptFile) {
+            setError('Please select a receipt image first.');
+            return;
+        }
+        if (!mobilePhone.trim()) {
+            setError('Enter your phone number before uploading receipt.');
+            return;
+        }
+
+        setError('');
+        setInfo('');
+        setIsUploadingReceipt(true);
+        try {
+            const formData = new FormData();
+            formData.append('phoneNumber', mobilePhone.trim());
+            formData.append('method', 'URUBUTO_PAY');
+            formData.append('autoVerify', 'false');
+            formData.append('receiptFile', receiptFile);
+
+            const response = await fetch(`${API_BASE}/api/payments/${payment.id}/receipt/submit`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to upload receipt.');
+            }
+
+            setPayment({
+                id: data.id,
+                studentNumber: data.studentNumber,
+                receiptNumber: data.receiptNumber,
+                status: data.status,
+                amount: data.amount,
+                paidAt: data.paidAt,
+            });
+            setInfo('Receipt uploaded successfully. You can now click "Verify Your Receipt".');
+            setReceiptFile(null);
+            await loadHistory();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Failed to upload receipt.');
+        } finally {
+            setIsUploadingReceipt(false);
+        }
+    };
+
     useEffect(() => {
         const run = async () => {
             setError('');
@@ -118,6 +281,8 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                 setIsLoading(true);
                 await ensureObligation();
                 await loadTransparencySummary();
+                await loadWallet();
+                await loadHistory();
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Could not load payment page.');
             } finally {
@@ -180,25 +345,63 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
 
                         <div className="code-strip">
                             <div>
-                                <span>Urubuto Merchant Code</span>
-                                <strong>{URUBUTO_MERCHANT_CODE}</strong>
+                                <span>Collection Wallet</span>
+                                <strong>{wallet?.walletName ?? 'AUCASA Student Association Wallet'}</strong>
+                            </div>
+                            <div>
+                                <span>Wallet Code</span>
+                                <strong>{wallet?.walletCode ?? URUBUTO_MERCHANT_CODE}</strong>
                             </div>
                             <div>
                                 <span>BK Account Code</span>
-                                <strong>{BK_ACCOUNT_CODE}</strong>
+                                <strong>{wallet?.bankAccount ?? BK_ACCOUNT_CODE}</strong>
                             </div>
                         </div>
 
                         <div className="method-actions">
+                            <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '0.7rem' }}>
+                                <button
+                                    className="primary-btn"
+                                    onClick={handleStartMobileMoneyPayment}
+                                    disabled={isStartingPayment}
+                                >
+                                    {isStartingPayment ? 'Sending Prompt...' : 'Start Mobile Payment Prompt'}
+                                </button>
+                            </div>
                             <button
                                 className="primary-btn"
                                 onClick={() => window.open(urubutoInitiateUrl || URUBUTO_PAY_URL, '_blank', 'noopener,noreferrer')}
                             >
                                 Continue with Urubuto <ArrowUpRight size={16} />
                             </button>
+                            <button
+                                className="primary-btn"
+                                onClick={() => setShowVerifyModal(true)}
+                                style={{ marginTop: '0.55rem', background: '#0f766e' }}
+                            >
+                                Verify Your Receipt
+                            </button>
                             <p style={{ marginTop: '0.45rem', color: '#55657f', fontSize: '0.82rem' }}>
                                 Merchant code, payer code (your student ID), amount, and fee purpose are auto-filled.
                             </p>
+                            {receiptQr?.goodToGo && receiptQr.qrToken && (
+                                <div style={{ marginTop: '0.8rem', padding: '0.75rem', border: '1px solid #cde4da', borderRadius: 10, background: '#f0fdf7' }}>
+                                    <strong style={{ color: '#0f5132' }}>{receiptQr.message}</strong>
+                                    <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.9rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <img
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(receiptQr.qrToken)}`}
+                                            alt={`Verified receipt QR for ${receiptQr.studentName}`}
+                                            style={{ width: 180, height: 180, borderRadius: 10, border: '1px solid #b7d8c9' }}
+                                        />
+                                        <div style={{ color: '#12523a', fontSize: '0.9rem' }}>
+                                            <div><strong>Name:</strong> {receiptQr.studentName}</div>
+                                            <div><strong>Student ID:</strong> {receiptQr.studentNumber}</div>
+                                            <div><strong>Receipt:</strong> {receiptQr.receiptNumber}</div>
+                                            <div><strong>Status:</strong> Safe to go</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </article>
 
@@ -235,12 +438,14 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                                 <span>Status</span>
                                 <span>Amount</span>
                             </div>
-                            <div className="tx-row">
-                                <span>{payment?.paidAt ? new Date(payment.paidAt).toLocaleDateString() : '-'}</span>
-                                <span>{payment?.receiptNumber ?? '-'}</span>
-                                <span>{payment?.status ?? 'PENDING'}</span>
-                                <span>{payment?.amount ? `${payment.amount} RWF` : '3,000 RWF'}</span>
-                            </div>
+                            {(history.length > 0 ? history : [payment]).filter(Boolean).map((item) => (
+                                <div className="tx-row" key={item?.id}>
+                                    <span>{item?.paidAt ? new Date(item.paidAt).toLocaleDateString() : '-'}</span>
+                                    <span>{item?.receiptNumber ?? '-'}</span>
+                                    <span>{item?.status ?? 'PENDING'}</span>
+                                    <span>{item?.amount ? `${item.amount} RWF` : '3,000 RWF'}</span>
+                                </div>
+                            ))}
                         </div>
                     </article>
 
@@ -277,6 +482,70 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                 </div>
 
             </section>
+
+            {showVerifyModal && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.48)',
+                    zIndex: 1200,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1rem',
+                }}>
+                    <div style={{
+                        width: 'min(520px, 96vw)',
+                        background: '#fff',
+                        borderRadius: 14,
+                        border: '1px solid #dbe5f5',
+                        padding: '1rem',
+                    }}>
+                        <h3 style={{ margin: 0, color: '#12335f' }}>Verify Your Receipt</h3>
+                        <p style={{ margin: '0.45rem 0 0.8rem', color: '#5d6f8b', fontSize: '0.9rem' }}>
+                            Enter your phone number and upload receipt, then verify.
+                        </p>
+                        <div style={{ display: 'grid', gap: '0.55rem' }}>
+                            <input
+                                type="text"
+                                placeholder="Mobile number (e.g. 078xxxxxxx)"
+                                value={mobilePhone}
+                                onChange={(e) => setMobilePhone(e.target.value)}
+                                style={{ padding: '0.65rem 0.75rem', border: '1px solid #d4deef', borderRadius: 10 }}
+                            />
+                            <input
+                                type="file"
+                                accept=".jpg,.jpeg,.png,image/*"
+                                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                                style={{ padding: '0.45rem', border: '1px solid #d4deef', borderRadius: 10, background: '#fff' }}
+                            />
+                            <button
+                                className="primary-btn"
+                                onClick={handleUploadReceipt}
+                                disabled={isUploadingReceipt}
+                                style={{ background: '#1d4ed8' }}
+                            >
+                                {isUploadingReceipt ? 'Uploading Receipt...' : 'Upload Receipt'}
+                            </button>
+                            <button
+                                className="primary-btn"
+                                onClick={handleVerifyReceipt}
+                                disabled={isVerifyingReceipt}
+                                style={{ background: '#0f766e' }}
+                            >
+                                {isVerifyingReceipt ? 'Verifying...' : 'Verify Now'}
+                            </button>
+                            <button
+                                className="primary-btn"
+                                onClick={() => setShowVerifyModal(false)}
+                                style={{ background: '#64748b' }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

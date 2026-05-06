@@ -9,6 +9,8 @@ import aucasa.com.rw.domain.enums.PaymentReceiptStatus;
 import aucasa.com.rw.domain.enums.PaymentStatus;
 import aucasa.com.rw.dto.payment.PaymentGateResponse;
 import aucasa.com.rw.dto.payment.PaymentReportResponse;
+import aucasa.com.rw.dto.payment.ReceiptAccessQrResponse;
+import aucasa.com.rw.dto.payment.PaymentWalletResponse;
 import aucasa.com.rw.dto.payment.TransactionImportResponse;
 import aucasa.com.rw.dto.payment.UnpaidStudentItem;
 import aucasa.com.rw.repository.AcademicTermRepository;
@@ -33,6 +35,7 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,6 +43,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
+import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -62,6 +66,11 @@ public class PaymentService {
     private final Path receiptUploadDir;
     private final String urubutoVerifyUrl;
     private final boolean urubutoSimulate;
+    private final String collectionWalletName;
+    private final String collectionWalletCode;
+    private final String collectionWalletProvider;
+    private final String collectionBankAccount;
+    private final String receiptQrSecret;
 
     public PaymentService(
             PaymentRepository repository,
@@ -72,7 +81,12 @@ public class PaymentService {
             PaymentTransactionService transactionService,
             @Value("${app.storage.receipt-upload-dir:}") String receiptUploadDir,
             @Value("${app.payment.urubuto.verify-url:}") String urubutoVerifyUrl,
-            @Value("${app.payment.urubuto.simulate:true}") boolean urubutoSimulate
+            @Value("${app.payment.urubuto.simulate:true}") boolean urubutoSimulate,
+            @Value("${app.payment.collection.wallet-name:AUCASA Student Association Wallet}") String collectionWalletName,
+            @Value("${app.payment.collection.wallet-code:TH61132546}") String collectionWalletCode,
+            @Value("${app.payment.collection.provider:UrubutoPay}") String collectionWalletProvider,
+            @Value("${app.payment.collection.bank-account:00040 - 00280275 - 75}") String collectionBankAccount,
+            @Value("${app.payment.receipt-qr-secret:aucasa-receipt-qr-secret}") String receiptQrSecret
     ) {
         this.repository = repository;
         this.studentProfileRepository = studentProfileRepository;
@@ -83,12 +97,27 @@ public class PaymentService {
         this.receiptUploadDir = resolveReceiptDir(receiptUploadDir);
         this.urubutoVerifyUrl = urubutoVerifyUrl;
         this.urubutoSimulate = urubutoSimulate;
+        this.collectionWalletName = collectionWalletName;
+        this.collectionWalletCode = collectionWalletCode;
+        this.collectionWalletProvider = collectionWalletProvider;
+        this.collectionBankAccount = collectionBankAccount;
+        this.receiptQrSecret = receiptQrSecret;
     }
 
     public List<Payment> findAll() { return repository.findAll(); }
+    public List<Payment> findByStudentId(Long studentId) { return repository.findByStudentIdOrderByCreatedAtDesc(studentId); }
     public Optional<Payment> findById(Long id) { return repository.findById(id); }
     public Payment create(Payment entity) { return repository.save(entity); }
     public void delete(Long id) { repository.deleteById(id); }
+    public PaymentWalletResponse getCollectionWallet() {
+        return new PaymentWalletResponse(
+                collectionWalletName,
+                collectionWalletCode,
+                collectionWalletProvider,
+                collectionBankAccount,
+                CURRENCY
+        );
+    }
 
     @Transactional
     public Payment createMandatoryObligation(Long studentId, Long termId) {
@@ -175,6 +204,36 @@ public class PaymentService {
     }
 
     @Transactional
+    public MobileMoneyPushResult startMobileMoneyPayment(Long paymentId, String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            throw new IllegalArgumentException("phoneNumber is required for mobile money.");
+        }
+
+        Payment payment = repository.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+
+        payment.setMethod(PaymentMethod.MOBILE_MONEY);
+
+        MobileMoneyPushResult push = mobileMoneyService.initiatePush(
+                phoneNumber,
+                payment.getAmount(),
+                payment.getReceiptNumber()
+        );
+
+        if (!push.isInitiated()) {
+            throw new IllegalArgumentException(push.getMessage());
+        }
+
+        payment.setPayerPhoneNumber(phoneNumber);
+        payment.setExternalReference(push.getProviderReference());
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setPaidAt(null);
+        repository.save(payment);
+
+        return push;
+    }
+
+    @Transactional
     public Payment handleMobileMoneyCallback(String receiptNumber, String providerReference, boolean success) {
         if (receiptNumber == null || receiptNumber.isBlank()) {
             throw new IllegalArgumentException("receiptNumber is required.");
@@ -184,6 +243,22 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found for receiptNumber: " + receiptNumber));
 
         payment.setExternalReference(providerReference);
+        if (success) {
+            payment.setStatus(PaymentStatus.COMPLETED);
+            payment.setPaidAt(LocalDateTime.now());
+        } else {
+            payment.setStatus(PaymentStatus.FAILED);
+        }
+        return repository.save(payment);
+    }
+
+    @Transactional
+    public Payment handleMobileMoneyCallbackByProviderReference(String providerReference, boolean success) {
+        if (providerReference == null || providerReference.isBlank()) {
+            throw new IllegalArgumentException("providerReference is required.");
+        }
+        Payment payment = repository.findByExternalReference(providerReference)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found for provider reference: " + providerReference));
         if (success) {
             payment.setStatus(PaymentStatus.COMPLETED);
             payment.setPaidAt(LocalDateTime.now());
@@ -519,6 +594,98 @@ public class PaymentService {
         return transactionService.evaluateMatch(payment);
     }
 
+    @Transactional
+    public ReceiptAccessQrResponse verifyReceiptForStudentAndIssueQr(Long paymentId, Long studentId) {
+        if (studentId == null) {
+            throw new IllegalArgumentException("studentId is required.");
+        }
+        Payment payment = repository.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        if (payment.getStudent() == null || !studentId.equals(payment.getStudent().getId())) {
+            throw new IllegalArgumentException("Payment does not belong to this student.");
+        }
+        if (payment.getReceiptFilePath() == null || payment.getReceiptFilePath().isBlank()) {
+            throw new IllegalArgumentException("Receipt file is missing. Upload receipt first.");
+        }
+        if (payment.getExternalReference() == null || payment.getExternalReference().isBlank()) {
+            throw new IllegalArgumentException("Missing transaction ID on payment.");
+        }
+        if (payment.getOcrTransactionId() != null && !payment.getOcrTransactionId().isBlank()) {
+            String ocrTxn = payment.getOcrTransactionId().replaceAll("\\s+", "").trim();
+            String extTxn = payment.getExternalReference().replaceAll("\\s+", "").trim();
+            if (!ocrTxn.equalsIgnoreCase(extTxn)) {
+                throw new IllegalArgumentException("Receipt transaction ID does not match declared transaction.");
+            }
+        }
+
+        PaymentTransactionService.MatchResult match = transactionService.evaluateMatch(payment);
+        if (!"MATCHED".equals(match.getStatus())) {
+            throw new IllegalArgumentException("Receipt verification failed: " + match.getMessage());
+        }
+
+        payment.setReceiptStatus(PaymentReceiptStatus.VALID);
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setReceiptVerifiedAt(LocalDateTime.now());
+        payment.setReceiptNotes("Auto-verified by strict registry matching.");
+        repository.save(payment);
+        transactionService.findByTransactionId(payment.getExternalReference())
+                .ifPresent(record -> transactionService.markMatched(record, payment));
+
+        String fullName = payment.getStudent().getUserAccount().getFirstName() + " "
+                + payment.getStudent().getUserAccount().getLastName();
+        String firstName = payment.getStudent().getUserAccount().getFirstName();
+        String payload = "paymentId=" + payment.getId()
+                + "&studentId=" + payment.getStudent().getId()
+                + "&studentNumber=" + payment.getStudent().getStudentNumber()
+                + "&firstName=" + firstName
+                + "&receipt=" + payment.getReceiptNumber()
+                + "&verifiedAt=" + payment.getReceiptVerifiedAt()
+                + "&sig=" + signReceiptToken(payment);
+
+        ReceiptAccessQrResponse response = new ReceiptAccessQrResponse();
+        response.setGoodToGo(true);
+        response.setMessage("Good to go, " + firstName + ". Receipt is verified.");
+        response.setQrToken(payload);
+        response.setStudentName(fullName);
+        response.setStudentNumber(payment.getStudent().getStudentNumber());
+        response.setReceiptNumber(payment.getReceiptNumber());
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public ReceiptAccessQrResponse verifyAccessQrToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("QR token is required.");
+        }
+        Map<String, String> params = parseToken(token);
+        Long paymentId = Long.parseLong(params.getOrDefault("paymentId", "0"));
+        Long studentId = Long.parseLong(params.getOrDefault("studentId", "0"));
+        String sig = params.get("sig");
+        if (paymentId <= 0 || studentId <= 0 || sig == null || sig.isBlank()) {
+            throw new IllegalArgumentException("Invalid QR token.");
+        }
+
+        Payment payment = repository.findById(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found."));
+        if (payment.getStudent() == null || !studentId.equals(payment.getStudent().getId())) {
+            throw new IllegalArgumentException("Invalid QR token student.");
+        }
+        String expectedSig = signReceiptToken(payment);
+        if (!expectedSig.equals(sig)) {
+            throw new IllegalArgumentException("QR signature mismatch.");
+        }
+
+        ReceiptAccessQrResponse response = new ReceiptAccessQrResponse();
+        response.setGoodToGo(payment.getReceiptStatus() == PaymentReceiptStatus.VALID
+                && (payment.getStatus() == PaymentStatus.PAID || payment.getStatus() == PaymentStatus.VERIFIED || payment.getStatus() == PaymentStatus.COMPLETED));
+        response.setMessage(response.isGoodToGo() ? "Student is safe to go." : "Student is not cleared.");
+        response.setStudentName(payment.getStudent().getUserAccount().getFirstName() + " " + payment.getStudent().getUserAccount().getLastName());
+        response.setStudentNumber(payment.getStudent().getStudentNumber());
+        response.setReceiptNumber(payment.getReceiptNumber());
+        response.setQrToken(token);
+        return response;
+    }
+
     @Transactional(readOnly = true)
     public Resource loadReceiptFile(Long paymentId) {
         Payment payment = repository.findById(paymentId)
@@ -721,5 +888,23 @@ public class PaymentService {
 
     private String formatMoney(BigDecimal amount) {
         return amount == null ? "-" : amount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String signReceiptToken(Payment payment) {
+        String raw = payment.getId() + "|" + payment.getStudent().getId() + "|" + payment.getReceiptNumber() + "|" + receiptQrSecret;
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private Map<String, String> parseToken(String token) {
+        Map<String, String> map = new java.util.HashMap<>();
+        String[] pairs = token.split("&");
+        for (String pair : pairs) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2) {
+                map.put(kv[0], kv[1]);
+            }
+        }
+        return map;
     }
 }

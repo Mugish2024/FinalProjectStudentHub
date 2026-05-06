@@ -3,11 +3,16 @@ package aucasa.com.rw.controller;
 import aucasa.com.rw.domain.Payment;
 import aucasa.com.rw.dto.payment.CreateObligationRequest;
 import aucasa.com.rw.dto.payment.MobileMoneyCallbackRequest;
+import aucasa.com.rw.dto.payment.MobileMoneyStartRequest;
 import aucasa.com.rw.dto.payment.PaymentGateResponse;
 import aucasa.com.rw.dto.payment.PaymentReportResponse;
 import aucasa.com.rw.dto.payment.PaymentResponse;
+import aucasa.com.rw.dto.payment.PaymentStartResponse;
+import aucasa.com.rw.dto.payment.PaymentWalletResponse;
 import aucasa.com.rw.dto.payment.TransactionImportResponse;
 import aucasa.com.rw.dto.payment.ReceiptVerificationRequest;
+import aucasa.com.rw.dto.payment.ReceiptAccessQrResponse;
+import aucasa.com.rw.dto.payment.SelfReceiptVerifyRequest;
 import aucasa.com.rw.dto.payment.SubmitPaymentRequest;
 import aucasa.com.rw.dto.payment.VerifyPaymentRequest;
 import aucasa.com.rw.dto.payment.ReceiptOcrResponse;
@@ -16,6 +21,7 @@ import aucasa.com.rw.domain.enums.PaymentReceiptStatus;
 import aucasa.com.rw.service.PaymentService;
 import aucasa.com.rw.service.PaymentReceiptOcrService;
 import aucasa.com.rw.service.PaymentTransactionService;
+import aucasa.com.rw.service.mobilemoney.MobileMoneyPushResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -41,6 +47,16 @@ public class PaymentController {
     @GetMapping
     public List<PaymentResponse> getAll() {
         return service.findAll().stream().map(this::toResponse).toList();
+    }
+
+    @GetMapping("/wallet")
+    public ResponseEntity<PaymentWalletResponse> getCollectionWallet() {
+        return ResponseEntity.ok(service.getCollectionWallet());
+    }
+
+    @GetMapping("/history/student/{studentId}")
+    public List<PaymentResponse> getHistoryByStudent(@PathVariable Long studentId) {
+        return service.findByStudentId(studentId).stream().map(this::toResponse).toList();
     }
 
     @GetMapping("/{id}")
@@ -98,6 +114,24 @@ public class PaymentController {
         }
     }
 
+    @PostMapping("/{paymentId}/start-mobile-money")
+    public ResponseEntity<?> startMobileMoney(@PathVariable Long paymentId, @RequestBody MobileMoneyStartRequest request) {
+        try {
+            MobileMoneyPushResult push = service.startMobileMoneyPayment(paymentId, request.getPhoneNumber());
+            Payment payment = service.findById(paymentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+            PaymentStartResponse response = new PaymentStartResponse();
+            response.setPayment(toResponse(payment));
+            response.setInitiated(push.isInitiated());
+            response.setMessage(push.getMessage());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @PostMapping("/mobile-money/callback")
     public ResponseEntity<?> mobileMoneyCallback(@RequestBody MobileMoneyCallbackRequest request) {
         try {
@@ -106,6 +140,23 @@ public class PaymentController {
                     request.getProviderReference(),
                     request.isSuccess()
             );
+            return ResponseEntity.ok(toResponse(payment));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/mobile-money/pawapay-callback")
+    public ResponseEntity<?> pawapayCallback(@RequestBody Map<String, Object> body) {
+        try {
+            Object depositIdObj = body.get("depositId");
+            Object statusObj = body.get("status");
+            String depositId = depositIdObj != null ? depositIdObj.toString() : null;
+            String status = statusObj != null ? statusObj.toString() : "";
+            boolean success = "COMPLETED".equalsIgnoreCase(status) || "SUCCESSFUL".equalsIgnoreCase(status);
+            Payment payment = service.handleMobileMoneyCallbackByProviderReference(depositId, success);
             return ResponseEntity.ok(toResponse(payment));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
@@ -270,6 +321,29 @@ public class PaymentController {
             PaymentReceiptStatus decision = PaymentReceiptStatus.valueOf(request.getDecision().toUpperCase());
             Payment payment = service.verifyReceipt(paymentId, decision, request.getNotes(), request.getVerifiedByUserId());
             return ResponseEntity.ok(toResponse(payment));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/{paymentId}/receipt/verify-self")
+    public ResponseEntity<?> verifyReceiptForStudent(@PathVariable Long paymentId, @RequestBody SelfReceiptVerifyRequest request) {
+        try {
+            ReceiptAccessQrResponse response = service.verifyReceiptForStudentAndIssueQr(paymentId, request.getStudentId());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/receipt-qr/verify")
+    public ResponseEntity<?> verifyReceiptQr(@RequestParam String token) {
+        try {
+            return ResponseEntity.ok(service.verifyAccessQrToken(token));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
