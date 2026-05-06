@@ -126,8 +126,9 @@ public class StudentProfileService {
                 .orElseGet(this::createStudentRole);
 
         String normalizedStudentNumber = request.getStudentNumber().trim();
-        String username = normalizedStudentNumber.toLowerCase().replaceAll("[^a-z0-9]", "");
-        String email = username + "@auca.ac.rw";
+        String baseUsername = normalizedStudentNumber.toLowerCase().replaceAll("[^a-z0-9]", "");
+        String username = ensureUniqueUsername(baseUsername);
+        String email = ensureUniqueEmail(username + "@auca.ac.rw");
 
         UserAccount user = new UserAccount();
         user.setUsername(username);
@@ -242,6 +243,33 @@ public class StudentProfileService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String ensureUniqueUsername(String baseUsername) {
+        String seed = isBlank(baseUsername) ? "student" : baseUsername;
+        String candidate = seed;
+        int suffix = 1;
+        while (userAccountRepository.findByUsername(candidate).isPresent()) {
+            candidate = seed + suffix;
+            suffix++;
+        }
+        return candidate;
+    }
+
+    private String ensureUniqueEmail(String baseEmail) {
+        if (isBlank(baseEmail)) {
+            return "student@auca.ac.rw";
+        }
+        String[] parts = baseEmail.split("@", 2);
+        String local = parts[0];
+        String domain = parts.length > 1 ? parts[1] : "auca.ac.rw";
+        String candidate = local + "@" + domain;
+        int suffix = 1;
+        while (userAccountRepository.findByEmail(candidate).isPresent()) {
+            candidate = local + suffix + "@" + domain;
+            suffix++;
+        }
+        return candidate;
     }
 
     private String normalizeProgram(String program) {
