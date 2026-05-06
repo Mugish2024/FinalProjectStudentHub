@@ -5,6 +5,7 @@ import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.dto.auth.AccountSetupRequest;
 import aucasa.com.rw.dto.auth.LoginRequest;
 import aucasa.com.rw.dto.auth.LoginResponse;
+import aucasa.com.rw.domain.enums.RoleType;
 import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
 import java.util.Optional;
@@ -63,6 +64,9 @@ public class AuthService {
 
         Optional<StudentProfile> studentOpt = studentProfileRepository.findByUserAccountId(user.getId());
         if (studentOpt.isEmpty()) {
+            if (user.getRole() != null && user.getRole().getName() == RoleType.STUDENT) {
+                throw new IllegalArgumentException("Student account is inactive or removed.");
+            }
             return new LoginResponse(
                     user.getId(),
                     null,

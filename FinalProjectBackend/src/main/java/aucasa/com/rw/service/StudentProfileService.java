@@ -57,7 +57,16 @@ public class StudentProfileService {
     public List<StudentProfile> findAll() { return repository.findAll(); }
     public Optional<StudentProfile> findById(Long id) { return repository.findById(id); }
     public StudentProfile create(StudentProfile entity) { return repository.save(entity); }
-    public void delete(Long id) { repository.deleteById(id); }
+    @Transactional
+    public void delete(Long id) {
+        StudentProfile student = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found: " + id));
+        Long userId = student.getUserAccount() != null ? student.getUserAccount().getId() : null;
+        repository.delete(student);
+        if (userId != null) {
+            userAccountRepository.deleteById(userId);
+        }
+    }
     public Optional<StudentRegistrationResponse> findSummaryByStudentNumber(String studentNumber) {
         if (isBlank(studentNumber)) {
             return Optional.empty();
@@ -172,6 +181,12 @@ public class StudentProfileService {
         validateRequest(request);
         StudentProfile student = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found."));
+        String normalizedStudentNumber = request.getStudentNumber().trim();
+        repository.findByStudentNumber(normalizedStudentNumber).ifPresent(existing -> {
+            if (!existing.getId().equals(id)) {
+                throw new IllegalArgumentException("Student ID is already used by another student.");
+            }
+        });
 
         Faculty faculty = facultyRepository.findByNameIgnoreCase(request.getFaculty().trim())
                 .orElseGet(() -> createFaculty(request.getFaculty().trim()));
@@ -183,7 +198,7 @@ public class StudentProfileService {
         user.setLastName(request.getLastName().trim());
         userAccountRepository.save(user);
 
-        student.setStudentNumber(request.getStudentNumber().trim());
+        student.setStudentNumber(normalizedStudentNumber);
         student.setFaculty(faculty);
         student.setDepartment(department);
         student.setProgram(normalizeProgram(request.getProgram()));
