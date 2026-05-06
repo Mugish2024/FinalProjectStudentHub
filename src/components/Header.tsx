@@ -11,6 +11,8 @@ interface HeaderProps {
     onNavigate?: (page: string) => void;
     onMenuClick?: () => void;
     onChatClick?: () => void;
+    onNotificationsClick?: () => void;
+    onSettingsClick?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -20,6 +22,8 @@ const Header: React.FC<HeaderProps> = ({
     onNavigate,
     onMenuClick,
     onChatClick,
+    onNotificationsClick,
+    onSettingsClick,
 }) => {
     const [searchText, setSearchText] = useState('');
     const navItems = useMemo(
@@ -89,10 +93,10 @@ const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="header-actions">
-                <button className="icon-btn top-icon-btn" aria-label="Notifications">
+                <button className="icon-btn top-icon-btn" aria-label="Notifications" onClick={onNotificationsClick}>
                     <Bell size={18} />
                 </button>
-                <button className="icon-btn top-icon-btn" aria-label="Settings">
+                <button className="icon-btn top-icon-btn" aria-label="Settings" onClick={onSettingsClick}>
                     <Settings size={18} />
                 </button>
                 {onChatClick && (

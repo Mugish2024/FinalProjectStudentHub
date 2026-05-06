@@ -27,6 +27,8 @@ import About from './pages/About';
 import Services from './pages/Services';
 import Signup from './pages/Signup';
 import Contact from './pages/Contact';
+import NotificationsCenter from './pages/NotificationsCenter';
+import SettingsCenter from './pages/SettingsCenter';
 
 type AuthProfile = {
   userId: number;
@@ -51,19 +53,48 @@ const ADMIN_PAGES = new Set(['admin-dashboard', 'user-management']);
 const FINANCE_PAGES = new Set(['finance-review', 'finance-budgets', 'finance-expenses', 'finance-receipts', 'finance-reports']);
 const GUILD_PAGES = new Set(['guild-dashboard', 'guild-inbox']);
 const GUILD_EXTRA_ALLOWED_PAGES = new Set(['attendance-review']);
+const AUTH_SESSION_KEY = 'aucasa_auth_session';
+type SavedSession = { isLoggedIn?: boolean; profile?: AuthProfile | null };
+
+const readSavedSession = (): SavedSession => {
+  try {
+    const raw = window.localStorage.getItem(AUTH_SESSION_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as SavedSession;
+    return parsed ?? {};
+  } catch {
+    return {};
+  }
+};
 
 function App() {
-  const [activePage, setActivePage] = useState('landing');
+  const savedSession = readSavedSession();
+  const initialProfile = savedSession?.isLoggedIn && savedSession?.profile ? savedSession.profile : null;
+  const [activePage, setActivePage] = useState(() => {
+    if (!initialProfile) return 'landing';
+    if (initialProfile.role === 'staff' || initialProfile.role === 'dean') return 'dashboard-tools';
+    if (initialProfile.role === 'admin') return 'admin-dashboard';
+    if (initialProfile.role === 'finance') return 'finance-review';
+    if (initialProfile.role === 'guild_president') return 'guild-dashboard';
+    return 'dashboard';
+  });
   const [selectedAttendanceSessionId, setSelectedAttendanceSessionId] = useState<number | undefined>(undefined);
   const [selectedAttendanceQrToken, setSelectedAttendanceQrToken] = useState<string>('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<UserRole>(null);
-  const [profile, setProfile] = useState<AuthProfile | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(initialProfile));
+  const [userRole, setUserRole] = useState<UserRole>(initialProfile?.role ?? null);
+  const [profile, setProfile] = useState<AuthProfile | null>(initialProfile);
 
   const isDeanRole = (role: UserRole) => role === 'staff' || role === 'dean';
   const isAdminRole = (role: UserRole) => role === 'admin';
   const isFinanceRole = (role: UserRole) => role === 'finance';
   const isGuildRole = (role: UserRole) => role === 'guild_president';
+  const resolveDefaultPageForRole = (role: AuthProfile['role']) => {
+    if (isDeanRole(role)) return 'dashboard-tools';
+    if (isAdminRole(role)) return 'admin-dashboard';
+    if (isFinanceRole(role)) return 'finance-review';
+    if (isGuildRole(role)) return 'guild-dashboard';
+    return 'dashboard';
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -213,6 +244,14 @@ function App() {
         return <Claims />;
       case 'discipline':
         return <Discipline />;
+      case 'notifications':
+        return <NotificationsCenter userRole={userRole} studentId={profile?.studentId ?? null} />;
+      case 'settings':
+        return <SettingsCenter
+          fullName={profile?.fullName}
+          userId={profile?.studentNumber ?? (isAdminRole(userRole) ? 'ADMIN-01' : (isFinanceRole(userRole) ? 'FINANCE-01' : (isGuildRole(userRole) ? 'GUILD-01' : (isDeanRole(userRole) ? 'STAFF-01' : '26701'))))}
+          userRole={userRole}
+        />;
       default:
         return <PlaceholderPage title="Page Not Found" />;
     }
@@ -243,21 +282,15 @@ function App() {
         setIsLoggedIn(true);
         setProfile(loginProfile);
         setUserRole(loginProfile.role);
+        window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+          isLoggedIn: true,
+          profile: loginProfile,
+        }));
         if (selectedAttendanceQrToken && loginProfile.role === 'student') {
           setActivePage('attendance-checkin');
           return;
         }
-        if (isDeanRole(loginProfile.role)) {
-          setActivePage('dashboard-tools');
-        } else if (isAdminRole(loginProfile.role)) {
-          setActivePage('admin-dashboard');
-        } else if (isFinanceRole(loginProfile.role)) {
-          setActivePage('finance-review');
-        } else if (isGuildRole(loginProfile.role)) {
-          setActivePage('guild-dashboard');
-        } else {
-          setActivePage('dashboard');
-        }
+        setActivePage(resolveDefaultPageForRole(loginProfile.role));
       }}
       onBack={() => setActivePage('landing')}
       onSignUp={() => setActivePage('signup')}
@@ -269,6 +302,7 @@ function App() {
     setUserRole(null);
     setProfile(null);
     setActivePage('landing');
+    window.localStorage.removeItem(AUTH_SESSION_KEY);
   };
 
   const isStaff = isDeanRole(userRole);

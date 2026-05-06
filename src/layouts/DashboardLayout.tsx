@@ -43,6 +43,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, activePage,
                     onNavigate={setActivePage}
                     onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
                     onChatClick={() => setIsChatOpen(!isChatOpen)}
+                    onNotificationsClick={() => setActivePage('notifications')}
+                    onSettingsClick={() => setActivePage('settings')}
                 />
                 <div className="content-wrapper">
                     {children}

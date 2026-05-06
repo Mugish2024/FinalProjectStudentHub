@@ -77,6 +77,7 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [showMobilePromptModal, setShowMobilePromptModal] = useState(false);
 
     const resolvedPayerCode = String(resolvedStudentId || '').trim()
         || (studentNumber ?? '').trim()
@@ -362,7 +363,7 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                             <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '0.7rem' }}>
                                 <button
                                     className="primary-btn"
-                                    onClick={handleStartMobileMoneyPayment}
+                                    onClick={() => setShowMobilePromptModal(true)}
                                     disabled={isStartingPayment}
                                 >
                                     {isStartingPayment ? 'Sending Prompt...' : 'Start Mobile Payment Prompt'}
@@ -538,6 +539,58 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                             <button
                                 className="primary-btn"
                                 onClick={() => setShowVerifyModal(false)}
+                                style={{ background: '#64748b' }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showMobilePromptModal && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.48)',
+                    zIndex: 1200,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1rem',
+                }}>
+                    <div style={{
+                        width: 'min(460px, 96vw)',
+                        background: '#fff',
+                        borderRadius: 14,
+                        border: '1px solid #dbe5f5',
+                        padding: '1rem',
+                    }}>
+                        <h3 style={{ margin: 0, color: '#12335f' }}>Start Mobile Payment Prompt</h3>
+                        <p style={{ margin: '0.45rem 0 0.8rem', color: '#5d6f8b', fontSize: '0.9rem' }}>
+                            Enter your phone number to receive a payment prompt.
+                        </p>
+                        <div style={{ display: 'grid', gap: '0.55rem' }}>
+                            <input
+                                type="text"
+                                placeholder="Mobile number (e.g. 078xxxxxxx)"
+                                value={mobilePhone}
+                                onChange={(e) => setMobilePhone(e.target.value)}
+                                style={{ padding: '0.65rem 0.75rem', border: '1px solid #d4deef', borderRadius: 10 }}
+                            />
+                            <button
+                                className="primary-btn"
+                                onClick={async () => {
+                                    await handleStartMobileMoneyPayment();
+                                    setShowMobilePromptModal(false);
+                                }}
+                                disabled={isStartingPayment}
+                            >
+                                {isStartingPayment ? 'Sending Prompt...' : 'Send Prompt'}
+                            </button>
+                            <button
+                                className="primary-btn"
+                                onClick={() => setShowMobilePromptModal(false)}
                                 style={{ background: '#64748b' }}
                             >
                                 Close
