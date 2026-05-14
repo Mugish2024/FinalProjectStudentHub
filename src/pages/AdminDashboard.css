@@ -4,6 +4,9 @@
     gap: 0.75rem;
     min-height: calc(100vh - 120px);
     padding: 0.95rem;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .admin-hero {
@@ -15,6 +18,9 @@
     gap: 0.8rem;
     justify-content: space-between;
     padding: 1.1rem 1.2rem;
+    min-width: 0;
+    overflow: hidden;
+    flex-wrap: wrap;
 }
 
 .admin-hero .kicker {
@@ -33,6 +39,7 @@
     color: rgba(222, 239, 255, 0.92);
     margin: 0;
     max-width: 70ch;
+    overflow-wrap: anywhere;
 }
 
 .admin-chip {
@@ -74,6 +81,7 @@
     border: 1px solid #dbe4f3;
     border-radius: 12px;
     padding: 0.7rem;
+    min-width: 0;
 }
 
 .clickable-kpi {
@@ -124,6 +132,8 @@
     border-radius: 10px;
     overflow: hidden;
     padding: 0.5rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .admin-card {
@@ -132,6 +142,8 @@
     border-radius: 12px;
     overflow: hidden;
     padding: 0.8rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .chart-card .chart-wrap {
@@ -205,11 +217,19 @@
 
 .table-wrap {
     overflow: auto;
+    max-width: 100%;
 }
 
 .table-wrap table {
     border-collapse: collapse;
     width: 100%;
+    min-width: 0;
+}
+
+.chart-wrap .recharts-responsive-container,
+.chart-wrap .recharts-wrapper,
+.chart-wrap .recharts-surface {
+    max-width: 100% !important;
 }
 
 .table-wrap th {
@@ -331,11 +351,29 @@
 }
 
 @media (max-width: 760px) {
+    .admin-dashboard-page {
+        padding: 0.65rem;
+    }
+
+    .admin-hero {
+        padding: 0.9rem;
+    }
+
+    .admin-hero h1 {
+        font-size: 1.2rem;
+    }
+
     .admin-kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .admin-form .split {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-kpi-grid {
         grid-template-columns: 1fr;
     }
 }

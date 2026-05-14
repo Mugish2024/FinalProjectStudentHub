@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import {
-    FileText,
     ClipboardList,
+    Landmark,
     UserCheck,
     Wallet,
     IdCard,
@@ -30,6 +31,7 @@ interface StudentDashboardProps {
     department: string;
     program: string;
     credits: number;
+    gpa: number;
 }
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -40,11 +42,36 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     department,
     program,
     credits,
+    gpa,
 }) => {
+    const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+    type CampusEvent = {
+        id: number;
+        title: string;
+        organizer: string;
+        status: string;
+        eventDate: string;
+        eventTime?: string;
+        location?: string;
+        description: string;
+        imagePath?: string;
+    };
+    type FinanceSummary = {
+        totalCollected?: number;
+        totalApproved?: number;
+        totalSpent?: number;
+        remainingBalance?: number;
+    };
     const [showCardModal, setShowCardModal] = useState(false);
     const [passportPhoto, setPassportPhoto] = useState<File | null>(null);
     const [cardError, setCardError] = useState('');
     const [isGeneratingCard, setIsGeneratingCard] = useState(false);
+    const [guildNotice, setGuildNotice] = useState<CampusEvent | null>(null);
+    const [guildNotices, setGuildNotices] = useState<CampusEvent[]>([]);
+    const [noticePage, setNoticePage] = useState(0);
+    const [isLoadingNotice, setIsLoadingNotice] = useState(false);
+    const [showNoticeDetails, setShowNoticeDetails] = useState(false);
+    const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
 
     const handleNavigate = (page: string) => {
         if (navigateTo) {
@@ -52,10 +79,112 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
+    useEffect(() => {
+        let cancelled = false;
+        const loadGuildNotice = async () => {
+            setIsLoadingNotice(true);
+            try {
+                const response = await fetch(`${API_BASE}/api/events`);
+                const data = await response.json().catch(() => []);
+                const events = Array.isArray(data) ? (data as CampusEvent[]) : [];
+                const now = new Date();
+                const upcoming = events
+                    .filter((event) => {
+                        if (!event?.eventDate) return false;
+                        const eventDate = new Date(event.eventDate);
+                        const isUpcoming = eventDate >= new Date(now.toDateString());
+                        const statusOk = !event.status || event.status.toUpperCase() === 'UPCOMING';
+                        return isUpcoming && statusOk;
+                    })
+                    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+
+                const guildEvent = upcoming.find((event) => {
+                    const organizer = (event.organizer ?? '').toLowerCase();
+                    const title = (event.title ?? '').toLowerCase();
+                    return organizer.includes('guild') || organizer.includes('aucasa') || title.includes('guild') || title.includes('aucasa');
+                });
+
+                if (!cancelled) {
+                    const ordered = guildEvent ? [guildEvent, ...upcoming.filter((e) => e.id !== guildEvent.id)] : upcoming;
+                    setGuildNotices(ordered.slice(0, 6));
+                    setGuildNotice(ordered[0] ?? null);
+                    setNoticePage(0);
+                }
+            } catch {
+                if (!cancelled) {
+                    setGuildNotices([]);
+                    setGuildNotice(null);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoadingNotice(false);
+                }
+            }
+        };
+
+        void loadGuildNotice();
+        return () => {
+            cancelled = true;
+        };
+    }, [API_BASE]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadFinanceSummary = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/finance/transparency/summary`);
+                const data = await response.json().catch(() => null);
+                if (!cancelled && data && typeof data === 'object') {
+                    setFinanceSummary(data as FinanceSummary);
+                }
+            } catch {
+                if (!cancelled) {
+                    setFinanceSummary(null);
+                }
+            }
+        };
+        void loadFinanceSummary();
+        return () => {
+            cancelled = true;
+        };
+    }, [API_BASE]);
+
+    const formatCurrency = (value?: number) => {
+        const amount = Number(value ?? 0);
+        return new Intl.NumberFormat('en-RW', {
+            style: 'currency',
+            currency: 'RWF',
+            maximumFractionDigits: 0,
+        }).format(Number.isFinite(amount) ? amount : 0);
+    };
+
+    const formatEventDate = (value?: string) => {
+        if (!value) return 'Date TBA';
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return value;
+        return parsed.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
+    const noticeHighlights = useMemo(() => {
+        if (!guildNotice?.description) return [];
+        return guildNotice.description
+            .split(/[.!?]\s+/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 3);
+    }, [guildNotice]);
+
+    const noticesPerPage = 2;
+    const totalNoticePages = Math.max(1, Math.ceil(guildNotices.length / noticesPerPage));
+    const pagedNotices = useMemo(() => {
+        const start = noticePage * noticesPerPage;
+        return guildNotices.slice(start, start + noticesPerPage);
+    }, [guildNotices, noticePage]);
+
     const completionPercent = Math.min(100, Math.round((credits / 120) * 100));
     const financeClearance = 82;
     const cardLevel = 'Undergraduate';
-    const gpa = 3.82;
+    const normalizedGpa = Number.isFinite(gpa) ? gpa : 0;
     const initials = (fullName || 'Student User')
         .split(' ')
         .filter(Boolean)
@@ -274,7 +403,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
             drawLabeledLine(frontCtx, 'NAME', fullName || 'Student Name', 438, 458, 286);
             drawLabeledLine(frontCtx, 'FACULTY', faculty || 'Faculty', 438, 458, 336);
             drawLabeledLine(frontCtx, 'DEPARTMENT', cardDepartment, 438, 458, 386);
-            drawLabeledLine(frontCtx, 'REG. N°', studentNumber || 'Student ID', 438, 458, 436);
+            drawLabeledLine(frontCtx, 'REG. NO', studentNumber || 'Student ID', 438, 458, 436);
             drawLabeledLine(frontCtx, 'PROGRAM', program || 'Day', 438, 458, 486);
 
             frontCtx.fillStyle = '#07843f';
@@ -310,7 +439,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         <div className="side-avatar">{initials || 'SU'}</div>
                         <div>
                             <strong>{fullName || 'Student User'}</strong>
-                            <small>Senior · {faculty}</small>
+                            <small>Senior - {faculty}</small>
                         </div>
                     </div>
 
@@ -332,9 +461,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 <main className="editorial-main">
                     <section className="editorial-hero">
                         <div className="editorial-hero-overlay">
-                            <span className="hero-semester">ACTIVE SEMESTER · FALL 2024</span>
+                            <span className="hero-semester">Active Semester - Fall 2024</span>
                             <h1>{fullName || 'Student User'}</h1>
-                            <p>{department} · {program} Program</p>
+                            <p>{department} - {program} Program</p>
                         </div>
                         <div className="hero-registration">
                             <small>REGISTRATION ID</small>
@@ -376,7 +505,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                             </article>
                             <article className="gpa-card">
                                 <small>CURRENT GPA</small>
-                                <strong>{gpa.toFixed(2)}</strong>
+                                <strong>{normalizedGpa.toFixed(2)}</strong>
                                 <p><TrendingUp size={16} /> Top 5% of Faculty</p>
                             </article>
                         </div>
@@ -401,38 +530,81 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                 <h3>Discipline</h3>
                                 <p>Clear record. No outstanding violations or administrative holds.</p>
                             </button>
-                            <button className="service-tile" onClick={() => handleNavigate('registration')}>
-                                <div className="tile-icon peach"><FileText size={18} /></div>
-                                <h3>Registration</h3>
-                                <p>Spring enrollment opens soon. Prepare your course list.</p>
-                            </button>
+                            <article className="service-tile service-tile-balance">
+                                <div className="tile-icon peach"><Landmark size={18} /></div>
+                                <h3>AUCASA Balance Pulse</h3>
+                                <strong>{formatCurrency(financeSummary?.remainingBalance)}</strong>
+                                <p>Current association-wide remaining balance based on finance transparency.</p>
+                            </article>
                         </div>
                     </section>
 
                     <section className="course-quick-grid">
-                        <div className="courses-panel">
-                            <h3>ENROLLED COURSES</h3>
-                            <article className="course-row">
-                                <span className="course-code">SWE</span>
-                                <div>
-                                    <strong>Advanced Algorithms & Complexity</strong>
-                                    <small>Monday 09:00 - 11:00</small>
+                        <div className="courses-panel guild-notice-panel">
+                            <h3>GUILD NOTICE BOARD</h3>
+                            {isLoadingNotice && (
+                                <article className="guild-notice-card">
+                                    <strong>Loading latest guild notice...</strong>
+                                    <small>Please wait</small>
+                                </article>
+                            )}
+                            {!isLoadingNotice && guildNotices.length === 0 && (
+                                <article className="guild-notice-card">
+                                    <strong>No upcoming guild notice yet.</strong>
+                                    <small>Guild President can post an upcoming activity from the Events module.</small>
+                                </article>
+                            )}
+                            {!isLoadingNotice && guildNotices.length > 0 && (
+                                <>
+                                <div className="guild-notice-grid">
+                                    {pagedNotices.map((notice) => (
+                                        <article
+                                            key={notice.id}
+                                            className="guild-notice-card clickable"
+                                            onClick={() => {
+                                                setGuildNotice(notice);
+                                                setShowNoticeDetails(true);
+                                            }}
+                                            role="button"
+                                            tabIndex={0}
+                                        >
+                                            {notice.imagePath && (
+                                                <div className="guild-notice-image">
+                                                    <img src={`${API_BASE}/api/events/${notice.id}/image`} alt={notice.title} />
+                                                </div>
+                                            )}
+                                            <div className="guild-notice-badge">UPCOMING ACTIVITY</div>
+                                            <strong>{notice.title}</strong>
+                                        </article>
+                                    ))}
                                 </div>
-                                <span className="course-status">In Progress</span>
-                            </article>
-                            <article className="course-row">
-                                <span className="course-code">OS</span>
-                                <div>
-                                    <strong>Operating Systems Architecture</strong>
-                                    <small>Wednesday 14:00 - 16:00</small>
-                                </div>
-                                <span className="course-status">In Progress</span>
-                            </article>
+                                {guildNotices.length > noticesPerPage && (
+                                    <div className="notice-pagination">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNoticePage((prev) => Math.max(0, prev - 1))}
+                                            disabled={noticePage === 0}
+                                        >
+                                            Previous
+                                        </button>
+                                        <span>{noticePage + 1} / {totalNoticePages}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNoticePage((prev) => Math.min(totalNoticePages - 1, prev + 1))}
+                                            disabled={noticePage >= totalNoticePages - 1}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                )}
+                                </>
+                            )}
                         </div>
                         <aside className="quick-list">
-                            <h3>QUICK ACTIONS</h3>
+                            <h3>STUDENT ACTIONS</h3>
                             <button onClick={() => setShowCardModal(true)}><IdCard size={16} /> Download ID Card</button>
-                            <button onClick={() => handleNavigate('payments')}><Wallet size={16} /> Make Payment</button>
+                            <button onClick={() => handleNavigate('payments')}><Wallet size={16} /> Open Payments</button>
+                            <button onClick={() => handleNavigate('events')}><Calendar size={16} /> View All Events</button>
                         </aside>
                     </section>
                 </main>
@@ -495,8 +667,44 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                 </div>
             )}
+
+            {showNoticeDetails && guildNotice && (
+                <div className="notice-poster-overlay" onClick={() => setShowNoticeDetails(false)}>
+                    <div className="notice-poster-modal" onClick={(e) => e.stopPropagation()}>
+                        <button className="notice-poster-close" onClick={() => setShowNoticeDetails(false)}>Close</button>
+                        <div className="notice-poster">
+                            <div className="notice-topline">Join Us</div>
+                            {guildNotice.imagePath && (
+                                <div className="notice-logo-wrap">
+                                    <img src={`${API_BASE}/api/events/${guildNotice.id}/image`} alt={guildNotice.title} />
+                                </div>
+                            )}
+                            <h2>{guildNotice.title}</h2>
+                            <div className="notice-midcopy">
+                                {noticeHighlights.length > 0
+                                    ? noticeHighlights.map((line) => <p key={line}>{line}</p>)
+                                    : <p>{guildNotice.description}</p>}
+                            </div>
+                            <div className="notice-datetime">
+                                Save the date<br />
+                                {formatEventDate(guildNotice.eventDate)}
+                                {guildNotice.eventTime ? `, ${guildNotice.eventTime}` : ''}
+                            </div>
+                            <div className="notice-location">
+                                {guildNotice.location ? `Location: ${guildNotice.location}` : 'Location: TBA'}
+                            </div>
+                            <div className="notice-footer">
+                                Posted by {guildNotice.organizer || 'Guild Office'}<br />
+                                Reserve your spot now
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
 export default StudentDashboard;
+
+

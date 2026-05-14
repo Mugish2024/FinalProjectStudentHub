@@ -43,6 +43,9 @@ public class Event extends BaseEntity {
     @Column(nullable = false, length = 2000)
     private String description;
 
+    @Column(length = 255)
+    private String imagePath;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_user_id")
     private UserAccount createdBy;
@@ -109,6 +112,14 @@ public class Event extends BaseEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 
     public UserAccount getCreatedBy() {

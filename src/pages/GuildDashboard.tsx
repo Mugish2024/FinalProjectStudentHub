@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, CircleCheckBig, Clock3, Megaphone, Timer, Users, Vote } from 'lucide-react';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, CalendarClock, CircleCheckBig, Clock3, ImagePlus, Megaphone, Timer, Users, Vote, X } from 'lucide-react';
 import './GuildDashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
@@ -28,6 +28,28 @@ type ElectionInfo = {
     votingEnd?: string;
 };
 
+type StudentSummary = {
+    studentId: number;
+    studentNumber: string;
+    fullName: string;
+    faculty: string;
+    department: string;
+    program: string;
+    credits: number;
+};
+
+type GuildNotice = {
+    id: number;
+    title: string;
+    organizer: string;
+    eventDate: string;
+    eventTime?: string;
+    location?: string;
+    description: string;
+    imagePath?: string;
+    status?: string;
+};
+
 interface GuildDashboardProps {
     userId: number;
     onNavigate?: (page: string) => void;
@@ -39,6 +61,20 @@ const GuildDashboard = ({ userId, onNavigate }: GuildDashboardProps) => {
     const [activeElection, setActiveElection] = useState<ElectionInfo | null>(null);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [students, setStudents] = useState<StudentSummary[]>([]);
+    const [memberCount, setMemberCount] = useState(0);
+    const [showNoticeModal, setShowNoticeModal] = useState(false);
+    const [noticeTitle, setNoticeTitle] = useState('');
+    const [noticeDate, setNoticeDate] = useState('');
+    const [noticeTime, setNoticeTime] = useState('');
+    const [noticeLocation, setNoticeLocation] = useState('');
+    const [noticeDescription, setNoticeDescription] = useState('');
+    const [noticeImage, setNoticeImage] = useState<File | null>(null);
+    const [noticeError, setNoticeError] = useState('');
+    const [isPostingNotice, setIsPostingNotice] = useState(false);
+    const [notices, setNotices] = useState<GuildNotice[]>([]);
+    const [editingNoticeId, setEditingNoticeId] = useState<number | null>(null);
+    const [removeNoticeImage, setRemoveNoticeImage] = useState(false);
 
     const loadData = async () => {
         setError('');
@@ -76,6 +112,65 @@ const GuildDashboard = ({ userId, onNavigate }: GuildDashboardProps) => {
         if (!userId) return;
         void loadData();
     }, [userId]);
+
+    useEffect(() => {
+        const loadStudents = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/students/ims/all`);
+                const data = await response.json().catch(() => ({}));
+                const rows = Array.isArray((data as { data?: unknown[] }).data)
+                    ? ((data as { data: unknown[] }).data as StudentSummary[])
+                    : [];
+                if (response.ok) {
+                    setStudents(rows);
+                }
+            } catch {
+                setStudents([]);
+            }
+        };
+        void loadStudents();
+    }, []);
+
+    useEffect(() => {
+        const loadMemberCount = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/students/ims/count`);
+                const data = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    const count = Number((data as { count?: number }).count ?? 0);
+                    setMemberCount(Number.isFinite(count) ? count : 0);
+                } else {
+                    setMemberCount(0);
+                }
+            } catch {
+                setMemberCount(0);
+            }
+        };
+        void loadMemberCount();
+    }, []);
+
+    useEffect(() => {
+        const loadNotices = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/events`);
+                const data = await response.json().catch(() => []);
+                if (!response.ok || !Array.isArray(data)) {
+                    setNotices([]);
+                    return;
+                }
+                const mapped = (data as GuildNotice[])
+                    .filter((item) => {
+                        const organizer = (item.organizer ?? '').toLowerCase();
+                        return organizer.includes('guild');
+                    })
+                    .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
+                setNotices(mapped);
+            } catch {
+                setNotices([]);
+            }
+        };
+        void loadNotices();
+    }, []);
 
     const ticketMetrics = useMemo(() => {
         const open = tickets.filter((t) => {
@@ -119,8 +214,91 @@ const GuildDashboard = ({ userId, onNavigate }: GuildDashboardProps) => {
 
     const ticketPreview = useMemo(() => tickets.slice(0, 5), [tickets]);
     const sessionPreview = useMemo(() => sessions.slice(0, 4), [sessions]);
+    const postGuildNotice = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setNoticeError('');
+        if (!noticeTitle || !noticeDate || !noticeDescription) {
+            setNoticeError('Title, date, and description are required.');
+            return;
+        }
+        setIsPostingNotice(true);
+        try {
+            const form = new FormData();
+            form.append('title', noticeTitle);
+            form.append('organizer', 'Guild President');
+            form.append('eventDate', noticeDate);
+            if (noticeTime) form.append('eventTime', noticeTime);
+            if (noticeLocation) form.append('location', noticeLocation);
+            form.append('description', noticeDescription);
+            if (noticeImage) form.append('image', noticeImage);
+            if (editingNoticeId) {
+                form.append('removeImage', String(removeNoticeImage));
+            }
+
+            const targetUrl = editingNoticeId
+                ? `${API_BASE}/api/events/notices/${editingNoticeId}`
+                : `${API_BASE}/api/events/notices`;
+            const response = await fetch(targetUrl, {
+                method: editingNoticeId ? 'PUT' : 'POST',
+                body: form,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to post notice.');
+            }
+
+            setShowNoticeModal(false);
+            setNoticeTitle('');
+            setNoticeDate('');
+            setNoticeTime('');
+            setNoticeLocation('');
+            setNoticeDescription('');
+            setNoticeImage(null);
+            setEditingNoticeId(null);
+            setRemoveNoticeImage(false);
+            const noticesRes = await fetch(`${API_BASE}/api/events`);
+            const noticesData = await noticesRes.json().catch(() => []);
+            if (noticesRes.ok && Array.isArray(noticesData)) {
+                setNotices(
+                    (noticesData as GuildNotice[])
+                        .filter((item) => (item.organizer ?? '').toLowerCase().includes('guild'))
+                        .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime())
+                );
+            }
+        } catch (err) {
+            setNoticeError(err instanceof Error ? err.message : 'Failed to post notice.');
+        } finally {
+            setIsPostingNotice(false);
+        }
+    };
+
+    const startEditNotice = (notice: GuildNotice) => {
+        setEditingNoticeId(notice.id);
+        setNoticeTitle(notice.title ?? '');
+        setNoticeDate(notice.eventDate ?? '');
+        setNoticeTime(notice.eventTime ?? '');
+        setNoticeLocation(notice.location ?? '');
+        setNoticeDescription(notice.description ?? '');
+        setNoticeImage(null);
+        setRemoveNoticeImage(false);
+        setNoticeError('');
+        setShowNoticeModal(true);
+    };
+
+    const deleteNotice = async (id: number) => {
+        try {
+            const response = await fetch(`${API_BASE}/api/events/${id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                throw new Error('Failed to delete notice.');
+            }
+            setNotices((prev) => prev.filter((n) => n.id !== id));
+        } catch {
+            setError('Failed to delete one notice.');
+        }
+    };
 
     return (
+        <>
         <div className="guild-command-dashboard">
             <section className="guild-command-hero">
                 <div>
@@ -145,6 +323,10 @@ const GuildDashboard = ({ userId, onNavigate }: GuildDashboardProps) => {
                 <button type="button" className="ghost" onClick={() => onNavigate?.('attendance-review')}>
                     <CalendarClock size={16} />
                     Attendance Review
+                </button>
+                <button type="button" className="ghost" onClick={() => setShowNoticeModal(true)}>
+                    <ImagePlus size={16} />
+                    Post Notice
                 </button>
             </section>
 
@@ -211,9 +393,49 @@ const GuildDashboard = ({ userId, onNavigate }: GuildDashboardProps) => {
                             <strong>{isLoading ? '...' : sessions.length}</strong>
                         </div>
                         <div>
+                            <small>Total Association Students</small>
+                            <strong>{students.length}</strong>
+                        </div>
+                        <div>
                             <small>Election Votes</small>
                             <strong>{isLoading ? '...' : `${activeElection?.totalVotes ?? 0}`}</strong>
                         </div>
+                    </div>
+                </article>
+            </section>
+
+            <section className="guild-summary-row">
+                <article className="guild-summary-card">
+                    <h3>Total AUCASA Members</h3>
+                    <div className="score-row">
+                        <strong>{memberCount > 0 ? memberCount : students.length}</strong>
+                        <span>Registered members</span>
+                    </div>
+                    <div className="score-bar">
+                        <span style={{ width: '100%' }} />
+                    </div>
+                </article>
+            </section>
+
+            <section className="guild-summary-row">
+                <article className="guild-summary-card">
+                    <h3>Posted Guild Notices</h3>
+                    <div className="preview-list">
+                        {notices.slice(0, 6).map((notice) => (
+                            <div key={notice.id} className="notice-row">
+                                <div className="notice-row-main">
+                                    <strong>{notice.title}</strong>
+                                    <span>{new Date(notice.eventDate).toLocaleDateString()} {notice.location ? `â€¢ ${notice.location}` : ''}</span>
+                                </div>
+                                <div className="notice-row-actions">
+                                    <button type="button" onClick={() => startEditNotice(notice)}>Edit</button>
+                                    <button type="button" className="danger" onClick={() => void deleteNotice(notice.id)}>Delete</button>
+                                </div>
+                            </div>
+                        ))}
+                        {notices.length === 0 && (
+                            <div className="preview-empty">No guild notices posted yet.</div>
+                        )}
                     </div>
                 </article>
             </section>
@@ -309,7 +531,44 @@ const GuildDashboard = ({ userId, onNavigate }: GuildDashboardProps) => {
                 </article>
             </section>
         </div>
+        {showNoticeModal && (
+            <div className="guild-modal-overlay" onClick={() => setShowNoticeModal(false)}>
+                <div className="guild-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="guild-modal-head">
+                        <h3>Post Guild Notice</h3>
+                        <button type="button" onClick={() => setShowNoticeModal(false)}><X size={15} /></button>
+                    </div>
+                    <form className="guild-notice-form" onSubmit={postGuildNotice}>
+                        <input placeholder="Notice title" value={noticeTitle} onChange={(e) => setNoticeTitle(e.target.value)} required />
+                        <div className="guild-form-grid">
+                            <input type="date" value={noticeDate} onChange={(e) => setNoticeDate(e.target.value)} required />
+                            <input type="time" value={noticeTime} onChange={(e) => setNoticeTime(e.target.value)} />
+                        </div>
+                        <input placeholder="Location (e.g. Masoro Campus)" value={noticeLocation} onChange={(e) => setNoticeLocation(e.target.value)} />
+                        <textarea placeholder="Notice details..." value={noticeDescription} onChange={(e) => setNoticeDescription(e.target.value)} required />
+                        <input type="file" accept="image/*" onChange={(e) => setNoticeImage(e.target.files?.[0] ?? null)} />
+                        {editingNoticeId && (
+                            <label className="guild-checkbox-row">
+                                <input
+                                    type="checkbox"
+                                    checked={removeNoticeImage}
+                                    onChange={(e) => setRemoveNoticeImage(e.target.checked)}
+                                />
+                                Remove current image
+                            </label>
+                        )}
+                        {noticeError && <div className="guild-dash-alert">{noticeError}</div>}
+                        <button type="submit" disabled={isPostingNotice}>
+                            {isPostingNotice ? (editingNoticeId ? 'Saving...' : 'Posting...') : (editingNoticeId ? 'Save Changes' : 'Publish Notice')}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )}
+        </>
     );
 };
 
 export default GuildDashboard;
+
+

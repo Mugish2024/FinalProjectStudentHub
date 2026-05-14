@@ -9,7 +9,9 @@ import aucasa.com.rw.dto.attendance.AttendanceVerificationRequest;
 import aucasa.com.rw.service.AttendanceService;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -99,6 +101,23 @@ public class AttendanceRecordController {
         try {
             List<AttendanceRecordAdminResponse> result = service.listAdminRecords(sessionId, method, status, verificationStatus);
             return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/report/pdf")
+    public ResponseEntity<?> exportAttendanceReportPdf(@RequestParam Long sessionId) {
+        try {
+            byte[] pdf = service.buildSessionPresentReportPdf(sessionId);
+            String filename = "attendance-present-session-" + sessionId + "-" + LocalDate.now() + ".pdf";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header(HttpHeaders.CONTENT_TYPE, "application/pdf")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(pdf);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {

@@ -3,6 +3,7 @@ import {
     ShieldCheck,
     Landmark,
     ArrowUpRight,
+    Download,
 } from 'lucide-react';
 import urubutoPayLogo from '../assets/urubutopay.png';
 import './Payments.css';
@@ -11,9 +12,13 @@ interface PaymentRecord {
     id: number;
     studentNumber?: string;
     receiptNumber: string;
+    externalReference?: string;
     status: string;
     amount: number;
     paidAt?: string;
+    receiptStatus?: string;
+    registryMatchStatus?: string;
+    registryMatchMessage?: string;
 }
 
 interface WalletInfo {
@@ -53,6 +58,13 @@ interface PaymentsProps {
     studentNumber: string;
 }
 
+interface ImsPaymentSnapshot {
+    studentId?: string;
+    balance?: unknown;
+    fees?: unknown;
+    paymentInfo?: unknown;
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
 const URUBUTO_PAY_URL = 'https://urubutopay.rw/pay-now/initiate';
 const URUBUTO_MERCHANT_CODE = 'TH61132546';
@@ -71,6 +83,7 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     const [wallet, setWallet] = useState<WalletInfo | null>(null);
     const [history, setHistory] = useState<PaymentRecord[]>([]);
     const [mobilePhone, setMobilePhone] = useState('');
+    const [transactionId, setTransactionId] = useState('');
     const [isStartingPayment, setIsStartingPayment] = useState(false);
     const [receiptQr, setReceiptQr] = useState<ReceiptQrResult | null>(null);
     const [isVerifyingReceipt, setIsVerifyingReceipt] = useState(false);
@@ -78,10 +91,12 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [showMobilePromptModal, setShowMobilePromptModal] = useState(false);
+    const [imsSnapshot, setImsSnapshot] = useState<ImsPaymentSnapshot | null>(null);
 
     const resolvedPayerCode = String(resolvedStudentId || '').trim()
         || (studentNumber ?? '').trim()
         || (payment?.studentNumber ?? '').trim();
+    const isPaymentSettled = ['PAID', 'VERIFIED', 'COMPLETED'].includes((payment?.status ?? '').toUpperCase());
 
     const urubutoInitiateUrl = useMemo(() => {
         const externalReference = `AUCASA-${resolvedPayerCode}-${Date.now()}`;
@@ -111,14 +126,18 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
         }
 
         const data = await response.json();
-        const mapped: PaymentRecord = {
-            id: data.id,
-            studentNumber: data.studentNumber,
-            receiptNumber: data.receiptNumber,
-            status: data.status,
-            amount: data.amount,
-            paidAt: data.paidAt,
-        };
+            const mapped: PaymentRecord = {
+                id: data.id,
+                studentNumber: data.studentNumber,
+                receiptNumber: data.receiptNumber,
+                externalReference: data.externalReference,
+                status: data.status,
+                amount: data.amount,
+                paidAt: data.paidAt,
+                receiptStatus: data.receiptStatus,
+                registryMatchStatus: data.registryMatchStatus,
+                registryMatchMessage: data.registryMatchMessage,
+            };
         setPayment(mapped);
         return mapped;
     };
@@ -144,14 +163,26 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
         const response = await fetch(`${API_BASE}/api/payments/history/student/${resolvedStudentId}`);
         if (!response.ok) return;
         const data = await response.json().catch(() => []);
-        setHistory(Array.isArray(data) ? data : []);
+        const rows = Array.isArray(data) ? data : [];
+        setHistory(rows);
+        if (rows.length > 0) {
+            const latest = rows[0] as PaymentRecord;
+            setPayment((prev) => prev ?? latest);
+        }
+    };
+
+    const loadImsSnapshot = async () => {
+        const lookupId = (studentNumber ?? '').trim() || String(resolvedStudentId || '').trim();
+        if (!lookupId) return;
+        const response = await fetch(`${API_BASE}/api/payments/ims/student/${encodeURIComponent(lookupId)}/snapshot`);
+        if (!response.ok) return;
+        const data = await response.json().catch(() => null);
+        if (data && typeof data === 'object') {
+            setImsSnapshot(data as ImsPaymentSnapshot);
+        }
     };
 
     const handleStartMobileMoneyPayment = async () => {
-        if (!payment?.id) {
-            setError('No active payment obligation found.');
-            return;
-        }
         if (!mobilePhone.trim()) {
             setError('Phone number is required to start mobile payment.');
             return;
@@ -160,7 +191,8 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
         setInfo('');
         setIsStartingPayment(true);
         try {
-            const response = await fetch(`${API_BASE}/api/payments/${payment.id}/start-mobile-money`, {
+            const activePayment = payment?.id ? payment : await ensureObligation();
+            const response = await fetch(`${API_BASE}/api/payments/${activePayment.id}/start-mobile-money`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phoneNumber: mobilePhone.trim() }),
@@ -171,17 +203,22 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
             }
 
             if (data.payment) {
-                setPayment({
-                    id: data.payment.id,
-                    studentNumber: data.payment.studentNumber,
-                    receiptNumber: data.payment.receiptNumber,
-                    status: data.payment.status,
-                    amount: data.payment.amount,
-                    paidAt: data.payment.paidAt,
-                });
+            setPayment({
+                id: data.payment.id,
+                studentNumber: data.payment.studentNumber,
+                receiptNumber: data.payment.receiptNumber,
+                externalReference: data.payment.externalReference,
+                status: data.payment.status,
+                amount: data.payment.amount,
+                paidAt: data.payment.paidAt,
+                receiptStatus: data.payment.receiptStatus,
+                registryMatchStatus: data.payment.registryMatchStatus,
+                registryMatchMessage: data.payment.registryMatchMessage,
+            });
             }
             setInfo(data.message ?? 'Payment prompt sent. Please confirm on your phone.');
             await loadHistory();
+            await loadTransparencySummary();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to start payment.');
         } finally {
@@ -210,6 +247,7 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
             setReceiptQr(data as ReceiptQrResult);
             setInfo((data as ReceiptQrResult).message || 'Receipt verified.');
             await loadHistory();
+            await loadTransparencySummary();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Receipt verification failed.');
             setReceiptQr(null);
@@ -218,11 +256,57 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
         }
     };
 
-    const handleUploadReceipt = async () => {
+    const handleGenerateQr = async () => {
         if (!payment?.id) {
-            setError('No active payment obligation found.');
+            setError('No payment record found.');
             return;
         }
+
+        // Always re-check status from backend DB before blocking QR generation.
+        try {
+            const latestRes = await fetch(`${API_BASE}/api/payments/${payment.id}`);
+            const latest = await latestRes.json().catch(() => ({}));
+            if (latestRes.ok && latest && typeof latest === 'object') {
+                const latestStatus = String((latest as { status?: string }).status ?? '').toUpperCase();
+                const settled = ['PAID', 'VERIFIED', 'COMPLETED'].includes(latestStatus);
+                setPayment((prev) => prev ? ({
+                    ...prev,
+                    status: String((latest as { status?: string }).status ?? prev.status),
+                    receiptStatus: String((latest as { receiptStatus?: string }).receiptStatus ?? prev.receiptStatus ?? ''),
+                    externalReference: String((latest as { externalReference?: string }).externalReference ?? prev.externalReference ?? ''),
+                    paidAt: String((latest as { paidAt?: string }).paidAt ?? prev.paidAt ?? ''),
+                }) : prev);
+
+                if (!settled) {
+                    setError(`Payment is still ${latestStatus || 'PENDING'} in database. Complete payment first, then generate QR.`);
+                    return;
+                }
+            }
+        } catch {
+            // If refresh fails, fall back to current local state check.
+            if (!isPaymentSettled) {
+                setError('Complete payment first, then generate QR.');
+                return;
+            }
+        }
+
+        await handleVerifyReceipt();
+    };
+
+    const handleDownloadReceipt = () => {
+        if (!payment?.id) {
+            setError('No payment record found.');
+            return;
+        }
+        const hasReceipt = Boolean(payment.receiptStatus || payment.paidAt || payment.externalReference);
+        if (!hasReceipt) {
+            setError('Receipt is not available yet. Complete payment first.');
+            return;
+        }
+        window.open(`${API_BASE}/api/payments/${payment.id}/receipt/file`, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleUploadReceipt = async () => {
         if (!receiptFile) {
             setError('Please select a receipt image first.');
             return;
@@ -236,13 +320,17 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
         setInfo('');
         setIsUploadingReceipt(true);
         try {
+            const activePayment = payment?.id ? payment : await ensureObligation();
             const formData = new FormData();
             formData.append('phoneNumber', mobilePhone.trim());
             formData.append('method', 'URUBUTO_PAY');
             formData.append('autoVerify', 'false');
+            if (transactionId.trim()) {
+                formData.append('transactionId', transactionId.trim());
+            }
             formData.append('receiptFile', receiptFile);
 
-            const response = await fetch(`${API_BASE}/api/payments/${payment.id}/receipt/submit`, {
+            const response = await fetch(`${API_BASE}/api/payments/${activePayment.id}/receipt/submit`, {
                 method: 'POST',
                 body: formData,
             });
@@ -255,13 +343,19 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                 id: data.id,
                 studentNumber: data.studentNumber,
                 receiptNumber: data.receiptNumber,
+                externalReference: data.externalReference,
                 status: data.status,
                 amount: data.amount,
                 paidAt: data.paidAt,
+                receiptStatus: data.receiptStatus,
+                registryMatchStatus: data.registryMatchStatus,
+                registryMatchMessage: data.registryMatchMessage,
             });
-            setInfo('Receipt uploaded successfully. You can now click "Verify Your Receipt".');
+            setInfo(data.registryMatchMessage || 'Receipt uploaded and sent for registry validation.');
             setReceiptFile(null);
+            setTransactionId('');
             await loadHistory();
+            await handleVerifyReceipt();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to upload receipt.');
         } finally {
@@ -280,10 +374,10 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
             }
             try {
                 setIsLoading(true);
-                await ensureObligation();
                 await loadTransparencySummary();
                 await loadWallet();
                 await loadHistory();
+                await loadImsSnapshot();
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Could not load payment page.');
             } finally {
@@ -375,13 +469,31 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                             >
                                 Continue with Urubuto <ArrowUpRight size={16} />
                             </button>
-                            <button
-                                className="primary-btn"
-                                onClick={() => setShowVerifyModal(true)}
-                                style={{ marginTop: '0.55rem', background: '#0f766e' }}
-                            >
-                                Verify Your Receipt
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.55rem' }}>
+                                <button
+                                    className="primary-btn"
+                                    onClick={handleDownloadReceipt}
+                                    style={{
+                                        background: 'linear-gradient(135deg, #0f766e, #0b5e58)',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        boxShadow: '0 8px 18px rgba(15,118,110,0.28)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.45rem',
+                                    }}
+                                >
+                                    <Download size={16} />
+                                    Download Your Receipt
+                                </button>
+                                <button
+                                    className="primary-btn"
+                                    onClick={handleGenerateQr}
+                                    style={{ background: '#166534' }}
+                                    disabled={isVerifyingReceipt}
+                                >
+                                    {isVerifyingReceipt ? 'Generating QR...' : 'Generate QR'}
+                                </button>
+                            </div>
                             <p style={{ marginTop: '0.45rem', color: '#55657f', fontSize: '0.82rem' }}>
                                 Merchant code, payer code (your student ID), amount, and fee purpose are auto-filled.
                             </p>
@@ -416,6 +528,10 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                             <div>
                                 <span>Reference</span>
                                 <strong>{payment?.receiptNumber ?? '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Transaction ID</span>
+                                <strong>{payment?.externalReference ?? '-'}</strong>
                             </div>
                             <div>
                                 <span>Status</span>
@@ -480,6 +596,28 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                             ))}
                         </div>
                     </article>
+
+                    <article className="panel info-panel">
+                        <h2>IMS Payment Snapshot</h2>
+                        <div className="info-grid">
+                            <div>
+                                <span>IMS Student ID</span>
+                                <strong>{imsSnapshot?.studentId ?? '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Balance (IMS)</span>
+                                <strong>{imsSnapshot?.balance ? JSON.stringify(imsSnapshot.balance) : '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Fees (IMS)</span>
+                                <strong>{imsSnapshot?.fees ? JSON.stringify(imsSnapshot.fees) : '-'}</strong>
+                            </div>
+                            <div>
+                                <span>Payment Info (IMS)</span>
+                                <strong>{imsSnapshot?.paymentInfo ? JSON.stringify(imsSnapshot.paymentInfo) : '-'}</strong>
+                            </div>
+                        </div>
+                    </article>
                 </div>
 
             </section>
@@ -519,6 +657,13 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                                 accept=".jpg,.jpeg,.png,image/*"
                                 onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
                                 style={{ padding: '0.45rem', border: '1px solid #d4deef', borderRadius: 10, background: '#fff' }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Transaction ID (optional if OCR reads it)"
+                                value={transactionId}
+                                onChange={(e) => setTransactionId(e.target.value)}
+                                style={{ padding: '0.65rem 0.75rem', border: '1px solid #d4deef', borderRadius: 10 }}
                             />
                             <button
                                 className="primary-btn"

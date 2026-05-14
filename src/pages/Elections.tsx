@@ -48,15 +48,18 @@ type ElectionInfo = {
 
 interface ElectionsProps {
     studentNumber?: string;
+    gpa?: string;
+    credits?: number;
+    disciplineStatus?: string;
 }
 
-const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNumber }) => {
+const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNumber, gpa: loggedInGpa, credits: loggedInCredits, disciplineStatus: loggedInDisciplineStatus }) => {
     const [activeSection, setActiveSection] = useState<'overview' | 'apply' | 'candidates'>('overview');
     const [studentNumber, setStudentNumber] = useState(loggedInStudentNumber ?? '');
     const [position, setPosition] = useState('');
-    const [gpa, setGpa] = useState('');
-    const [credits, setCredits] = useState('');
-    const [disciplineStatus, setDisciplineStatus] = useState('');
+    const [gpa, setGpa] = useState(loggedInGpa ?? '');
+    const [credits, setCredits] = useState(loggedInCredits != null ? String(loggedInCredits) : '');
+    const [disciplineStatus, setDisciplineStatus] = useState(loggedInDisciplineStatus ?? '');
     const [slogan, setSlogan] = useState('');
     const [manifesto, setManifesto] = useState('');
     const [adventistProof, setAdventistProof] = useState<File | null>(null);
@@ -85,7 +88,6 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
         const parsedGpa = Number(gpa);
         const parsedCredits = Number(credits);
         const normalizedDiscipline = disciplineStatus.trim().toLowerCase();
-        const adventistNeeded = ADVENTIST_REQUIRED.has(position);
 
         if (!position) reasons.push('Please select a position.');
         if (!gpa || Number.isNaN(parsedGpa)) {
@@ -106,12 +108,8 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
             reasons.push('Discipline status must be good or satisfactory.');
         }
 
-        if (adventistNeeded && !adventistProof) {
-            reasons.push('Adventist proof is required for this position.');
-        }
-
         return { eligible: reasons.length === 0, reasons };
-    }, [position, gpa, credits, disciplineStatus, adventistProof]);
+    }, [position, gpa, credits, disciplineStatus]);
     const turnoutRate = useMemo(() => {
         if (!activeElection?.eligibleVoters || activeElection.eligibleVoters <= 0) return 0;
         const total = activeElection.totalVotes ?? 0;
@@ -174,12 +172,28 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
         setVoterNumber(loggedInStudentNumber ?? '');
     }, [loggedInStudentNumber]);
 
+    useEffect(() => {
+        setGpa(loggedInGpa ?? '');
+    }, [loggedInGpa]);
+
+    useEffect(() => {
+        setCredits(loggedInCredits != null ? String(loggedInCredits) : '');
+    }, [loggedInCredits]);
+
+    useEffect(() => {
+        setDisciplineStatus(loggedInDisciplineStatus ?? '');
+    }, [loggedInDisciplineStatus]);
+
     const handleApply = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitError('');
         setSubmitMessage('');
         if (!eligibilityForSelectedPosition.eligible) {
             setSubmitError(`You are not eligible to apply for this position: ${eligibilityForSelectedPosition.reasons.join(' ')}`);
+            return;
+        }
+        if (isAdventistRequired && !adventistProof) {
+            setSubmitError('This position requires Adventist proof. Please upload the document to continue.');
             return;
         }
         setIsSubmitting(true);
@@ -210,9 +224,9 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
             setSubmitMessage('Application submitted. Awaiting approval.');
             setStudentNumber('');
             setPosition('');
-            setGpa('');
-            setCredits('');
-            setDisciplineStatus('');
+            setGpa(loggedInGpa ?? '');
+            setCredits(loggedInCredits != null ? String(loggedInCredits) : '');
+            setDisciplineStatus(loggedInDisciplineStatus ?? '');
             setSlogan('');
             setManifesto('');
             setAdventistProof(null);
@@ -235,7 +249,6 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
         const parsedGpa = Number(gpa);
         const parsedCredits = Number(credits);
         const normalizedDiscipline = disciplineStatus.trim().toLowerCase();
-        const adventistNeeded = ADVENTIST_REQUIRED.has(selectedPosition);
 
         if (!gpa || Number.isNaN(parsedGpa)) {
             reasons.push('GPA is missing.');
@@ -255,10 +268,6 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
             reasons.push('Discipline status must be good or satisfactory.');
         }
 
-        if (adventistNeeded && !adventistProof) {
-            reasons.push('Adventist proof is required for this position.');
-        }
-
         if (reasons.length > 0) {
             setCanAccessApply(false);
             setEligibilityPopupTitle('Not Eligible for This Position');
@@ -269,7 +278,10 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
 
         setCanAccessApply(true);
         setEligibilityPopupTitle('Eligibility Confirmed');
-        setEligibilityPopupMessage(`Great. You are eligible to apply for ${selectedPosition}. Please complete the form.`);
+        const extraDocNote = ADVENTIST_REQUIRED.has(selectedPosition)
+            ? ' This role requires Adventist proof at submission time.'
+            : '';
+        setEligibilityPopupMessage(`Great. You are eligible to apply for ${selectedPosition}. Please complete the form.${extraDocNote}`);
         setEligibilityPopupOpen(true);
         setActiveSection('apply');
     };

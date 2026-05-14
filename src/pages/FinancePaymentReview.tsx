@@ -18,6 +18,27 @@ type ReceiptItem = {
     registryMatchStatus?: string;
 };
 
+type PaymentRegistryItem = {
+    id: number;
+    studentNumber?: string;
+    amount?: number;
+    currency?: string;
+    method?: string;
+    status?: string;
+    receiptStatus?: string;
+    externalReference?: string;
+    transactionId?: string;
+    reference?: string;
+    studentId?: string;
+    studentCode?: string;
+    studentName?: string;
+    payerInfo?: {
+        studentName?: string;
+        studentCode?: string;
+    };
+    paidAt?: string;
+};
+
 type FinanceTab = 'overview' | 'budget-control' | 'expenses' | 'statements' | 'receipts';
 type ExpenseCategory = 'operations' | 'events' | 'transport' | 'welfare' | 'equipment' | 'communication' | 'other';
 type ExpenseMethod = 'cash' | 'bank' | 'mobile_money';
@@ -149,6 +170,9 @@ const FinancePaymentReview = ({
     const [statement, setStatement] = useState<FinancialStatement | null>(null);
     const [transparency, setTransparency] = useState<TransparencySummary | null>(null);
     const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
+    const [allPayments, setAllPayments] = useState<PaymentRegistryItem[]>([]);
+    const [showAllPaymentsModal, setShowAllPaymentsModal] = useState(false);
+    const [isLoadingAllPayments, setIsLoadingAllPayments] = useState(false);
 
     const [notes, setNotes] = useState<Record<number, string>>({});
     const [importSummary, setImportSummary] = useState('');
@@ -220,6 +244,51 @@ const FinancePaymentReview = ({
         setReceipts(Array.isArray(data) ? data : []);
     };
 
+    const loadAllPayments = async () => {
+        setIsLoadingAllPayments(true);
+        try {
+            const response = await fetch(`${API_BASE}/api/payments/ims/registry/all`);
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+                const rows = Array.isArray((data as { data?: unknown[] }).data)
+                    ? ((data as { data: unknown[] }).data as PaymentRegistryItem[])
+                    : [];
+                setAllPayments(rows);
+                return;
+            }
+
+            // Simulation/local fallback: pull from local payment records directly.
+            const fallbackRes = await fetch(`${API_BASE}/api/payments`);
+            const fallbackData = await fallbackRes.json().catch(() => []);
+            if (!fallbackRes.ok || !Array.isArray(fallbackData)) {
+                throw new Error('Failed to load all payments.');
+            }
+
+            const mapped = (fallbackData as Array<Record<string, unknown>>).map((item) => ({
+                id: Number(item.id ?? 0),
+                studentNumber: String(item.studentNumber ?? ''),
+                amount: Number(item.amount ?? 0),
+                currency: String(item.currency ?? 'RWF'),
+                method: String(item.method ?? ''),
+                status: String(item.status ?? ''),
+                receiptStatus: String(item.receiptStatus ?? ''),
+                externalReference: String(item.externalReference ?? ''),
+                transactionId: String(item.externalReference ?? ''),
+                paidAt: String(item.paidAt ?? ''),
+                studentName: String(item.studentName ?? ''),
+                studentId: String(item.studentId ?? ''),
+                studentCode: String(item.studentNumber ?? ''),
+            })) as PaymentRegistryItem[];
+
+            setAllPayments(mapped);
+        } catch (err) {
+            setAllPayments([]);
+            setError(err instanceof Error ? err.message : 'Failed to load all payments.');
+        } finally {
+            setIsLoadingAllPayments(false);
+        }
+    };
+
     const refreshAll = async () => {
         setIsLoading(true);
         try {
@@ -236,8 +305,23 @@ const FinancePaymentReview = ({
     }, []);
 
     useEffect(() => {
+        const timer = window.setInterval(() => {
+            void refreshAll();
+        }, 15000);
+        return () => window.clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
         setActiveTab(initialTab);
     }, [initialTab]);
+
+    useEffect(() => {
+        const onFocus = () => {
+            void refreshAll();
+        };
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, []);
 
     const approvedRequests = useMemo(
         () => fundRequests.filter((item) => item.status === 'approved' && Number(item.remainingApprovedAmount || 0) > 0),
@@ -905,6 +989,12 @@ const FinancePaymentReview = ({
                                 />
                                 {importing ? 'Importing...' : 'Import CSV'}
                             </label>
+                            <button onClick={() => {
+                                setShowAllPaymentsModal(true);
+                                void loadAllPayments();
+                            }}>
+                                View All Payments
+                            </button>
                             <button onClick={() => window.open(`${API_BASE}/api/payments/receipts/report/pdf`, '_blank', 'noopener,noreferrer')}>
                                 Download Receipts PDF
                             </button>
@@ -1140,6 +1230,61 @@ const FinancePaymentReview = ({
                                 }}
                             >
                                 Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showAllPaymentsModal && (
+                <div className="popup-backdrop">
+                    <div className="popup-card" style={{ width: 'min(1200px, 95vw)', maxHeight: '85vh', overflow: 'auto' }}>
+                        <h3>All Payment Registry</h3>
+                        <p className="hint-text">Complete payment records used for registry validation and student clearance.</p>
+                        <div className="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Student</th>
+                                        <th>Transaction</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Status</th>
+                                        <th>Receipt</th>
+                                        <th>Paid At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {allPayments.map((item) => (
+                                        <tr key={item.id}>
+                                            <td>{item.id}</td>
+                                            <td>
+                                                <strong>{item.studentNumber ?? item.studentCode ?? item.studentId ?? item.payerInfo?.studentCode ?? '-'}</strong>
+                                                <small>{item.studentName ?? item.payerInfo?.studentName ?? '-'}</small>
+                                            </td>
+                                            <td>{item.transactionId ?? item.externalReference ?? item.reference ?? '-'}</td>
+                                            <td>{item.amount ?? 0} {item.currency ?? 'RWF'}</td>
+                                            <td>{item.method ?? '-'}</td>
+                                            <td>{item.status ?? '-'}</td>
+                                            <td>{item.receiptStatus ?? '-'}</td>
+                                            <td>{formatDate(item.paidAt)}</td>
+                                        </tr>
+                                    ))}
+                                    {!isLoadingAllPayments && allPayments.length === 0 && (
+                                        <tr>
+                                            <td colSpan={8} className="empty">No payment records found.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="action-row" style={{ marginTop: '0.9rem' }}>
+                            <button type="button" onClick={() => void loadAllPayments()} disabled={isLoadingAllPayments}>
+                                {isLoadingAllPayments ? 'Refreshing...' : 'Refresh'}
+                            </button>
+                            <button type="button" className="danger" onClick={() => setShowAllPaymentsModal(false)}>
+                                Close
                             </button>
                         </div>
                     </div>

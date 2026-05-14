@@ -23,12 +23,18 @@ import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
+import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -44,9 +50,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 import java.util.Base64;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -125,20 +133,11 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("Student not found: " + studentId));
         AcademicTerm term = resolveTerm(termId);
 
-        Optional<Payment> existing = repository.findByStudentIdAndTermId(studentId, term.getId());
+        Optional<Payment> existing = findLatestStudentTermPayment(studentId, term.getId());
         if (existing.isPresent()) {
             return existing.get();
         }
-
-        Payment payment = new Payment();
-        payment.setStudent(student);
-        payment.setTerm(term);
-        payment.setAmount(MANDATORY_FEE_AMOUNT);
-        payment.setCurrency(CURRENCY);
-        payment.setMethod(PaymentMethod.MOBILE_MONEY);
-        payment.setStatus(PaymentStatus.PENDING);
-        payment.setReceiptNumber(generateReceiptNumber(studentId, term.getId()));
-        return repository.save(payment);
+        return createObligationWithRetry(student, term);
     }
 
     @Transactional
@@ -149,15 +148,7 @@ public class PaymentService {
         for (StudentProfile student : students) {
             boolean exists = repository.existsByStudentIdAndTermId(student.getId(), term.getId());
             if (!exists) {
-                Payment payment = new Payment();
-                payment.setStudent(student);
-                payment.setTerm(term);
-                payment.setAmount(MANDATORY_FEE_AMOUNT);
-                payment.setCurrency(CURRENCY);
-                payment.setMethod(PaymentMethod.MOBILE_MONEY);
-                payment.setStatus(PaymentStatus.PENDING);
-                payment.setReceiptNumber(generateReceiptNumber(student.getId(), term.getId()));
-                repository.save(payment);
+                createObligationWithRetry(student, term);
                 created++;
             }
         }
@@ -228,6 +219,24 @@ public class PaymentService {
         payment.setExternalReference(push.getProviderReference());
         payment.setStatus(PaymentStatus.PENDING);
         payment.setPaidAt(null);
+
+        // In simulation mode, complete payment immediately and generate a local receipt artifact.
+        if (isSimulationReference(push.getProviderReference())) {
+            payment.setStatus(PaymentStatus.VERIFIED);
+            payment.setPaidAt(LocalDateTime.now());
+            payment.setReceiptStatus(PaymentReceiptStatus.VALID);
+            payment.setReceiptVerifiedAt(LocalDateTime.now());
+            payment.setReceiptNotes("Simulation payment auto-approved.");
+            if (payment.getReceiptIssuedAt() == null) {
+                payment.setReceiptIssuedAt(LocalDate.now().atStartOfDay());
+            }
+            if (payment.getReceiptValidUntil() == null) {
+                payment.setReceiptValidUntil(LocalDate.now().plusYears(1).atStartOfDay());
+            }
+            if (payment.getReceiptFilePath() == null || payment.getReceiptFilePath().isBlank()) {
+                payment.setReceiptFilePath(generateSimulationReceiptFile(payment));
+            }
+        }
         repository.save(payment);
 
         return push;
@@ -382,10 +391,31 @@ public class PaymentService {
         payment.setOcrPurpose(ocrPurpose);
         payment.setOcrStudentNumber(ocrStudentNumber);
 
+        // Enforce registry validation as soon as receipt is submitted when strict mode is enabled.
+        if (transactionService.isStrictRegistryEnabled()) {
+            PaymentTransactionService.MatchResult match = transactionService.evaluateMatch(payment);
+            if ("MATCHED".equals(match.getStatus())) {
+                payment.setReceiptStatus(PaymentReceiptStatus.VALID);
+                payment.setStatus(PaymentStatus.PAID);
+                payment.setReceiptVerifiedAt(LocalDateTime.now());
+                payment.setReceiptNotes("Auto-verified from payment registry.");
+                transactionService.findByTransactionId(payment.getExternalReference())
+                        .ifPresent(record -> transactionService.markMatched(record, payment));
+            } else {
+                payment.setReceiptStatus(PaymentReceiptStatus.PENDING);
+                payment.setStatus(PaymentStatus.PENDING);
+                payment.setReceiptNotes("Registry check pending: " + match.getMessage());
+            }
+        }
+
         if (autoVerify && attemptUrubutoVerification(transactionId)) {
             payment.setReceiptStatus(PaymentReceiptStatus.VALID);
             payment.setStatus(PaymentStatus.PAID);
             payment.setPaidAt(paidDate.atStartOfDay());
+            payment.setReceiptVerifiedAt(LocalDateTime.now());
+            if (payment.getReceiptNotes() == null || payment.getReceiptNotes().isBlank()) {
+                payment.setReceiptNotes("Auto-verified from provider callback simulation.");
+            }
         }
 
         return repository.save(payment);
@@ -604,7 +634,7 @@ public class PaymentService {
         if (payment.getStudent() == null || !studentId.equals(payment.getStudent().getId())) {
             throw new IllegalArgumentException("Payment does not belong to this student.");
         }
-        if (payment.getReceiptFilePath() == null || payment.getReceiptFilePath().isBlank()) {
+        if (!isSimulationPayment(payment) && (payment.getReceiptFilePath() == null || payment.getReceiptFilePath().isBlank())) {
             throw new IllegalArgumentException("Receipt file is missing. Upload receipt first.");
         }
         if (payment.getExternalReference() == null || payment.getExternalReference().isBlank()) {
@@ -618,29 +648,32 @@ public class PaymentService {
             }
         }
 
-        PaymentTransactionService.MatchResult match = transactionService.evaluateMatch(payment);
-        if (!"MATCHED".equals(match.getStatus())) {
-            throw new IllegalArgumentException("Receipt verification failed: " + match.getMessage());
+        if (!isSimulationPayment(payment)) {
+            PaymentTransactionService.MatchResult match = transactionService.evaluateMatch(payment);
+            if (!"MATCHED".equals(match.getStatus())) {
+                throw new IllegalArgumentException("Receipt verification failed: " + match.getMessage());
+            }
         }
 
         payment.setReceiptStatus(PaymentReceiptStatus.VALID);
         payment.setStatus(PaymentStatus.PAID);
         payment.setReceiptVerifiedAt(LocalDateTime.now());
-        payment.setReceiptNotes("Auto-verified by strict registry matching.");
+        payment.setReceiptNotes(isSimulationPayment(payment)
+                ? "Auto-verified in simulation mode."
+                : "Auto-verified by strict registry matching.");
+        if ((payment.getReceiptFilePath() == null || payment.getReceiptFilePath().isBlank()) && isSimulationPayment(payment)) {
+            payment.setReceiptFilePath(generateSimulationReceiptFile(payment));
+        }
         repository.save(payment);
-        transactionService.findByTransactionId(payment.getExternalReference())
-                .ifPresent(record -> transactionService.markMatched(record, payment));
+        if (!isSimulationPayment(payment)) {
+            transactionService.findByTransactionId(payment.getExternalReference())
+                    .ifPresent(record -> transactionService.markMatched(record, payment));
+        }
 
         String fullName = payment.getStudent().getUserAccount().getFirstName() + " "
                 + payment.getStudent().getUserAccount().getLastName();
         String firstName = payment.getStudent().getUserAccount().getFirstName();
-        String payload = "paymentId=" + payment.getId()
-                + "&studentId=" + payment.getStudent().getId()
-                + "&studentNumber=" + payment.getStudent().getStudentNumber()
-                + "&firstName=" + firstName
-                + "&receipt=" + payment.getReceiptNumber()
-                + "&verifiedAt=" + payment.getReceiptVerifiedAt()
-                + "&sig=" + signReceiptToken(payment);
+        String payload = buildReceiptQrPayload(payment);
 
         ReceiptAccessQrResponse response = new ReceiptAccessQrResponse();
         response.setGoodToGo(true);
@@ -699,7 +732,7 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public PaymentGateResponse checkAccessGate(Long studentId, Long termId) {
         AcademicTerm term = resolveTerm(termId);
-        Optional<Payment> paymentOpt = repository.findByStudentIdAndTermId(studentId, term.getId());
+        Optional<Payment> paymentOpt = findLatestStudentTermPayment(studentId, term.getId());
 
         if (paymentOpt.isEmpty()) {
             return new PaymentGateResponse(false, "Mandatory payment obligation not created yet.", "MISSING");
@@ -748,7 +781,15 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public Optional<Payment> findStudentTermPayment(Long studentId, Long termId) {
         AcademicTerm term = resolveTerm(termId);
-        return repository.findByStudentIdAndTermId(studentId, term.getId());
+        return findLatestStudentTermPayment(studentId, term.getId());
+    }
+
+    private Optional<Payment> findLatestStudentTermPayment(Long studentId, Long termId) {
+        List<Payment> rows = repository.findByStudentIdAndTermIdOrderByCreatedAtDesc(studentId, termId);
+        if (rows == null || rows.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(rows.get(0));
     }
 
     private AcademicTerm resolveTerm(Long termId) {
@@ -762,7 +803,141 @@ public class PaymentService {
     }
 
     private String generateReceiptNumber(Long studentId, Long termId) {
-        return "AUCASA-" + termId + "-" + studentId + "-" + System.currentTimeMillis();
+        return "AUCASA-" + termId + "-" + studentId + "-" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private Payment createObligationWithRetry(StudentProfile student, AcademicTerm term) {
+        final int maxAttempts = 5;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            Payment payment = new Payment();
+            payment.setStudent(student);
+            payment.setTerm(term);
+            payment.setAmount(MANDATORY_FEE_AMOUNT);
+            payment.setCurrency(CURRENCY);
+            payment.setMethod(PaymentMethod.MOBILE_MONEY);
+            payment.setStatus(PaymentStatus.PENDING);
+            payment.setReceiptNumber(generateReceiptNumber(student.getId(), term.getId()));
+            try {
+                return repository.save(payment);
+            } catch (DataIntegrityViolationException ex) {
+                Optional<Payment> existing = findLatestStudentTermPayment(student.getId(), term.getId());
+                if (existing.isPresent()) {
+                    return existing.get();
+                }
+                if (attempt == maxAttempts) {
+                    throw ex;
+                }
+            }
+        }
+        throw new IllegalStateException("Failed to create payment obligation after retry.");
+    }
+
+    private boolean isSimulationReference(String reference) {
+        return reference != null && reference.startsWith("SIM-");
+    }
+
+    private boolean isSimulationPayment(Payment payment) {
+        return payment != null && isSimulationReference(payment.getExternalReference());
+    }
+
+    private String generateSimulationReceiptFile(Payment payment) {
+        try {
+            Files.createDirectories(receiptUploadDir);
+            String filename = "receipt-sim-" + payment.getId() + "-" + System.currentTimeMillis() + ".pdf";
+            Path destination = receiptUploadDir.resolve(filename).normalize();
+            if (!destination.startsWith(receiptUploadDir)) {
+                throw new IllegalArgumentException("Invalid file path.");
+            }
+
+            try (java.io.OutputStream out = Files.newOutputStream(destination)) {
+                Document document = new Document(PageSize.A4, 36, 36, 36, 36);
+                PdfWriter.getInstance(document, out);
+                document.open();
+
+                int blueR = 21;
+                int blueG = 101;
+                int blueB = 192;
+                Font titleFont = new Font(Font.COURIER, 34, Font.BOLD);
+                titleFont.setColor(blueR, blueG, blueB);
+                Font sectionLabel = new Font(Font.COURIER, 13, Font.BOLD);
+                sectionLabel.setColor(blueR, blueG, blueB);
+                Font normal = new Font(Font.HELVETICA, 11, Font.NORMAL);
+                Font totalFont = new Font(Font.COURIER, 20, Font.BOLD);
+                totalFont.setColor(blueR, blueG, blueB);
+
+                PdfPTable head = new PdfPTable(new float[]{3f, 1.2f});
+                head.setWidthPercentage(100);
+
+                PdfPCell left = new PdfPCell();
+                left.setBorder(Rectangle.NO_BORDER);
+                left.addElement(new Paragraph("receipt", titleFont));
+                left.addElement(new Paragraph("AUCASA STUDENT PAYMENT RECEIPT", sectionLabel));
+                left.addElement(new Paragraph(" "));
+                head.addCell(left);
+
+                PdfPCell right = new PdfPCell();
+                right.setBorder(Rectangle.NO_BORDER);
+                Image logo = loadFirstExistingLogo();
+                if (logo != null) {
+                    logo.scaleToFit(80f, 80f);
+                    logo.setAlignment(Element.ALIGN_RIGHT);
+                    right.addElement(logo);
+                }
+                head.addCell(right);
+                document.add(head);
+
+                PdfPTable meta = new PdfPTable(new float[]{2.2f, 1f, 1.3f});
+                meta.setSpacingBefore(12f);
+                meta.setWidthPercentage(100);
+                addMeta(meta, "FROM", "AUCASA Finance Office\nAdventist University of Central Africa\nKigali, Rwanda", sectionLabel, normal);
+                addMeta(meta, "BILL TO", resolveStudentName(payment) + "\nStudent ID: " + resolveStudentNumber(payment), sectionLabel, normal);
+                addMeta(meta, "RECEIPT #", safeText(payment.getReceiptNumber())
+                        + "\nRECEIPT DATE: " + LocalDate.now()
+                        + "\nTRANSACTION: " + safeText(payment.getExternalReference())
+                        + "\nSTATUS: " + (payment.getStatus() != null ? payment.getStatus().name() : "VERIFIED"), sectionLabel, normal);
+                document.add(meta);
+
+                PdfPTable table = new PdfPTable(new float[]{0.7f, 2.6f, 1.3f, 1.2f});
+                table.setSpacingBefore(18f);
+                table.setWidthPercentage(100);
+                addHeaderCell(table, "QTY");
+                addHeaderCell(table, "DESCRIPTION");
+                addHeaderCell(table, "UNIT PRICE");
+                addHeaderCell(table, "AMOUNT");
+                addBodyCell(table, "1");
+                addBodyCell(table, "AUCASA Student Association Fee");
+                addBodyCell(table, formatMoney(payment.getAmount()));
+                addBodyCell(table, formatMoney(payment.getAmount()));
+                document.add(table);
+
+                PdfPTable total = new PdfPTable(new float[]{3f, 1f});
+                total.setSpacingBefore(16f);
+                total.setWidthPercentage(100);
+                PdfPCell totalLabel = new PdfPCell(new Phrase("TOTAL", totalFont));
+                totalLabel.setBorder(Rectangle.BOX);
+                totalLabel.setPadding(8f);
+                total.addCell(totalLabel);
+                PdfPCell totalValue = new PdfPCell(new Phrase(formatMoney(payment.getAmount()) + " " + safeText(payment.getCurrency()), totalFont));
+                totalValue.setHorizontalAlignment(Element.ALIGN_RIGHT);
+                totalValue.setBorder(Rectangle.BOX);
+                totalValue.setPadding(8f);
+                total.addCell(totalValue);
+                document.add(total);
+
+                String qrPayload = buildReceiptQrPayload(payment);
+                Image qr = renderQrCodeImage(qrPayload, 140, 140);
+                qr.setSpacingBefore(20f);
+                qr.setAlignment(Element.ALIGN_LEFT);
+                document.add(qr);
+                document.add(new Paragraph("Scan to verify receipt authenticity", sectionLabel));
+                document.add(new Paragraph("Verification endpoint: /api/payments/receipt-qr/verify?token=...", normal));
+
+                document.close();
+            }
+            return destination.toString().replace("\\", "/");
+        } catch (Throwable ex) {
+            throw new IllegalArgumentException("Failed to generate simulation receipt file.");
+        }
     }
 
     private String storeReceipt(MultipartFile file) {
@@ -882,6 +1057,10 @@ public class PaymentService {
         return value == null || value.isBlank() ? "-" : value;
     }
 
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
     private String valueOf(Long value) {
         return value == null ? "-" : String.valueOf(value);
     }
@@ -890,10 +1069,73 @@ public class PaymentService {
         return amount == null ? "-" : amount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 
+    private void addMeta(PdfPTable table, String title, String body, Font titleFont, Font bodyFont) {
+        PdfPCell cell = new PdfPCell();
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.addElement(new Paragraph(title, titleFont));
+        cell.addElement(new Paragraph(body, bodyFont));
+        table.addCell(cell);
+    }
+
+    private Image loadFirstExistingLogo() {
+        String[] candidates = new String[]{
+                "../AucaLogo.png",
+                "../auca logo.PNG",
+                "../NWAucaLogo.PNG",
+                "../AUCASA_logo.png"
+        };
+        for (String candidate : candidates) {
+            try {
+                Path path = Paths.get(candidate).toAbsolutePath().normalize();
+                if (Files.exists(path)) {
+                    return Image.getInstance(path.toString());
+                }
+            } catch (Exception ignored) {
+                // try next candidate
+            }
+        }
+        return null;
+    }
+
+    private String resolveStudentNumber(Payment payment) {
+        return payment.getStudent() != null ? safeText(payment.getStudent().getStudentNumber()) : "-";
+    }
+
+    private String resolveStudentName(Payment payment) {
+        if (payment.getStudent() == null || payment.getStudent().getUserAccount() == null) {
+            return "-";
+        }
+        String first = safe(payment.getStudent().getUserAccount().getFirstName());
+        String last = safe(payment.getStudent().getUserAccount().getLastName());
+        String full = (first + " " + last).trim();
+        return full.isBlank() ? "-" : full;
+    }
+
     private String signReceiptToken(Payment payment) {
         String raw = payment.getId() + "|" + payment.getStudent().getId() + "|" + payment.getReceiptNumber() + "|" + receiptQrSecret;
         return Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String buildReceiptQrPayload(Payment payment) {
+        String firstName = payment.getStudent() != null && payment.getStudent().getUserAccount() != null
+                ? safe(payment.getStudent().getUserAccount().getFirstName()) : "Student";
+        return "paymentId=" + payment.getId()
+                + "&studentId=" + (payment.getStudent() != null ? payment.getStudent().getId() : 0)
+                + "&studentNumber=" + resolveStudentNumber(payment)
+                + "&firstName=" + firstName
+                + "&receipt=" + safeText(payment.getReceiptNumber())
+                + "&verifiedAt=" + (payment.getReceiptVerifiedAt() != null ? payment.getReceiptVerifiedAt() : LocalDateTime.now())
+                + "&sig=" + signReceiptToken(payment);
+    }
+
+    private Image renderQrCodeImage(String payload, int width, int height) throws Exception {
+        QRCodeWriter writer = new QRCodeWriter();
+        BitMatrix matrix = writer.encode(payload, BarcodeFormat.QR_CODE, width, height);
+        java.awt.image.BufferedImage buffered = MatrixToImageWriter.toBufferedImage(matrix);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(buffered, "png", baos);
+        return Image.getInstance(baos.toByteArray());
     }
 
     private Map<String, String> parseToken(String token) {

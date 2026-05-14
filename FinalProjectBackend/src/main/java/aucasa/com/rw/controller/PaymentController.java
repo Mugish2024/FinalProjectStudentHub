@@ -19,11 +19,13 @@ import aucasa.com.rw.dto.payment.ReceiptOcrResponse;
 import aucasa.com.rw.domain.enums.PaymentMethod;
 import aucasa.com.rw.domain.enums.PaymentReceiptStatus;
 import aucasa.com.rw.service.PaymentService;
+import aucasa.com.rw.service.ImsPaymentGatewayService;
 import aucasa.com.rw.service.PaymentReceiptOcrService;
 import aucasa.com.rw.service.PaymentTransactionService;
 import aucasa.com.rw.service.mobilemoney.MobileMoneyPushResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.core.io.Resource;
@@ -37,10 +39,12 @@ import org.springframework.web.multipart.MultipartFile;
 @CrossOrigin(originPatterns = {"http://localhost:5173", "https://localhost:5173", "http://127.0.0.1:5173", "https://127.0.0.1:5173", "http://10.*.*.*:5173", "https://10.*.*.*:5173", "https://*.loca.lt", "https://*.trycloudflare.com"})
 public class PaymentController {
     private final PaymentService service;
+    private final ImsPaymentGatewayService imsPaymentGatewayService;
     private final PaymentReceiptOcrService ocrService;
 
-    public PaymentController(PaymentService service, PaymentReceiptOcrService ocrService) {
+    public PaymentController(PaymentService service, ImsPaymentGatewayService imsPaymentGatewayService, PaymentReceiptOcrService ocrService) {
         this.service = service;
+        this.imsPaymentGatewayService = imsPaymentGatewayService;
         this.ocrService = ocrService;
     }
 
@@ -52,6 +56,33 @@ public class PaymentController {
     @GetMapping("/wallet")
     public ResponseEntity<PaymentWalletResponse> getCollectionWallet() {
         return ResponseEntity.ok(service.getCollectionWallet());
+    }
+
+    @GetMapping("/ims/student/{studentId}/snapshot")
+    public ResponseEntity<?> getImsSnapshot(@PathVariable String studentId) {
+        try {
+            return ResponseEntity.ok(imsPaymentGatewayService.fetchStudentPaymentSnapshot(studentId));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/ims/registry/all")
+    public ResponseEntity<?> getImsAllPayments() {
+        try {
+            Map<String, Object> ims = imsPaymentGatewayService.fetchAllStudentPayments();
+            Object data = ims.get("data");
+            if (data instanceof List<?> list && !list.isEmpty()) {
+                return ResponseEntity.ok(ims);
+            }
+            return ResponseEntity.ok(buildLocalPaymentRegistryPayload("LOCAL_FALLBACK_EMPTY_IMS"));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.ok(buildLocalPaymentRegistryPayload("LOCAL_FALLBACK_IMS_CONFIG"));
+        } catch (Exception ex) {
+            return ResponseEntity.ok(buildLocalPaymentRegistryPayload("LOCAL_FALLBACK_IMS_ERROR"));
+        }
     }
 
     @GetMapping("/history/student/{studentId}")
@@ -448,6 +479,42 @@ public class PaymentController {
         response.setRegistryMatchStatus(match.getStatus());
         response.setRegistryMatchMessage(match.getMessage());
         return response;
+    }
+
+    private Map<String, Object> buildLocalPaymentRegistryPayload(String source) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Payment payment : service.findAll()) {
+            try {
+                Map<String, Object> row = new java.util.HashMap<>();
+                row.put("id", payment.getId() != null ? payment.getId() : 0L);
+                row.put("studentId", payment.getStudent() != null && payment.getStudent().getId() != null
+                        ? String.valueOf(payment.getStudent().getId()) : "");
+                row.put("studentCode", payment.getStudent() != null && payment.getStudent().getStudentNumber() != null
+                        ? payment.getStudent().getStudentNumber() : "");
+                row.put("studentNumber", payment.getStudent() != null && payment.getStudent().getStudentNumber() != null
+                        ? payment.getStudent().getStudentNumber() : "");
+                row.put("studentName", payment.getStudent() != null
+                        && payment.getStudent().getUserAccount() != null
+                        ? (safe(payment.getStudent().getUserAccount().getFirstName()) + " " + safe(payment.getStudent().getUserAccount().getLastName())).trim()
+                        : "");
+                row.put("amount", payment.getAmount() != null ? payment.getAmount() : 0);
+                row.put("currency", payment.getCurrency() != null ? payment.getCurrency() : "RWF");
+                row.put("method", payment.getMethod() != null ? payment.getMethod().name() : "");
+                row.put("status", payment.getStatus() != null ? payment.getStatus().name() : "");
+                row.put("receiptStatus", payment.getReceiptStatus() != null ? payment.getReceiptStatus().name() : "");
+                row.put("externalReference", payment.getExternalReference() != null ? payment.getExternalReference() : "");
+                row.put("transactionId", payment.getExternalReference() != null ? payment.getExternalReference() : "");
+                row.put("paidAt", payment.getPaidAt() != null ? payment.getPaidAt().toString() : "");
+                rows.add(row);
+            } catch (Exception ignored) {
+                // skip malformed record and continue
+            }
+        }
+        return Map.of("source", source, "count", rows.size(), "data", rows);
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 }
 

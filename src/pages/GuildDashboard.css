@@ -241,6 +241,70 @@
     margin: 0;
 }
 
+.notice-row {
+    align-items: center;
+    background: #f6f9ff;
+    border: 1px solid #dbe7f8;
+    border-radius: 10px;
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: 1fr auto;
+    padding: 0.58rem 0.66rem;
+}
+
+.notice-row-main strong {
+    color: #10305c;
+    display: block;
+    font-size: 0.9rem;
+}
+
+.notice-row-main span {
+    color: #607490;
+    font-size: 0.79rem;
+}
+
+.notice-row-actions {
+    display: inline-flex;
+    gap: 0.35rem;
+}
+
+.notice-row-actions button {
+    background: #eff4fc;
+    border: 1px solid #d7e3f6;
+    border-radius: 8px;
+    color: #173562;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.35rem 0.5rem;
+}
+
+.notice-row-actions button.danger {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #9f1239;
+}
+
+.guild-search-box {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.65rem;
+    padding: 0.5rem 0.65rem;
+}
+
+.guild-search-box input {
+    background: transparent;
+    border: none;
+    color: #0f1b3d;
+    flex: 1;
+    font-size: 0.86rem;
+    outline: none;
+}
+
 .election-box {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -342,6 +406,90 @@
     font-size: 0.86rem;
     gap: 0.4rem;
     padding: 0.6rem 0.7rem;
+}
+
+.guild-modal-overlay {
+    align-items: center;
+    background: rgba(2, 8, 23, 0.45);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 1rem;
+    position: fixed;
+    z-index: 1200;
+}
+
+.guild-modal {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 22px 48px rgba(15, 23, 42, 0.3);
+    max-width: 580px;
+    padding: 0.9rem;
+    width: 100%;
+}
+
+.guild-modal-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.7rem;
+}
+
+.guild-modal-head h3 {
+    margin: 0;
+}
+
+.guild-modal-head button {
+    background: #eef2f7;
+    border: 1px solid #dbe4ef;
+    border-radius: 8px;
+    color: #1e3a67;
+    cursor: pointer;
+    display: inline-flex;
+    padding: 0.35rem;
+}
+
+.guild-notice-form {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.guild-notice-form input,
+.guild-notice-form textarea {
+    border: 1px solid #d8e2f0;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    padding: 0.55rem 0.65rem;
+}
+
+.guild-checkbox-row {
+    align-items: center;
+    color: #334155;
+    display: inline-flex;
+    font-size: 0.84rem;
+    gap: 0.45rem;
+}
+
+.guild-notice-form textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.guild-form-grid {
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guild-notice-form > button {
+    background: #0f2961;
+    border: 1px solid #1d3c7e;
+    border-radius: 10px;
+    color: #f8fbff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 800;
+    padding: 0.58rem 0.8rem;
 }
 
 @media (max-width: 1320px) {

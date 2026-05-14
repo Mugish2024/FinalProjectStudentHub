@@ -16,17 +16,19 @@ const Landing: React.FC<LandingProps> = ({ onEnter, onNavigate }) => {
                         <span className="brand-icon">
                             <img src="/AucaLogo.png" alt="AUCA logo" className="brand-logo" />
                         </span>
-                        <span>StudentHub</span>
+                        <span className="brand-text-block">
+                            <small>Adventist University of Central Africa</small>
+                            <strong>StudentHub</strong>
+                        </span>
                     </button>
 
                     <nav className="exact-links">
                         <button type="button" onClick={() => onNavigate('landing')}>Home</button>
-                        <button type="button" onClick={() => onNavigate('about')}>About</button>
-                        <button type="button" onClick={() => onNavigate('contact')}>Contact</button>
+                        <button type="button" onClick={() => onNavigate('about')}>Campus Life</button>
+                        <button type="button" onClick={() => onNavigate('contact')}>Services</button>
                     </nav>
 
                     <div className="exact-actions">
-                        <button type="button" className="btn-register" onClick={() => onNavigate('signup')}>Register</button>
                         <button type="button" className="btn-signin" onClick={onEnter}>Sign In</button>
                     </div>
                 </div>
@@ -50,7 +52,7 @@ const Landing: React.FC<LandingProps> = ({ onEnter, onNavigate }) => {
                     </p>
                     <div className="exact-cta-row">
                         <button type="button" className="btn-apply" onClick={onEnter}>
-                            Apply Now <ArrowRight size={16} />
+                            Get Started <ArrowRight size={16} />
                         </button>
                         <button type="button" className="btn-learn" onClick={() => onNavigate('about')}>
                             Learn More <ArrowRight size={16} />
@@ -160,12 +162,52 @@ const Landing: React.FC<LandingProps> = ({ onEnter, onNavigate }) => {
                                 </circle>
                             </g>
                         </svg>
-                        <div className="signal-message m1">Support your student association with transparency.</div>
-                        <div className="signal-message m2">Track fee usage and approved budgets in real time.</div>
-                        <div className="signal-message m3">One hub for payments, reports, and student services.</div>
+                        <div className="signal-message m1">Simple tools that help students move faster.</div>
+                        <div className="signal-message m2">Clear payment and service steps from one dashboard.</div>
+                        <div className="signal-message m3">Built for daily campus life, not complexity.</div>
                     </div>
                 </section>
             </main>
+            <section className="landing-editorial">
+                <div className="editorial-inner">
+                    <div className="editorial-head">
+                        <p>Inside StudentHub</p>
+                        <h2>Everything a student needs, arranged with clarity</h2>
+                    </div>
+                    <div className="editorial-grid">
+                        <article className="editorial-card">
+                            <span className="card-tag">Payments</span>
+                            <h3>Complete association payments with guided steps and verified receipts</h3>
+                            <p>From payment initiation to receipt validation, every stage is transparent, timestamped, and easy to follow for both students and finance teams.</p>
+                            <ul>
+                                <li>Real-time payment status updates</li>
+                                <li>Receipt upload with verification workflow</li>
+                                <li>Clear payment history for each student account</li>
+                            </ul>
+                        </article>
+                        <article className="editorial-card">
+                            <span className="card-tag">Attendance</span>
+                            <h3>Stay aligned with live sessions, QR check-in, and dean oversight reports</h3>
+                            <p>Students check in quickly while leadership tracks attendance with trusted session controls, live metrics, and downloadable daily reporting.</p>
+                            <ul>
+                                <li>Active session control and QR issuance</li>
+                                <li>Present-student listings with pagination</li>
+                                <li>One-click PDF reports for daily summaries</li>
+                            </ul>
+                        </article>
+                        <article className="editorial-card">
+                            <span className="card-tag">Student Services</span>
+                            <h3>Resolve issues, track support requests, and move academic tasks forward</h3>
+                            <p>One place for registration management, discipline visibility, announcements, and practical student support that reduces delays.</p>
+                            <ul>
+                                <li>Structured support and follow-up flow</li>
+                                <li>Registration and profile lifecycle tools</li>
+                                <li>Centralized updates across key services</li>
+                            </ul>
+                        </article>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 };

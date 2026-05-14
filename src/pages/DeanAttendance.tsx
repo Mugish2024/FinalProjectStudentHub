@@ -13,6 +13,18 @@ type SessionItem = {
     active: boolean;
 };
 
+type AttendanceAdminRecord = {
+    id: number;
+    studentName: string;
+    studentNumber: string;
+    sessionTitle: string;
+    campus: string;
+    checkInAt: string;
+    method: string;
+    status: string;
+    verificationStatus: string;
+};
+
 const DeanAttendance = () => {
     const [sessions, setSessions] = useState<SessionItem[]>([]);
     const [sessionId, setSessionId] = useState<string>('');
@@ -21,6 +33,11 @@ const DeanAttendance = () => {
     const [qrExpiry, setQrExpiry] = useState('');
     const [error, setError] = useState('');
     const [now, setNow] = useState(new Date());
+    const [presentRecords, setPresentRecords] = useState<AttendanceAdminRecord[]>([]);
+    const [recordsLoading, setRecordsLoading] = useState(false);
+    const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
+    const [presentPage, setPresentPage] = useState(1);
+    const pageSize = 10;
 
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000);
@@ -55,6 +72,26 @@ const DeanAttendance = () => {
             setPresentCount(Array.isArray(data) ? data.length : 0);
         } catch {
             setError('Failed to load attendance count.');
+        }
+    };
+
+    const loadPresentRecords = async (selectedSessionId: string) => {
+        if (!selectedSessionId) {
+            setPresentRecords([]);
+            return;
+        }
+        setRecordsLoading(true);
+        try {
+            const response = await fetch(
+                `${API_BASE}/api/attendance/admin/records?sessionId=${selectedSessionId}&status=PRESENT`
+            );
+            const data = await response.json().catch(() => []);
+            setPresentRecords(Array.isArray(data) ? data : []);
+        } catch {
+            setError('Failed to load present student records.');
+            setPresentRecords([]);
+        } finally {
+            setRecordsLoading(false);
         }
     };
 
@@ -139,6 +176,30 @@ const DeanAttendance = () => {
         [now]
     );
 
+    const totalPages = Math.max(1, Math.ceil(presentRecords.length / pageSize));
+    const pagedPresentRecords = useMemo(() => {
+        const start = (presentPage - 1) * pageSize;
+        return presentRecords.slice(start, start + pageSize);
+    }, [presentPage, presentRecords]);
+
+    const openPresentModal = async () => {
+        if (!sessionId) {
+            setError('Select a session first.');
+            return;
+        }
+        setPresentPage(1);
+        setIsPresentModalOpen(true);
+        await loadPresentRecords(sessionId);
+    };
+
+    const handleDownloadPresentPdf = () => {
+        if (!sessionId) {
+            setError('Select a session first.');
+            return;
+        }
+        window.open(`${API_BASE}/api/attendance/report/pdf?sessionId=${encodeURIComponent(sessionId)}`, '_blank', 'noopener,noreferrer');
+    };
+
     return (
         <div className="dean-attendance-simple">
             <header className="dean-simple-head">
@@ -179,10 +240,10 @@ const DeanAttendance = () => {
             </section>
 
             <section className="simple-metrics-grid">
-                <article className="metric-card dark">
+                <article className="metric-card dark clickable" onClick={() => void openPresentModal()}>
                     <span className="kicker">Live Attendance</span>
                     <strong><Users size={18} /> {presentCount}</strong>
-                    <p>Students marked present in this session</p>
+                    <p>Students marked present in this session (tap to view list)</p>
                 </article>
 
                 <article className="metric-card green">
@@ -220,6 +281,72 @@ const DeanAttendance = () => {
                         </button>
                     </div>
                 </section>
+            )}
+
+            {isPresentModalOpen && (
+                <div className="attendance-modal-overlay" onClick={() => setIsPresentModalOpen(false)}>
+                    <section className="attendance-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <div className="attendance-modal-head">
+                            <h3>Present Students - {selectedSession?.title ?? 'Selected Session'}</h3>
+                            <button className="btn-dark" type="button" onClick={handleDownloadPresentPdf}>
+                                Generate PDF Report
+                            </button>
+                        </div>
+
+                        <div className="attendance-modal-body">
+                            {recordsLoading && <p>Loading present students...</p>}
+                            {!recordsLoading && presentRecords.length === 0 && <p>No present students found for this session.</p>}
+                            {!recordsLoading && presentRecords.length > 0 && (
+                                <div className="attendance-table-wrap">
+                                    <table className="attendance-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Name</th>
+                                                <th>Student ID</th>
+                                                <th>Check-in</th>
+                                                <th>Method</th>
+                                                <th>Verification</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {pagedPresentRecords.map((item, index) => (
+                                                <tr key={item.id}>
+                                                    <td>{(presentPage - 1) * pageSize + index + 1}</td>
+                                                    <td>{item.studentName || '-'}</td>
+                                                    <td>{item.studentNumber || '-'}</td>
+                                                    <td>{item.checkInAt || '-'}</td>
+                                                    <td>{item.method || '-'}</td>
+                                                    <td>{item.verificationStatus || '-'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="attendance-modal-foot">
+                            <button
+                                className="btn-dark"
+                                type="button"
+                                disabled={presentPage <= 1}
+                                onClick={() => setPresentPage((p) => Math.max(1, p - 1))}
+                            >
+                                Prev
+                            </button>
+                            <span>Page {presentPage} of {totalPages}</span>
+                            <button
+                                className="btn-dark"
+                                type="button"
+                                disabled={presentPage >= totalPages}
+                                onClick={() => setPresentPage((p) => Math.min(totalPages, p + 1))}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </section>
+                </div>
             )}
         </div>
     );

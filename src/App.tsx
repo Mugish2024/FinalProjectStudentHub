@@ -166,6 +166,7 @@ function App() {
             department={profile?.department ?? 'Software Engineering'}
             program={profile?.program ?? 'Day'}
             credits={profile?.credits ?? 0}
+            gpa={Number(profile?.gpa ?? '0')}
           />
         );
       case 'labour':
@@ -214,7 +215,14 @@ function App() {
       case 'exam':
         return <PlaceholderPage title="Exam Officer" />;
       case 'elections':
-        return <Elections studentNumber={profile?.studentNumber ?? ''} />;
+        return (
+          <Elections
+            studentNumber={profile?.studentNumber ?? ''}
+            gpa={profile?.gpa ?? '0.00'}
+            credits={profile?.credits ?? 0}
+            disciplineStatus={profile?.disciplineStatus ?? ''}
+          />
+        );
       case 'registration':
         return <RegistrationVerification />;
       case 'attendance':

@@ -1,6 +1,7 @@
 package aucasa.com.rw.controller;
 
 import aucasa.com.rw.domain.RegistrationRecord;
+import aucasa.com.rw.dto.student.StudentCourseEnrollmentResponse;
 import aucasa.com.rw.service.RegistrationRecordService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,16 @@ public class RegistrationRecordController {
 
     @GetMapping
     public List<RegistrationRecord> getAll() { return service.findAll(); }
+
+    @GetMapping("/student/{studentNumber}/current-term-courses")
+    public ResponseEntity<?> getCurrentTermCourses(@PathVariable String studentNumber) {
+        try {
+            List<StudentCourseEnrollmentResponse> courses = service.findCurrentTermCoursesByStudentNumber(studentNumber);
+            return ResponseEntity.ok(courses);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", ex.getMessage()));
+        }
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<RegistrationRecord> getById(@PathVariable Long id) {

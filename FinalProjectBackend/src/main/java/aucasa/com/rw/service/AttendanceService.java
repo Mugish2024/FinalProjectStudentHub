@@ -17,6 +17,17 @@ import aucasa.com.rw.repository.AttendanceRecordRepository;
 import aucasa.com.rw.repository.AttendanceSessionRepository;
 import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
+import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -309,6 +320,83 @@ public class AttendanceService {
         return toAdminResponse(record);
     }
 
+    @Transactional(readOnly = true)
+    public byte[] buildSessionPresentReportPdf(Long sessionId) {
+        if (sessionId == null) {
+            throw new IllegalArgumentException("sessionId is required.");
+        }
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found."));
+
+        List<AttendanceRecordAdminResponse> records = recordRepository.findAll().stream()
+                .filter(r -> r.getSession() != null && sessionId.equals(r.getSession().getId()))
+                .filter(r -> r.getStatus() == AttendanceStatus.PRESENT)
+                .map(this::toAdminResponse)
+                .toList();
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4.rotate(), 24f, 24f, 26f, 26f);
+        try {
+            PdfWriter.getInstance(document, out);
+            document.open();
+
+            Font titleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+            Font bodyFont = new Font(Font.HELVETICA, 9, Font.NORMAL);
+            Font mutedFont = new Font(Font.HELVETICA, 9, Font.ITALIC);
+
+            Paragraph title = new Paragraph("Attendance Daily Report - Present Students", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(8f);
+            document.add(title);
+
+            String sessionMeta = "Session: " + safeValue(session.getTitle())
+                    + " | Campus: " + (session.getCampus() != null ? safeValue(session.getCampus().getName()) : "N/A")
+                    + " | Date: " + LocalDateTime.now().toLocalDate();
+            Paragraph meta = new Paragraph(sessionMeta, bodyFont);
+            meta.setSpacingAfter(6f);
+            document.add(meta);
+
+            Paragraph count = new Paragraph("Total present students: " + records.size(), bodyFont);
+            count.setSpacingAfter(10f);
+            document.add(count);
+
+            PdfPTable table = new PdfPTable(6);
+            table.setWidthPercentage(100f);
+            table.setWidths(new float[]{0.8f, 2.3f, 1.6f, 2.2f, 1.2f, 1.6f});
+
+            addHeaderCell(table, "#");
+            addHeaderCell(table, "Student Name");
+            addHeaderCell(table, "Student ID");
+            addHeaderCell(table, "Check-in Time");
+            addHeaderCell(table, "Method");
+            addHeaderCell(table, "Verification");
+
+            int index = 1;
+            for (AttendanceRecordAdminResponse item : records) {
+                addBodyCell(table, String.valueOf(index++));
+                addBodyCell(table, safeValue(item.getStudentName()));
+                addBodyCell(table, safeValue(item.getStudentNumber()));
+                addBodyCell(table, safeValue(item.getCheckInAt()));
+                addBodyCell(table, safeValue(item.getMethod()));
+                addBodyCell(table, safeValue(item.getVerificationStatus()));
+            }
+
+            if (records.isEmpty()) {
+                PdfPCell empty = new PdfPCell(new Phrase("No present students found for this session.", mutedFont));
+                empty.setColspan(6);
+                empty.setHorizontalAlignment(Element.ALIGN_CENTER);
+                empty.setPadding(8f);
+                table.addCell(empty);
+            }
+
+            document.add(table);
+            document.close();
+            return out.toByteArray();
+        } catch (DocumentException ex) {
+            throw new IllegalArgumentException("Failed to generate attendance PDF report.");
+        }
+    }
+
     private AttendanceRecordResponse toRecordResponse(AttendanceRecord record) {
         String date = record.getCheckInAt() != null
                 ? record.getCheckInAt().toLocalDate().toString()
@@ -383,6 +471,25 @@ public class AttendanceService {
 
     private String safeTrim(String value) {
         return isBlank(value) ? null : value.trim();
+    }
+
+    private String safeValue(String value) {
+        return value == null ? "-" : value;
+    }
+
+    private void addHeaderCell(PdfPTable table, String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, new Font(Font.HELVETICA, 8, Font.BOLD)));
+        cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        cell.setBackgroundColor(new java.awt.Color(228, 236, 247));
+        cell.setPadding(6f);
+        table.addCell(cell);
+    }
+
+    private void addBodyCell(PdfPTable table, String text) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, new Font(Font.HELVETICA, 8, Font.NORMAL)));
+        cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        cell.setPadding(5f);
+        table.addCell(cell);
     }
 
     private boolean isIpAllowed(String clientIp) {
