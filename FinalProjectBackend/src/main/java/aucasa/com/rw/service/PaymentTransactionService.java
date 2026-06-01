@@ -86,7 +86,7 @@ public class PaymentTransactionService {
                     continue;
                 }
 
-                String amountValue = getValue(cols, index, "amount", "paid_amount", "value");
+                String amountValue = getValue(cols, index, "amount", "paid_amount", "value", "amountrwf");
                 BigDecimal amount = parseAmount(amountValue);
                 if (amount == null) {
                     errors++;
@@ -94,9 +94,9 @@ public class PaymentTransactionService {
                 }
 
                 String currency = getValue(cols, index, "currency");
-                String phone = getValue(cols, index, "phone", "phone_number", "payer_phone");
-                String paidAtValue = getValue(cols, index, "paid_at", "paid_date", "date", "timestamp");
-                String purpose = getValue(cols, index, "purpose", "payment_for", "description", "type");
+                String phone = getValue(cols, index, "phone", "phone_number", "payer_phone", "phonenumber", "payerphone");
+                String paidAtValue = getValue(cols, index, "paid_at", "paid_date", "date", "timestamp", "paidat", "paymentdate");
+                String purpose = getValue(cols, index, "purpose", "payment_for", "description", "type", "paymentpurpose", "fee");
                 LocalDateTime paidAt = parseDateTime(paidAtValue);
 
                 PaymentTransaction record = new PaymentTransaction();
@@ -200,7 +200,8 @@ public class PaymentTransactionService {
     private Map<String, Integer> buildHeaderIndex(List<String> header) {
         Map<String, Integer> index = new HashMap<>();
         for (int i = 0; i < header.size(); i++) {
-            String key = header.get(i) != null ? header.get(i).trim().toLowerCase(Locale.ROOT) : "";
+            String rawKey = header.get(i) != null ? header.get(i).trim().toLowerCase(Locale.ROOT) : "";
+            String key = rawKey.replaceAll("[^a-z0-9]", "");
             if (!key.isBlank()) {
                 index.put(key, i);
             }

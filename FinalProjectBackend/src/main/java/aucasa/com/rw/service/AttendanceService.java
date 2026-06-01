@@ -2,6 +2,8 @@ package aucasa.com.rw.service;
 
 import aucasa.com.rw.domain.AttendanceRecord;
 import aucasa.com.rw.domain.AttendanceSession;
+import aucasa.com.rw.domain.AcademicTerm;
+import aucasa.com.rw.domain.Campus;
 import aucasa.com.rw.domain.StudentProfile;
 import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.domain.enums.AttendanceMethod;
@@ -15,6 +17,8 @@ import aucasa.com.rw.dto.attendance.AttendanceSessionResponse;
 import aucasa.com.rw.dto.attendance.AttendanceVerificationRequest;
 import aucasa.com.rw.repository.AttendanceRecordRepository;
 import aucasa.com.rw.repository.AttendanceSessionRepository;
+import aucasa.com.rw.repository.AcademicTermRepository;
+import aucasa.com.rw.repository.CampusRepository;
 import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
 import com.lowagie.text.Document;
@@ -35,6 +39,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -55,6 +60,8 @@ public class AttendanceService {
     private final AttendanceRecordRepository recordRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final UserAccountRepository userAccountRepository;
+    private final AcademicTermRepository academicTermRepository;
+    private final CampusRepository campusRepository;
     private final List<String> allowedCidrs;
     private final boolean enforceNetworkForWifi;
     private final boolean enforceMockLocationCheck;
@@ -69,10 +76,12 @@ public class AttendanceService {
             AttendanceRecordRepository recordRepository,
             StudentProfileRepository studentProfileRepository,
             UserAccountRepository userAccountRepository,
+            AcademicTermRepository academicTermRepository,
+            CampusRepository campusRepository,
             @Value("${app.attendance.allowed-cidrs:}") String allowedCidrs,
             @Value("${app.attendance.enforce-network:true}") boolean enforceNetworkForWifi,
             @Value("${app.attendance.enforce-mock-location-check:true}") boolean enforceMockLocationCheck,
-            @Value("${app.attendance.max-location-accuracy-meters:50}") double maxLocationAccuracyMeters,
+            @Value("${app.attendance.max-location-accuracy-meters:2000}") double maxLocationAccuracyMeters,
             @Value("${app.attendance.biometric-max-age-seconds:120}") long biometricMaxAgeSeconds,
             @Value("${app.attendance.qr-secret:aucasa-attendance-secret}") String qrSecret,
             @Value("${app.attendance.qr-ttl-minutes:20}") long qrTtlMinutes,
@@ -82,6 +91,8 @@ public class AttendanceService {
         this.recordRepository = recordRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.userAccountRepository = userAccountRepository;
+        this.academicTermRepository = academicTermRepository;
+        this.campusRepository = campusRepository;
         this.allowedCidrs = Stream.of(allowedCidrs.split(","))
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
@@ -97,6 +108,7 @@ public class AttendanceService {
 
     @Transactional
     public List<AttendanceSessionResponse> listSessions(boolean activeOnly) {
+        ensureCampusSessionsIfMissing();
         autoCloseExpiredSessions();
         List<AttendanceSession> sessions = activeOnly ? sessionRepository.findByActiveTrue() : sessionRepository.findAll();
         return sessions.stream()
@@ -113,15 +125,22 @@ public class AttendanceService {
 
     @Transactional
     public AttendanceSessionResponse toggleSessionActive(Long sessionId, boolean active) {
+        return toggleSessionActive(sessionId, active, null, null);
+    }
+
+    @Transactional
+    public AttendanceSessionResponse toggleSessionActive(Long sessionId, boolean active, LocalDateTime requestedStart, LocalDateTime requestedEnd) {
+        ensureCampusSessionsIfMissing();
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found."));
         session.setActive(active);
         if (active) {
             LocalDateTime now = LocalDateTime.now();
-            if (session.getEndsAt() == null || session.getEndsAt().isBefore(now)) {
-                session.setStartsAt(now);
-                session.setEndsAt(now.plusHours(1));
-            }
+            LocalDateTime start = requestedStart != null ? requestedStart : now;
+            LocalDateTime end = requestedEnd != null ? requestedEnd : now.plusHours(1);
+            validateOpenRange(start, end, now, "Attendance");
+            session.setStartsAt(start);
+            session.setEndsAt(end);
         }
         session = sessionRepository.save(session);
         return new AttendanceSessionResponse(
@@ -132,6 +151,21 @@ public class AttendanceService {
                 session.getEndsAt(),
                 Boolean.TRUE.equals(session.getActive())
         );
+    }
+
+    private void validateOpenRange(LocalDateTime start, LocalDateTime end, LocalDateTime now, String label) {
+        if (start == null || end == null) {
+            throw new IllegalArgumentException(label + " start and end date are required.");
+        }
+        if (start.isBefore(now.minusMinutes(1))) {
+            throw new IllegalArgumentException(label + " start date cannot be in the past.");
+        }
+        if (!end.isAfter(start)) {
+            throw new IllegalArgumentException(label + " end date must be after the start date.");
+        }
+        if (end.isAfter(start.plusMonths(1))) {
+            throw new IllegalArgumentException(label + " range cannot exceed one month.");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -221,6 +255,18 @@ public class AttendanceService {
 
         record = recordRepository.save(record);
         return toRecordResponse(record);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasStudentCheckedIn(Long sessionId, String studentNumber) {
+        if (sessionId == null || isBlank(studentNumber)) {
+            throw new IllegalArgumentException("sessionId and studentNumber are required.");
+        }
+        StudentProfile student = studentProfileRepository.findByStudentNumber(studentNumber.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Student not found."));
+        return recordRepository.findByStudentIdAndSessionId(student.getId(), sessionId)
+                .filter(record -> record.getStatus() == AttendanceStatus.PRESENT)
+                .isPresent();
     }
 
     @Transactional(readOnly = true)
@@ -692,6 +738,51 @@ public class AttendanceService {
         if (!activeSessions.isEmpty()) {
             sessionRepository.saveAll(activeSessions);
         }
+    }
+
+    private void ensureCampusSessionsIfMissing() {
+        if (sessionRepository.count() > 0) {
+            return;
+        }
+
+        AcademicTerm term = academicTermRepository.findByActiveTrue()
+                .orElseGet(() -> {
+                    AcademicTerm t = new AcademicTerm();
+                    t.setName("Current Semester");
+                    t.setAcademicYear(String.valueOf(LocalDate.now().getYear()));
+                    t.setSemesterNumber(1);
+                    t.setStartDate(LocalDate.now());
+                    t.setEndDate(LocalDate.now().plusMonths(4));
+                    t.setActive(true);
+                    return academicTermRepository.save(t);
+                });
+
+        Campus masoro = campusRepository.findByCode("MAS")
+                .orElseGet(() -> createCampus("MAS", "Masoro Campus"));
+        Campus gishushu = campusRepository.findByCode("GIS")
+                .orElseGet(() -> createCampus("GIS", "Gishushu Campus"));
+
+        LocalDateTime now = LocalDateTime.now();
+        sessionRepository.save(buildCampusSession("Masoro Attendance Session", masoro, term, now));
+        sessionRepository.save(buildCampusSession("Gishushu Attendance Session", gishushu, term, now));
+    }
+
+    private Campus createCampus(String code, String name) {
+        Campus campus = new Campus();
+        campus.setCode(code);
+        campus.setName(name);
+        return campusRepository.save(campus);
+    }
+
+    private AttendanceSession buildCampusSession(String title, Campus campus, AcademicTerm term, LocalDateTime now) {
+        AttendanceSession session = new AttendanceSession();
+        session.setTitle(title);
+        session.setCampus(campus);
+        session.setTerm(term);
+        session.setStartsAt(now);
+        session.setEndsAt(now.plusHours(1));
+        session.setActive(false);
+        return session;
     }
 
     private record GeoFence(double lat, double lng, double radiusMeters) {

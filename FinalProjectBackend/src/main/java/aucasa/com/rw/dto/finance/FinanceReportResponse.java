@@ -59,6 +59,7 @@ public class FinanceReportResponse {
 
     public record IncomeStatement(
             BigDecimal totalRevenue,
+            BigDecimal earnedIncome,
             BigDecimal totalExpense,
             BigDecimal netSurplus
     ) {}

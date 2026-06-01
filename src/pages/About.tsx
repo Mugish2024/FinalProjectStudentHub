@@ -1,14 +1,30 @@
 import React from 'react';
-import { Search } from 'lucide-react';
 import aucaLogo from '../assets/auca-logo.png';
 import aboutTagIcon from '../../about tag.png';
 import './About.css';
 
 interface AboutProps {
     onBack: () => void;
+    onNavigate?: (page: string) => void;
+    onEnter?: () => void;
+    topic?: string | null;
 }
 
-const About: React.FC<AboutProps> = ({ onBack }) => {
+const About: React.FC<AboutProps> = ({ onBack, onNavigate, onEnter, topic }) => {
+    const navItems = [
+        { label: 'Home', page: 'landing' },
+        { label: 'About', page: 'about' },
+        { label: 'Contact', page: 'contact' },
+    ];
+
+    const handleNavigate = (page: string) => {
+        if (page === 'landing') {
+            onBack();
+            return;
+        }
+        onNavigate?.(page);
+    };
+
     const cards = [
         {
             title: 'Trusted content',
@@ -32,18 +48,63 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
         },
     ];
 
+    const topicDetails: Record<string, { label: string; title: string; body: string; highlight: string }> = {
+        payments: {
+            label: 'Payments',
+            title: 'Student association fees, made simple',
+            body:
+                'From payment initiation to receipt validation, every stage is transparent, timestamped, and easy to follow for both students and finance teams.',
+            highlight:
+                'Students can pay with confidence, keep their receipt history organized, and spend less time asking where their payment stands.',
+        },
+        attendance: {
+            label: 'Attendance',
+            title: 'Fast check-ins for active campus life',
+            body:
+                'Attendance tools help students join sessions quickly, confirm participation, and stay connected to association activities without long manual sign-in queues.',
+            highlight:
+                'Every check-in becomes part of a clear record, helping students prove engagement and helping leaders understand participation better.',
+        },
+        services: {
+            label: 'Student Services',
+            title: 'Support that follows the student journey',
+            body:
+                'Student services bring requests, updates, registration support, and issue tracking into one place so students know what to do next.',
+            highlight:
+                'The goal is simple: fewer delays, clearer communication, and a smoother campus experience from the first request to the final response.',
+        },
+    };
+
+    const selectedDetail = topic ? topicDetails[topic] : null;
+
     return (
         <div className="about-page">
             <header className="about-topbar">
                 <div className="about-topbar-inner">
-                    <img src={aucaLogo} alt="AUCA Logo" className="about-top-logo" />
+                    <button type="button" className="about-brand" onClick={onBack}>
+                        <span className="about-brand-icon">
+                            <img src={aucaLogo} alt="AUCA Logo" className="about-brand-logo" />
+                        </span>
+                        <span className="about-brand-text">
+                            <small>Adventist University of Central Africa</small>
+                        </span>
+                    </button>
+
+                    <nav className="about-nav-links" aria-label="Primary navigation">
+                        {navItems.map((item) => (
+                            <button
+                                type="button"
+                                key={item.page}
+                                className={item.page === 'about' ? 'active' : ''}
+                                onClick={() => handleNavigate(item.page)}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </nav>
 
                     <div className="about-top-actions">
-                        <button type="button" className="home-btn" onClick={onBack}>Home</button>
-                        <button type="button" className="search-btn" aria-label="Search">
-                            <Search size={31} />
-                        </button>
-                        <button type="button" className="login-btn" onClick={onBack}>Log in</button>
+                        <button type="button" className="about-signin-btn" onClick={onEnter ?? onBack}>Sign In</button>
                     </div>
                 </div>
             </header>
@@ -51,11 +112,15 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
             <main className="about-content">
                 <section className="about-layout">
                     <aside className="about-intro">
+                        <div className="about-kicker">ABOUT STUDENTHUB</div>
                         <h1>
-                            Why AUCA student
+                            AUCA StudentHub
                             <br />
-                            hub is better?
+                            keeps services clear
                         </h1>
+                        <p>
+                            StudentHub brings payments, attendance, support, and campus updates into one trusted place for AUCA students.
+                        </p>
                     </aside>
 
                     <section className="about-cards-grid">
@@ -72,6 +137,16 @@ const About: React.FC<AboutProps> = ({ onBack }) => {
                         ))}
                     </section>
                 </section>
+                {selectedDetail && (
+                    <section className="about-detail-section" aria-label={`${selectedDetail.label} details`}>
+                        <article className="about-detail-card">
+                            <span className="about-detail-label">{selectedDetail.label}</span>
+                            <h2>{selectedDetail.title}</h2>
+                            <p>{selectedDetail.body}</p>
+                            <p>{selectedDetail.highlight}</p>
+                        </article>
+                    </section>
+                )}
             </main>
         </div>
     );

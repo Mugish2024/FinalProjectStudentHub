@@ -21,9 +21,9 @@
 }
 
 .settings-status {
-    background: #dcfce7;
+    background: #2F4F86;
     border: 1px solid #a7f3d0;
-    color: #166534;
+    color: #2F4F86;
     border-radius: 10px;
     padding: 0.6rem 0.8rem;
 }
@@ -88,7 +88,7 @@
     border: none;
     border-radius: 12px;
     padding: 0.7rem 1.15rem;
-    background: #0f2f66;
+    background: #2F4F86;
     color: #fff;
     font-weight: 700;
     cursor: pointer;

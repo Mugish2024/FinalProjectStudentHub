@@ -107,4 +107,16 @@ public class SupportTicketService {
         ticket.setForwardedAt(LocalDateTime.now());
         return supportTicketRepository.save(ticket);
     }
+
+    @Transactional
+    public SupportTicket close(Long ticketId) {
+        SupportTicket ticket = supportTicketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found."));
+
+        ticket.setStatus(SupportTicketStatus.CLOSED);
+        if (ticket.getRespondedAt() == null) {
+            ticket.setRespondedAt(LocalDateTime.now());
+        }
+        return supportTicketRepository.save(ticket);
+    }
 }

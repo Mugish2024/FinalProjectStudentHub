@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, ShieldAlert, ShieldCheck, TrendingUp, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, TrendingUp, AlertTriangle, CheckCircle, Info, BookOpen, X } from 'lucide-react';
 import './Discipline.css';
 
 // Define types for discipline status
@@ -50,6 +50,8 @@ const Discipline: React.FC = () => {
             'Participate in one more community event.'
         ]
     });
+    const [selectedReasonIndex, setSelectedReasonIndex] = useState(0);
+    const [showPolicy, setShowPolicy] = useState(false);
 
     const getStatusConfig = (status: DisciplineStatus) => {
         switch (status) {
@@ -92,6 +94,7 @@ const Discipline: React.FC = () => {
             : disciplineData.status === 'satisfaction'
                 ? 1
                 : 2;
+    const selectedReason = disciplineData.reasons[selectedReasonIndex];
 
     return (
         <div className="discipline-container">
@@ -141,7 +144,12 @@ const Discipline: React.FC = () => {
 
                     <div className="reason-list">
                         {disciplineData.reasons.map((reason, index) => (
-                            <div key={index} className="reason-item">
+                            <button
+                                key={index}
+                                type="button"
+                                className={`reason-item ${selectedReasonIndex === index ? 'active' : ''}`}
+                                onClick={() => setSelectedReasonIndex(index)}
+                            >
                                 <div className="reason-icon" style={{
                                     backgroundColor: reason.type === 'negative' ? 'rgba(248, 113, 113, 0.2)' : (reason.type === 'positive' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(148, 163, 184, 0.2)'),
                                     color: reason.type === 'negative' ? '#f87171' : (reason.type === 'positive' ? '#22c55e' : '#94a3b8')
@@ -153,8 +161,14 @@ const Discipline: React.FC = () => {
                                     <p>{reason.description}</p>
                                     <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '4px' }}>{reason.date}</span>
                                 </div>
-                            </div>
+                            </button>
                         ))}
+                    </div>
+
+                    <div className={`reason-detail reason-detail-${selectedReason.type}`}>
+                        <strong>{selectedReason.title}</strong>
+                        <p>{selectedReason.description}</p>
+                        <span>{selectedReason.type === 'negative' ? 'Needs attention' : selectedReason.type === 'positive' ? 'Positive contribution' : 'Monitor and improve'}</span>
                     </div>
                 </div>
 
@@ -185,12 +199,48 @@ const Discipline: React.FC = () => {
                     </div>
 
                     {disciplineData.status !== 'grand-distinction' && (
-                        <button className="policy-btn">
+                        <button className="policy-btn" onClick={() => setShowPolicy(true)}>
+                            <BookOpen size={16} />
                             View Full Policy
                         </button>
                     )}
                 </div>
             </div>
+
+            {showPolicy && (
+                <div className="policy-modal-backdrop" onClick={() => setShowPolicy(false)}>
+                    <section className="policy-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="policy-modal-head">
+                            <div>
+                                <span>Student Conduct Policy</span>
+                                <h3>How discipline standing is reviewed</h3>
+                            </div>
+                            <button type="button" onClick={() => setShowPolicy(false)} aria-label="Close policy">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="policy-grid">
+                            <article>
+                                <strong>Attendance</strong>
+                                <p>Repeated unexcused absences reduce standing and can prevent Grand Distinction.</p>
+                            </article>
+                            <article>
+                                <strong>Responsibility</strong>
+                                <p>Library dues, association requirements, and administrative requests must be cleared on time.</p>
+                            </article>
+                            <article>
+                                <strong>Contribution</strong>
+                                <p>Volunteering and campus service improve the record when completed consistently.</p>
+                            </article>
+                        </div>
+
+                        <button type="button" className="policy-close-btn" onClick={() => setShowPolicy(false)}>
+                            Close Policy
+                        </button>
+                    </section>
+                </div>
+            )}
         </div>
     );
 };

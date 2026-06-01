@@ -3,7 +3,7 @@ import { X, Send } from 'lucide-react';
 import './ChatSidebar.css';
 import { findAucaAnswer } from '../data/aucaInfo';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type Recipient = {
     id: number;
@@ -26,12 +26,13 @@ type ChatMessage = {
 interface ChatSidebarProps {
     isOpen: boolean;
     onClose: () => void;
-    userRole: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president' | null;
+    userRole: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs' | null;
     userAccountId: number | null;
     userName: string;
+    onUnreadCountChange?: (count: number) => void;
 }
 
-const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, userRole, userAccountId, userName }) => {
+const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, userRole, userAccountId, userName, onUnreadCountChange }) => {
     const [recipients, setRecipients] = useState<Recipient[]>([]);
     const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -40,7 +41,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, userRole, us
     const [error, setError] = useState('');
     const [isSending, setIsSending] = useState(false);
 
-    const isGuild = userRole === 'guild_president';
+    const isGuild = userRole === 'guild_president' || userRole === 'minister_sport' || userRole === 'minister_evangelism' || userRole === 'minister_international_affairs';
     const canBroadcast = isGuild;
 
     const broadcastRecipient: Recipient = useMemo(() => ({
@@ -113,12 +114,25 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose, userRole, us
                 return;
             }
             setMessages(Array.isArray(data) ? data : []);
+            if (selectedRecipient.id > 0) {
+                try {
+                    const readResponse = await fetch(`${API_BASE}/api/chat/read?userId=${userAccountId}&peerId=${selectedRecipient.id}`, {
+                        method: 'POST',
+                    });
+                    const readData = await readResponse.json().catch(() => ({}));
+                    if (readResponse.ok) {
+                        onUnreadCountChange?.(Number(readData.count ?? 0));
+                    }
+                } catch {
+                    // The thread still loads even if the read receipt update fails.
+                }
+            }
         };
 
         if (isOpen) {
             loadMessages();
         }
-    }, [isOpen, userAccountId, selectedRecipient]);
+    }, [isOpen, userAccountId, selectedRecipient, onUnreadCountChange]);
 
     const handleSend = async () => {
         if (!userAccountId || !selectedRecipient) return;

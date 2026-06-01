@@ -10,6 +10,7 @@ import aucasa.com.rw.service.AttendanceService;
 import java.util.List;
 import java.util.Map;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -71,6 +72,31 @@ public class AttendanceRecordController {
         try {
             List<AttendanceRecordResponse> result = service.listRecords(studentNumber);
             return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PatchMapping("/sessions/{id}/open-range")
+    public ResponseEntity<?> openSessionWithRange(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            LocalDateTime start = parseDateTime(body != null ? body.get("startsAt") : null);
+            LocalDateTime end = parseDateTime(body != null ? body.get("endsAt") : null);
+            AttendanceSessionResponse result = service.toggleSessionActive(id, true, start, end);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/sessions/{id}/student-status")
+    public ResponseEntity<?> getStudentSessionStatus(@PathVariable Long id, @RequestParam String studentNumber) {
+        try {
+            return ResponseEntity.ok(Map.of("checkedIn", service.hasStudentCheckedIn(id, studentNumber)));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
@@ -143,5 +169,16 @@ public class AttendanceRecordController {
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid date format.");
+        }
     }
 }

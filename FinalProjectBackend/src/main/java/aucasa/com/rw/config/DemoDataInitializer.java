@@ -73,13 +73,14 @@ public class DemoDataInitializer implements CommandLineRunner {
         seedAttendanceSessionsIfMissing();
         seedElectionIfMissing();
         seedFinanceIfMissing();
+        seedStudentCardManagerIfMissing();
         seedGuildPresidentIfMissing();
         seedStudentsIfMissing();
         seedFinanceBudgetIfMissing();
     }
 
     private void seedAdminIfMissing() {
-        seedUserIfMissing("admin1", "admin1@auca.ac.rw", "admin123", "Demo", "Admin", RoleType.ADMIN);
+        seedUserIfMissing("admin1", "admin1@auca.ac.rw", "Admin@2026!", "Demo", "Admin", RoleType.ADMIN);
     }
 
     private void seedActiveTermIfMissing() {
@@ -102,6 +103,9 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void seedAttendanceSessionsIfMissing() {
+        if (hasSemesterHistory()) {
+            return;
+        }
         if (attendanceSessionRepository.count() > 0) {
             return;
         }
@@ -152,6 +156,9 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void seedElectionIfMissing() {
+        if (hasSemesterHistory()) {
+            return;
+        }
         if (electionRepository.count() > 0) {
             return;
         }
@@ -175,6 +182,10 @@ public class DemoDataInitializer implements CommandLineRunner {
         seedUserIfMissing("finance1", "finance1@auca.ac.rw", "finance123", "Demo", "Finance", RoleType.FINANCE);
     }
 
+    private void seedStudentCardManagerIfMissing() {
+        seedUserIfMissing("cardmanager1", "cardmanager1@auca.ac.rw", "CardManager@2026!", "Card", "Manager", RoleType.STUDENT_CARD_MANAGER);
+    }
+
     private void seedGuildPresidentIfMissing() {
         seedUserIfMissing("guild1", "guild1@auca.ac.rw", "guild123", "Demo", "Guild", RoleType.GUILD_PRESIDENT);
     }
@@ -184,9 +195,9 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void seedStudentsIfMissing() {
-        seedUserIfMissing("25876", "student25876@auca.ac.rw", "student123", "Abikunda", "Mugisha", RoleType.STUDENT);
-        seedUserIfMissing("26317", "student26317@auca.ac.rw", "student123", "Ishimwe", "Bienvenu", RoleType.STUDENT);
-        seedUserIfMissing("26330", "student26330@auca.ac.rw", "student123", "Eligible", "Student", RoleType.STUDENT);
+        seedUserIfMissing("25876", "student25876@auca.ac.rw", "Student@2026!", "Abikunda", "Mugisha", RoleType.STUDENT);
+        seedUserIfMissing("26317", "student26317@auca.ac.rw", "Student@2026!", "Ishimwe", "Bienvenu", RoleType.STUDENT);
+        seedUserIfMissing("26330", "student26330@auca.ac.rw", "Student@2026!", "Eligible", "Student", RoleType.STUDENT);
     }
 
     private void seedUserIfMissing(
@@ -220,6 +231,9 @@ public class DemoDataInitializer implements CommandLineRunner {
     }
 
     private void seedFinanceBudgetIfMissing() {
+        if (hasSemesterHistory()) {
+            return;
+        }
         if (financeBudgetRepository.count() > 0) {
             return;
         }
@@ -233,5 +247,9 @@ public class DemoDataInitializer implements CommandLineRunner {
         budget.setStatus(FinanceBudgetStatus.ACTIVE);
         budget.setNotes("Primary assigned budget for student association operations.");
         financeBudgetRepository.save(budget);
+    }
+
+    private boolean hasSemesterHistory() {
+        return academicTermRepository.count() > 1;
     }
 }

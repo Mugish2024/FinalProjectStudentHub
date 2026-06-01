@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface VoteRepository extends JpaRepository<Vote, Long> {
     Optional<Vote> findByElectionIdAndVoterId(Long electionId, Long voterId);
     List<Vote> findByElectionId(Long electionId);
+    long countByElectionId(Long electionId);
 }

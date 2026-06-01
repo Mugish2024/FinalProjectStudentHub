@@ -1,8 +1,8 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { UserCheck, FileText, Clock, Eye, Calendar, BadgeCheck, Download } from 'lucide-react';
 import './DeanLabourManagement.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type ApplicationItem = {
     id: number;
@@ -422,7 +422,7 @@ const DeanLabourManagement: React.FC = () => {
                         </form>
                         <div className="activity-list-inline">
                             {activities.slice(0, 6).map((item) => (
-                                <span key={item.id}>{item.title} · {item.department}</span>
+                                <span key={item.id}>{item.title} - {item.department}</span>
                             ))}
                         </div>
                     </section>
@@ -455,7 +455,7 @@ const DeanLabourManagement: React.FC = () => {
                                     <div>
                                         <h2>{selectedApplication.studentName}</h2>
                                         <p>
-                                            ID: {selectedApplication.studentNumber} · Role: {selectedApplication.roleTitle || 'N/A'} · Department: {selectedApplication.department}
+                                            ID: {selectedApplication.studentNumber} - Role: {selectedApplication.roleTitle || 'N/A'} - Department: {selectedApplication.department}
                                         </p>
                                     </div>
                                     <span className="status-chip">{selectedApplication.status}</span>
@@ -556,8 +556,8 @@ const DeanLabourManagement: React.FC = () => {
                                     >
                                         <strong>{item.studentName}</strong>
                                         <span>{item.studentNumber}</span>
-                                        <small>{item.campus} · {item.position}</small>
-                                        <small>Present {item.daysPresent}/{item.expectedWorkDays} · Missed {item.daysMissed}</small>
+                                        <small>{item.campus} - {item.position}</small>
+                                        <small>Present {item.daysPresent}/{item.expectedWorkDays} - Missed {item.daysMissed}</small>
                                     </button>
                                 ))}
                             </div>
@@ -565,7 +565,7 @@ const DeanLabourManagement: React.FC = () => {
                                 {selectedStudentPerformance && (
                                     <>
                                         <h4>{selectedStudentPerformance.studentName}</h4>
-                                        <p>{selectedStudentPerformance.studentNumber} · {selectedStudentPerformance.campus}</p>
+                                        <p>{selectedStudentPerformance.studentNumber} - {selectedStudentPerformance.campus}</p>
                                         <p>Position: {selectedStudentPerformance.position}</p>
                                         <p>Total Hours: {selectedStudentPerformance.totalHours}</p>
                                         <p>Days Present: {selectedStudentPerformance.daysPresent}</p>
@@ -585,7 +585,7 @@ const DeanLabourManagement: React.FC = () => {
                                 <strong>{log.studentName}</strong>
                                 <span><Calendar size={14} /> {new Date(log.logDate).toLocaleDateString()}</span>
                             </div>
-                            <p className="log-meta">{log.department} · {log.hoursWorked} hours</p>
+                            <p className="log-meta">{log.department} - {log.hoursWorked} hours</p>
                             <p className="log-description">{log.taskDescription}</p>
                             {log.lateSubmissionReason && (
                                 <p className="log-late-reason">Late reason: {log.lateSubmissionReason}</p>

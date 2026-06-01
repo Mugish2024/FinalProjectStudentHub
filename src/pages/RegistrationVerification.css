@@ -3,11 +3,39 @@
     animation: fadeIn 0.4s ease-out;
 }
 
+.registration-container + .dashboard-footer {
+    margin: 1rem auto 0;
+    max-width: 1180px;
+    width: min(1180px, 100%);
+}
+
 .page-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary);
-    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid #dbe6f5;
+    border-left: 4px solid #2F4F86;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(47, 79, 134, 0.1);
+    color: #0b1f4b;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    margin: 0 auto 1.35rem;
+    max-width: 1180px;
+    padding: 1.15rem 1.35rem;
+}
+
+.page-title::after {
+    content: '';
+    position: absolute;
+    top: -44px;
+    right: -34px;
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: #eaf1fb;
+    border: 1px solid #d5e2f3;
 }
 
 .registration-grid {
@@ -157,7 +185,7 @@
 }
 
 .status-pill.success {
-    background: rgba(0, 126, 122, 0.1);
+    background: rgba(47, 79, 134, 0.14);
     color: var(--secondary);
 }
 

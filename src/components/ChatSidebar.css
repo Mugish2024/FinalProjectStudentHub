@@ -43,8 +43,8 @@
 }
 
 .chat-error {
-    background: #fee2e2;
-    color: #991b1b;
+    background: #2F4F86;
+    color: #0f172a;
     padding: 0.6rem 0.9rem;
     margin: 0.8rem;
     border-radius: 10px;
@@ -195,8 +195,8 @@
 
 .chat-warning {
     font-size: 0.75rem;
-    color: #b45309;
-    background: #fef3c7;
+    color: #0f172a;
+    background: #2F4F86;
     padding: 0.5rem 0.6rem;
     border-radius: 8px;
 }

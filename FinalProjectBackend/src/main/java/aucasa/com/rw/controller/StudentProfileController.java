@@ -33,7 +33,7 @@ public class StudentProfileController {
     }
 
     @GetMapping
-    public List<StudentProfile> getAll() { return service.findAll(); }
+    public List<StudentRegistrationResponse> getAll() { return service.findAllSummaries(); }
 
     @GetMapping("/{id}")
     public ResponseEntity<StudentProfile> getById(@PathVariable Long id) {

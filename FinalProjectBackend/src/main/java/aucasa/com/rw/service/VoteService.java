@@ -89,6 +89,16 @@ public class VoteService {
         return new VoteResponse("ok", "Vote recorded successfully.");
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasStudentVoted(Long electionId, String studentNumber) {
+        if (electionId == null || isBlank(studentNumber)) {
+            throw new IllegalArgumentException("electionId and studentNumber are required.");
+        }
+        StudentProfile voter = studentProfileRepository.findByStudentNumber(studentNumber.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Student not found."));
+        return voteRepository.findByElectionIdAndVoterId(electionId, voter.getId()).isPresent();
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }

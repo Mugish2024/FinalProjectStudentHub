@@ -21,6 +21,7 @@ import FinancePaymentReview from './pages/FinancePaymentReview';
 import Login from './pages/Login';
 import GuildInbox from './pages/GuildInbox';
 import GuildDashboard from './pages/GuildDashboard';
+import AucasaPlan from './pages/AucasaPlan';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentIssues from './pages/StudentIssues';
 import About from './pages/About';
@@ -29,6 +30,10 @@ import Signup from './pages/Signup';
 import Contact from './pages/Contact';
 import NotificationsCenter from './pages/NotificationsCenter';
 import SettingsCenter from './pages/SettingsCenter';
+import SemesterManagement from './pages/SemesterManagement';
+import StudentCardManager from './pages/StudentCardManager';
+
+type AppRole = 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs';
 
 type AuthProfile = {
   userId: number;
@@ -40,27 +45,33 @@ type AuthProfile = {
   department: string;
   program: string;
   credits: number;
-  role: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president';
+  role: AppRole;
   gpa: string;
   semester: number;
   disciplineStatus: string;
 };
 
-type UserRole = 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president' | null;
+type UserRole = AppRole | null;
 
-const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam', 'attendance-review', 'students', 'candidate-review']);
+const DEAN_PAGES = new Set(['labour-mgmt', 'groups', 'courses', 'dashboard-tools', 'exam', 'attendance-review', 'students', 'candidate-review', 'semester-management']);
 const ADMIN_PAGES = new Set(['admin-dashboard', 'user-management']);
 const FINANCE_PAGES = new Set(['finance-review', 'finance-budgets', 'finance-expenses', 'finance-receipts', 'finance-reports']);
-const GUILD_PAGES = new Set(['guild-dashboard', 'guild-inbox']);
-const GUILD_EXTRA_ALLOWED_PAGES = new Set(['attendance-review']);
+const CARD_MANAGER_PAGES = new Set(['student-card-manager']);
+const GUILD_PAGES = new Set(['guild-dashboard', 'guild-inbox', 'semester-management']);
+const GUILD_EXTRA_ALLOWED_PAGES = new Set(['attendance-review', 'semester-management']);
 const AUTH_SESSION_KEY = 'aucasa_auth_session';
-type SavedSession = { isLoggedIn?: boolean; profile?: AuthProfile | null };
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+type SavedSession = { isLoggedIn?: boolean; profile?: AuthProfile | null; lastActiveAt?: number };
 
 const readSavedSession = (): SavedSession => {
   try {
     const raw = window.localStorage.getItem(AUTH_SESSION_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as SavedSession;
+    if (parsed?.isLoggedIn && typeof parsed.lastActiveAt === 'number' && Date.now() - parsed.lastActiveAt > SESSION_TIMEOUT_MS) {
+      window.localStorage.removeItem(AUTH_SESSION_KEY);
+      return {};
+    }
     return parsed ?? {};
   } catch {
     return {};
@@ -75,11 +86,13 @@ function App() {
     if (initialProfile.role === 'staff' || initialProfile.role === 'dean') return 'dashboard-tools';
     if (initialProfile.role === 'admin') return 'admin-dashboard';
     if (initialProfile.role === 'finance') return 'finance-review';
+    if (initialProfile.role === 'student_card_manager') return 'student-card-manager';
     if (initialProfile.role === 'guild_president') return 'guild-dashboard';
     return 'dashboard';
   });
   const [selectedAttendanceSessionId, setSelectedAttendanceSessionId] = useState<number | undefined>(undefined);
   const [selectedAttendanceQrToken, setSelectedAttendanceQrToken] = useState<string>('');
+  const [aboutTopic, setAboutTopic] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(initialProfile));
   const [userRole, setUserRole] = useState<UserRole>(initialProfile?.role ?? null);
   const [profile, setProfile] = useState<AuthProfile | null>(initialProfile);
@@ -87,14 +100,49 @@ function App() {
   const isDeanRole = (role: UserRole) => role === 'staff' || role === 'dean';
   const isAdminRole = (role: UserRole) => role === 'admin';
   const isFinanceRole = (role: UserRole) => role === 'finance';
-  const isGuildRole = (role: UserRole) => role === 'guild_president';
+  const isCardManagerRole = (role: UserRole) => role === 'student_card_manager';
+  const isGuildRole = (role: UserRole) => role === 'guild_president' || role === 'minister_sport' || role === 'minister_evangelism' || role === 'minister_international_affairs';
   const resolveDefaultPageForRole = (role: AuthProfile['role']) => {
     if (isDeanRole(role)) return 'dashboard-tools';
     if (isAdminRole(role)) return 'admin-dashboard';
     if (isFinanceRole(role)) return 'finance-review';
+    if (isCardManagerRole(role)) return 'student-card-manager';
     if (isGuildRole(role)) return 'guild-dashboard';
     return 'dashboard';
   };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const refreshActivity = () => {
+      window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+        isLoggedIn: true,
+        profile,
+        lastActiveAt: Date.now(),
+      }));
+    };
+
+    const expireIfInactive = () => {
+      const saved = readSavedSession();
+      if (saved?.isLoggedIn && typeof saved.lastActiveAt === 'number' && Date.now() - saved.lastActiveAt > SESSION_TIMEOUT_MS) {
+        setIsLoggedIn(false);
+        setUserRole(null);
+        setProfile(null);
+        setActivePage('landing');
+        window.localStorage.removeItem(AUTH_SESSION_KEY);
+      }
+    };
+
+    const events = ['click', 'keydown', 'mousemove', 'touchstart'];
+    events.forEach((eventName) => window.addEventListener(eventName, refreshActivity, { passive: true }));
+    const interval = window.setInterval(expireIfInactive, 60_000);
+    refreshActivity();
+
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, refreshActivity));
+      window.clearInterval(interval);
+    };
+  }, [isLoggedIn, profile]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -126,28 +174,35 @@ function App() {
     }
 
     const canAccessDeanPages = isDeanRole(userRole) || (isGuildRole(userRole) && GUILD_EXTRA_ALLOWED_PAGES.has(page));
+    const fallbackPage = userRole ? resolveDefaultPageForRole(userRole) : 'dashboard';
+
     if (DEAN_PAGES.has(page) && !canAccessDeanPages) {
-      setActivePage('dashboard');
+      setActivePage(fallbackPage);
       return;
     }
 
     if (ADMIN_PAGES.has(page) && !isAdminRole(userRole)) {
-      setActivePage('dashboard');
+      setActivePage(fallbackPage);
       return;
     }
 
     if (FINANCE_PAGES.has(page) && !(isFinanceRole(userRole) || isAdminRole(userRole))) {
-      setActivePage('dashboard');
+      setActivePage(fallbackPage);
+      return;
+    }
+
+    if (CARD_MANAGER_PAGES.has(page) && !(isCardManagerRole(userRole) || isAdminRole(userRole))) {
+      setActivePage(fallbackPage);
       return;
     }
 
     if (GUILD_PAGES.has(page) && !isGuildRole(userRole)) {
-      setActivePage('dashboard');
+      setActivePage(fallbackPage);
       return;
     }
 
     if (page === 'registration' && !(isDeanRole(userRole) || isAdminRole(userRole))) {
-      setActivePage('dashboard');
+      setActivePage(fallbackPage);
       return;
     }
 
@@ -157,9 +212,22 @@ function App() {
   const renderContent = () => {
     switch (activePage) {
       case 'dashboard':
+        if (isGuildRole(userRole)) {
+          return <GuildDashboard userId={profile?.userId ?? 0} onNavigate={navigateWithAuth} />;
+        }
+        if (isDeanRole(userRole)) {
+          return <DeanDashboard onNavigate={navigateWithAuth} />;
+        }
+        if (isAdminRole(userRole)) {
+          return <AdminDashboard fullName={profile?.fullName ?? 'System Admin'} mode="overview" />;
+        }
+        if (isFinanceRole(userRole)) {
+          return <FinancePaymentReview initialTab="overview" currentUserRole={userRole} currentUserName={profile?.fullName ?? 'Finance User'} />;
+        }
         return (
           <StudentDashboard
             navigateTo={navigateWithAuth}
+            studentId={profile?.studentId ?? null}
             fullName={profile?.fullName ?? 'Student User'}
             studentNumber={profile?.studentNumber ?? '26701'}
             faculty={profile?.faculty ?? 'Information Technology'}
@@ -167,12 +235,14 @@ function App() {
             program={profile?.program ?? 'Day'}
             credits={profile?.credits ?? 0}
             gpa={Number(profile?.gpa ?? '0')}
+            semester={profile?.semester ?? 0}
           />
         );
       case 'labour':
         return (
           <StudentLabour
             studentNumber={profile?.studentNumber ?? ''}
+            fullName={profile?.fullName ?? ''}
             gpa={profile?.gpa ?? '0.00'}
             semester={profile?.semester ?? 0}
             disciplineStatus={profile?.disciplineStatus ?? ''}
@@ -185,13 +255,15 @@ function App() {
       case 'courses':
         return <PlaceholderPage title="Courses" />;
       case 'dashboard-tools':
-        return <DeanDashboard />;
+        return <DeanDashboard onNavigate={navigateWithAuth} />;
       case 'attendance-review':
         return <DeanAttendance />;
       case 'students':
         return <DeanStudentList />;
       case 'candidate-review':
         return <DeanCandidateReview />;
+      case 'semester-management':
+        return <SemesterManagement currentUserRole={userRole} currentUserName={profile?.fullName ?? 'User'} />;
       case 'finance-review':
         return <FinancePaymentReview initialTab="overview" currentUserRole={userRole} currentUserName={profile?.fullName ?? 'Finance User'} />;
       case 'finance-budgets':
@@ -202,10 +274,19 @@ function App() {
         return <FinancePaymentReview initialTab="receipts" currentUserRole={userRole} currentUserName={profile?.fullName ?? 'Finance User'} />;
       case 'finance-reports':
         return <FinancePaymentReview initialTab="statements" currentUserRole={userRole} currentUserName={profile?.fullName ?? 'Finance User'} />;
+      case 'student-card-manager':
+        return <StudentCardManager managerUserId={profile?.userId ?? 0} />;
       case 'guild-inbox':
         return <GuildInbox userId={profile?.userId ?? 0} />;
       case 'guild-dashboard':
         return <GuildDashboard userId={profile?.userId ?? 0} onNavigate={navigateWithAuth} />;
+      case 'aucasa-plan':
+        return (
+          <AucasaPlan
+            viewerMode={isGuildRole(userRole) ? 'manage' : 'view'}
+            ratingUserKey={profile?.studentNumber ?? profile?.username ?? 'viewer'}
+          />
+        );
       case 'admin-dashboard':
         return <AdminDashboard fullName={profile?.fullName ?? 'System Admin'} mode="overview" />;
       case 'user-management':
@@ -267,11 +348,25 @@ function App() {
 
   // Standalone pages outside main layout
   if (activePage === 'landing') {
-    return <Landing onEnter={() => setActivePage('login')} onNavigate={setActivePage} />;
+    return <Landing
+      onEnter={() => setActivePage('login')}
+      onNavigate={(page, topic) => {
+        setAboutTopic(page === 'about' ? topic ?? null : null);
+        setActivePage(page);
+      }}
+    />;
   }
 
   if (activePage === 'about') {
-    return <About onBack={() => setActivePage('landing')} />;
+    return <About
+      onBack={() => setActivePage('landing')}
+      onEnter={() => setActivePage('login')}
+      onNavigate={(page) => {
+        setAboutTopic(page === 'about' ? aboutTopic : null);
+        setActivePage(page);
+      }}
+      topic={aboutTopic}
+    />;
   }
 
   if (activePage === 'services') {
@@ -293,6 +388,7 @@ function App() {
         window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
           isLoggedIn: true,
           profile: loginProfile,
+          lastActiveAt: Date.now(),
         }));
         if (selectedAttendanceQrToken && loginProfile.role === 'student') {
           setActivePage('attendance-checkin');
@@ -316,14 +412,17 @@ function App() {
   const isStaff = isDeanRole(userRole);
   const isAdmin = isAdminRole(userRole);
   const isFinance = isFinanceRole(userRole);
+  const isCardManager = isCardManagerRole(userRole);
   const isGuild = isGuildRole(userRole);
   const headerTitle = isAdmin
     ? (activePage === 'user-management' ? 'User Management' : 'System Overview')
     : isFinance
     ? 'Finance Portal'
+    : isCardManager
+    ? 'Student Card Office'
     : (isGuild ? 'Guild President Portal' : (isStaff ? 'Dean Portal' : 'Student Portal'));
-  const profileName = profile?.fullName ?? (isAdmin ? 'System Admin' : (isFinance ? 'Finance User' : (isGuild ? 'Guild President' : (isStaff ? 'Dean User' : 'Student User'))));
-  const profileId = profile?.studentNumber ?? (isAdmin ? 'ADMIN-01' : (isFinance ? 'FINANCE-01' : (isGuild ? 'GUILD-01' : (isStaff ? 'STAFF-01' : '26701'))));
+  const profileName = profile?.fullName ?? (isAdmin ? 'System Admin' : (isFinance ? 'Finance User' : (isCardManager ? 'Card Manager' : (isGuild ? 'Guild President' : (isStaff ? 'Dean User' : 'Student User')))));
+  const profileId = profile?.studentNumber ?? (isAdmin ? 'ADMIN-01' : (isFinance ? 'FINANCE-01' : (isCardManager ? 'CARD-01' : (isGuild ? 'GUILD-01' : (isStaff ? 'STAFF-01' : '26701')))));
 
   return (
     <DashboardLayout

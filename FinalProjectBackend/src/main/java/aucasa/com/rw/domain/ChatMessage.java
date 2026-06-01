@@ -24,6 +24,8 @@ public class ChatMessage extends BaseEntity {
     @Column(nullable = false)
     private boolean broadcast = false;
 
+    private LocalDateTime readAt;
+
     public UserAccount getSender() {
         return sender;
     }
@@ -62,5 +64,13 @@ public class ChatMessage extends BaseEntity {
 
     public void setBroadcast(boolean broadcast) {
         this.broadcast = broadcast;
+    }
+
+    public LocalDateTime getReadAt() {
+        return readAt;
+    }
+
+    public void setReadAt(LocalDateTime readAt) {
+        this.readAt = readAt;
     }
 }

@@ -14,6 +14,8 @@ import aucasa.com.rw.dto.attendance.AttendanceCheckInRequest;
 import aucasa.com.rw.dto.attendance.AttendanceRecordResponse;
 import aucasa.com.rw.repository.AttendanceRecordRepository;
 import aucasa.com.rw.repository.AttendanceSessionRepository;
+import aucasa.com.rw.repository.AcademicTermRepository;
+import aucasa.com.rw.repository.CampusRepository;
 import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
 import java.time.LocalDateTime;
@@ -41,6 +43,12 @@ class AttendanceServiceTest {
     @Mock
     private UserAccountRepository userAccountRepository;
 
+    @Mock
+    private AcademicTermRepository academicTermRepository;
+
+    @Mock
+    private CampusRepository campusRepository;
+
     private AttendanceService service;
 
     @BeforeEach
@@ -50,6 +58,8 @@ class AttendanceServiceTest {
                 recordRepository,
                 studentProfileRepository,
                 userAccountRepository,
+                academicTermRepository,
+                campusRepository,
                 "",
                 true,
                 true,

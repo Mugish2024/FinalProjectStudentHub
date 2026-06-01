@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Upload, Clock, FileText, CheckCircle2, ClipboardList } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Upload, Clock, FileText, CheckCircle2, ClipboardList, X, BriefcaseBusiness, MapPin, GraduationCap, Award } from 'lucide-react';
 import './StudentLabour.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type ApplicationItem = {
     id: number;
@@ -41,16 +41,26 @@ type LogItem = {
 
 interface StudentLabourProps {
     studentNumber: string;
+    fullName?: string;
     gpa: string;
     semester: number;
     disciplineStatus: string;
 }
 
-const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semester, disciplineStatus }) => {
+const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName = '', gpa, semester, disciplineStatus }) => {
     const [activeTab, setActiveTab] = useState<'apply' | 'daily-log' | 'tracking'>('apply');
     const [coverLetterText, setCoverLetterText] = useState('');
     const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
     const [transcriptFile, setTranscriptFile] = useState<File | null>(null);
+    const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+    const [applicationStep, setApplicationStep] = useState(0);
+    const [applicantFullName, setApplicantFullName] = useState('');
+    const [applicantEmail, setApplicantEmail] = useState('');
+    const [applicantPhone, setApplicantPhone] = useState('+250');
+    const [interestSummary, setInterestSummary] = useState('');
+    const [availabilitySummary, setAvailabilitySummary] = useState('');
+    const [commitmentSummary, setCommitmentSummary] = useState('');
+    const [showApplicationWarnings, setShowApplicationWarnings] = useState(false);
     const [applicationMessage, setApplicationMessage] = useState('');
     const [applicationError, setApplicationError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +70,7 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
     const [eligibilityPopupOpen, setEligibilityPopupOpen] = useState(false);
     const [eligibilityPopupTitle, setEligibilityPopupTitle] = useState('');
     const [eligibilityPopupMessage, setEligibilityPopupMessage] = useState('');
+    const [withdrawTargetId, setWithdrawTargetId] = useState<number | null>(null);
 
     const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
     const [workStartTime, setWorkStartTime] = useState('');
@@ -72,7 +83,6 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
     const [reminders, setReminders] = useState<string[]>([]);
 
     const numericGpa = Number(gpa || 0);
-    const isEligible = semester >= 3 && numericGpa >= 14 && disciplineStatus === 'SATISFACTORY';
 
     const totalHours = useMemo(() => {
         return logs.reduce((sum, log) => sum + Number(log.hoursWorked || 0), 0);
@@ -183,17 +193,83 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
         }
 
         setSelectedActivity(activity);
-        setEligibilityPopupTitle('Eligible to Apply');
-        setEligibilityPopupMessage(`You can apply for "${activity.title}". The role has been filled in your application form.`);
-        setEligibilityPopupOpen(true);
-        const el = document.getElementById('labour-application-form');
-        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setApplicationStep(0);
+        setApplicationModalOpen(true);
+    };
+
+    const composeApplicationText = () => {
+        const sections = [
+            `Selected role: ${selectedActivity?.title ?? 'N/A'}`,
+            `Department: ${selectedActivity?.department ?? 'N/A'}`,
+        `Full names: ${fullName || applicantFullName || 'N/A'}`,
+        `Student number: ${studentNumber || 'N/A'}`,
+        `Semester: ${semester || 'N/A'}`,
+        `GPA: ${numericGpa.toFixed(2)}`,
+        `Discipline status: ${disciplineStatus || 'N/A'}`,
+        `Email: ${applicantEmail || 'N/A'}`,
+        `Telephone: ${applicantPhone || 'N/A'}`,
+        `Role interest: ${interestSummary || 'N/A'}`,
+        `Availability: ${availabilitySummary || 'N/A'}`,
+            `Motivation and commitment: ${commitmentSummary || coverLetterText || 'N/A'}`,
+        ];
+        return sections.join('\n\n');
+    };
+
+    const resetApplicationWizard = () => {
+        setApplicationStep(0);
+        setShowApplicationWarnings(false);
+        setApplicantFullName('');
+        setApplicantEmail('');
+        setApplicantPhone('+250');
+        setInterestSummary('');
+        setAvailabilitySummary('');
+        setCommitmentSummary('');
+        setCoverLetterText('');
+        setCoverLetterFile(null);
+        setTranscriptFile(null);
+    };
+
+    const stepWarnings = useMemo(() => {
+        const warnings: Record<number, string[]> = {
+            0: [],
+            1: [],
+            2: [],
+        };
+        if (!applicantEmail.trim()) warnings[0].push('Email is required.');
+        if (!applicantPhone.trim() || applicantPhone.trim() === '+250') warnings[0].push('Telephone number is required.');
+        if (!interestSummary.trim()) warnings[1].push('Role interest is required.');
+        if (!availabilitySummary.trim()) warnings[1].push('Availability is required.');
+        if (!commitmentSummary.trim()) warnings[2].push('Motivation and commitment is required.');
+        return warnings;
+    }, [applicantEmail, applicantPhone, interestSummary, availabilitySummary, commitmentSummary]);
+
+    const hasStepWarning = (step: number) => showApplicationWarnings && (stepWarnings[step]?.length ?? 0) > 0;
+
+    const goToApplicationStep = (step: number) => {
+        setApplicationStep(step);
+    };
+
+    const goToNextApplicationStep = () => {
+        if ((stepWarnings[applicationStep]?.length ?? 0) > 0) {
+            setShowApplicationWarnings(true);
+            return;
+        }
+        setApplicationStep((step) => Math.min(2, step + 1));
     };
 
     const handleSubmitApplication = async (e: React.FormEvent) => {
         e.preventDefault();
         setApplicationError('');
         setApplicationMessage('');
+
+        const allWarnings = Object.values(stepWarnings).flat();
+        if (allWarnings.length > 0) {
+            setShowApplicationWarnings(true);
+            const firstInvalidStep = Number(Object.entries(stepWarnings).find(([, warnings]) => warnings.length > 0)?.[0] ?? 0);
+            setApplicationStep(firstInvalidStep);
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -201,9 +277,7 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
             formData.append('studentNumber', studentNumber);
             formData.append('department', selectedActivity?.department ?? '');
             formData.append('roleTitle', selectedActivity?.title ?? '');
-            if (coverLetterText) {
-                formData.append('coverLetterText', coverLetterText);
-            }
+            formData.append('coverLetterText', composeApplicationText());
             if (coverLetterFile) {
                 formData.append('coverLetterFile', coverLetterFile);
             }
@@ -222,11 +296,13 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
             }
 
             setApplicationMessage('Application submitted successfully.');
-            setCoverLetterText('');
-            setCoverLetterFile(null);
-            setTranscriptFile(null);
+            resetApplicationWizard();
+            setApplicationModalOpen(false);
             setSelectedActivity(null);
             await fetchApplications();
+            window.setTimeout(() => {
+                document.querySelector('.labour-submit-success')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 80);
         } catch (err) {
             setApplicationError(err instanceof Error ? err.message : 'Application submission failed.');
         } finally {
@@ -275,8 +351,37 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
         }
     };
 
+    const handleWithdrawApplication = async (applicationId: number) => {
+        setApplicationError('');
+        setApplicationMessage('');
+
+        try {
+            const response = await fetch(`${API_BASE}/api/labour-applications/${applicationId}/withdraw`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentNumber }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to withdraw application.');
+            }
+            setApplicationMessage('Application withdrawn successfully.');
+            await fetchApplications();
+            window.setTimeout(() => {
+                document.querySelector('.labour-submit-success')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 80);
+        } catch (err) {
+            setApplicationError(err instanceof Error ? err.message : 'Failed to withdraw application.');
+        }
+    };
+
     const handleDownloadMyReport = () => {
-        if (!studentNumber) return;
+        if (!studentNumber || logs.length === 0) {
+            setEligibilityPopupTitle('No Report Available');
+            setEligibilityPopupMessage('No labour report is available yet because you do not have approved or submitted daily labour logs.');
+            setEligibilityPopupOpen(true);
+            return;
+        }
         const params = new URLSearchParams({ studentNumber });
         window.open(`${API_BASE}/api/labour-daily-logs/report/student/pdf?${params.toString()}`, '_blank', 'noopener,noreferrer');
     };
@@ -293,6 +398,17 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
                 <div className="alert warn">Please login to access student labour services.</div>
             )}
 
+            {applicationMessage && (
+                <div className="labour-submit-success" role="status">
+                    <CheckCircle2 size={18} />
+                    <span>{applicationMessage}</span>
+                </div>
+            )}
+
+            {applicationError && (
+                <div className="alert error">{applicationError}</div>
+            )}
+
             <div className="labour-hero">
                 <span className="portal-label">Student Labour Portal</span>
                 <h1>Academic Work Opportunities</h1>
@@ -301,21 +417,6 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
 
             {activeTab === 'apply' && (
                 <>
-                    <div className="eligibility-banner">
-                        <div className="eligibility-left">
-                            <CheckCircle2 size={20} />
-                            <div>
-                                <h3>Labour Eligibility Status</h3>
-                                <p>
-                                    Semester {semester}, GPA {numericGpa.toFixed(2)}, discipline: {disciplineStatus || 'Unknown'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className={`eligibility-pill ${isEligible ? 'ok' : 'not-ok'}`}>
-                            {isEligible ? 'Target Met' : 'Not Eligible Yet'}
-                        </div>
-                    </div>
-
                     <div className="labour-layout">
                         <section className="labour-main">
                             <div className="section-row">
@@ -336,16 +437,21 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
                                 )}
                                 {activities.map((activity) => (
                                     <article key={activity.id} className="job-card simplified">
-                                        <div className="job-head">
-                                            <h3>{activity.title}</h3>
-                                            <p>{activity.description || 'Dean approved campus labour activity.'}</p>
+                                        <div className="job-card-top">
+                                            <div className="job-icon">
+                                                <BriefcaseBusiness size={20} />
+                                            </div>
+                                            <div className="job-head">
+                                                <h3>{activity.title}</h3>
+                                                <p>{activity.description || 'Dean approved campus labour activity.'}</p>
+                                            </div>
                                         </div>
                                         <div className="job-tags">
-                                            <span>{activity.department}</span>
-                                            <span>Sem {activity.minSemester}+</span>
-                                            <span>GPA {activity.minGpa}+</span>
+                                            <span><MapPin size={13} /> {activity.department}</span>
+                                            <span><GraduationCap size={13} /> Sem {activity.minSemester}+</span>
+                                            <span><Award size={13} /> GPA {activity.minGpa}+</span>
                                         </div>
-                                        <button className="job-apply-btn" onClick={() => handleSelectActivity(activity)}>
+                                        <button className="job-apply-btn" onClick={() => handleSelectActivity(activity)} disabled={hasActivePosition}>
                                             {hasActivePosition ? 'Already Have Position' : 'Apply for this role'}
                                         </button>
                                     </article>
@@ -360,7 +466,12 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
                                             <span>{app.department || 'Dean assignment pending'}</span>
                                             <span>{app.roleTitle || 'Role pending'}</span>
                                             <span>{new Date(app.submittedAt).toLocaleDateString()}</span>
-                                            <strong>{app.status}</strong>
+                                    <div className="application-row-actions">
+                                                <strong>{app.status}</strong>
+                                                {app.status === 'PENDING' && (
+                                                    <button type="button" onClick={() => setWithdrawTargetId(app.id)}>Withdraw</button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -371,54 +482,17 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
                             <div className="panel">
                                 <div className="panel-head">
                                     <h3>Application</h3>
-                                    <span>Step 1 of 3</span>
                                 </div>
 
                                 {applicationError && <div className="alert error">{applicationError}</div>}
                                 {applicationMessage && <div className="alert success">{applicationMessage}</div>}
 
-                                {!isEligible && (
-                                    <div className="alert warn">You are currently not eligible for student labour. The application form is available only to eligible students.</div>
-                                )}
-
-                                {isEligible && !selectedActivity && (
-                                    <div className="alert warn">Select a labour role above first to open the application form.</div>
-                                )}
-
-                                {isEligible && selectedActivity && (
-                                    <form id="labour-application-form" className="application-form" onSubmit={handleSubmitApplication}>
-                                        <label>Selected Role</label>
-                                        <input value={selectedActivity.title} disabled />
-
-                                        <label>Department Assignment</label>
-                                        <input value={selectedActivity.department} disabled />
-
-                                        <label>Cover Letter Text</label>
-                                        <textarea
-                                            rows={4}
-                                            placeholder="Write your motivation..."
-                                            value={coverLetterText}
-                                            onChange={(e) => setCoverLetterText(e.target.value)}
-                                        />
-
-                                        <label>Cover Letter (PDF)</label>
-                                        <div className="file-input-wrap">
-                                            <Upload size={16} />
-                                            <span>{coverLetterFile ? coverLetterFile.name : 'Upload cover letter PDF'}</span>
-                                            <input type="file" accept="application/pdf" onChange={(e) => setCoverLetterFile(e.target.files?.[0] ?? null)} />
-                                        </div>
-
-                                        <label>Transcript (PDF)</label>
-                                        <div className="file-input-wrap">
-                                            <FileText size={16} />
-                                            <span>{transcriptFile ? transcriptFile.name : 'Upload transcript PDF'}</span>
-                                            <input type="file" accept="application/pdf" onChange={(e) => setTranscriptFile(e.target.files?.[0] ?? null)} />
-                                        </div>
-
-                                        <button type="submit" disabled={isSubmitting || !studentNumber}>
-                                            {isSubmitting ? 'Submitting...' : 'Submit Application'}
-                                        </button>
-                                    </form>
+                                {selectedActivity && (
+                                    <div className="selected-role-card">
+                                        <strong>{selectedActivity.title}</strong>
+                                        <span>{selectedActivity.department}</span>
+                                        <button type="button" onClick={() => setApplicationModalOpen(true)}>Continue Application</button>
+                                    </div>
                                 )}
                             </div>
 
@@ -560,7 +634,12 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
                                 <span>{app.roleTitle || 'Role pending'}</span>
                                 <span>{app.department || 'Dean assignment pending'}</span>
                                 <span>{new Date(app.submittedAt).toLocaleString()}</span>
-                                <strong>{app.status}</strong>
+                                <div className="application-row-actions">
+                                    <strong>{app.status}</strong>
+                                    {app.status === 'PENDING' && (
+                                        <button type="button" onClick={() => setWithdrawTargetId(app.id)}>Withdraw</button>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -573,6 +652,164 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, gpa, semes
                         <h3>{eligibilityPopupTitle}</h3>
                         <p>{eligibilityPopupMessage}</p>
                         <button type="button" onClick={() => setEligibilityPopupOpen(false)}>OK</button>
+                    </div>
+                </div>
+            )}
+
+            {withdrawTargetId !== null && (
+                <div className="eligibility-modal-overlay" onClick={() => setWithdrawTargetId(null)}>
+                    <div className="eligibility-modal withdraw-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Withdrawal</h3>
+                        <p>Do you want to withdraw this labour application? You can apply again after it is withdrawn.</p>
+                        <div className="withdraw-modal-actions">
+                            <button type="button" className="secondary" onClick={() => setWithdrawTargetId(null)}>Cancel</button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const id = withdrawTargetId;
+                                    setWithdrawTargetId(null);
+                                    void handleWithdrawApplication(id);
+                                }}
+                            >
+                                OK, Withdraw
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {applicationModalOpen && selectedActivity && (
+                <div className="labour-application-modal-overlay" onClick={() => setApplicationModalOpen(false)}>
+                    <div className="labour-application-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="labour-application-modal-head">
+                            <div>
+                                <span>Application for {selectedActivity.title}</span>
+                                <h3>Student Labour Application</h3>
+                            </div>
+                            <button type="button" onClick={() => setApplicationModalOpen(false)} aria-label="Close application">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form className="labour-stepper-form labour-stepper-form--accordion" onSubmit={handleSubmitApplication}>
+                            <div className="application-accordion">
+                                <section className={`accordion-step ${applicationStep === 0 ? 'active' : ''} ${applicationStep > 0 ? 'complete' : ''} ${hasStepWarning(0) ? 'warning' : ''}`}>
+                                    <button type="button" className="accordion-step-head" onClick={() => goToApplicationStep(0)}>
+                                        <span>{applicationStep > 0 ? <CheckCircle2 size={15} /> : 1}</span>
+                                        <strong>Personal Info</strong>
+                                        {hasStepWarning(0) && <small>{stepWarnings[0][0]}</small>}
+                                    </button>
+                                    {applicationStep === 0 && (
+                                        <div className="accordion-step-body">
+                                            <div className="step-grid">
+                                                <label>
+                                                    <span>Full Names</span>
+                                                    <input value={fullName || applicantFullName || 'Student User'} onChange={(e) => setApplicantFullName(e.target.value)} disabled={Boolean(fullName)} />
+                                                </label>
+                                                <label>
+                                                    <span>Email</span>
+                                                    <input className={hasStepWarning(0) && !applicantEmail.trim() ? 'field-warning' : ''} type="email" value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} placeholder="name@example.com" required />
+                                                    {showApplicationWarnings && !applicantEmail.trim() && <em>Email is required.</em>}
+                                                </label>
+                                                <label>
+                                                    <span>Telephone Number</span>
+                                                    <input className={hasStepWarning(0) && (!applicantPhone.trim() || applicantPhone.trim() === '+250') ? 'field-warning' : ''} value={applicantPhone} onChange={(e) => setApplicantPhone(e.target.value)} placeholder="+250..." required />
+                                                    {showApplicationWarnings && (!applicantPhone.trim() || applicantPhone.trim() === '+250') && <em>Telephone number is required.</em>}
+                                                </label>
+                                                <label>
+                                                    <span>Student Number</span>
+                                                    <input value={studentNumber || 'N/A'} disabled />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                <section className={`accordion-step ${applicationStep === 1 ? 'active' : ''} ${applicationStep > 1 ? 'complete' : ''} ${hasStepWarning(1) ? 'warning' : ''}`}>
+                                    <button type="button" className="accordion-step-head" onClick={() => goToApplicationStep(1)}>
+                                        <span>{applicationStep > 1 ? <CheckCircle2 size={15} /> : 2}</span>
+                                        <strong>Role Interest</strong>
+                                        {hasStepWarning(1) && <small>{stepWarnings[1][0]}</small>}
+                                    </button>
+                                    {applicationStep === 1 && (
+                                        <div className="accordion-step-body">
+                                            <div className="selected-role-summary">
+                                                <strong>{selectedActivity.title}</strong>
+                                                <span>{selectedActivity.department} / Sem {selectedActivity.minSemester}+ / GPA {selectedActivity.minGpa}+</span>
+                                                <p>{selectedActivity.description || 'Dean approved campus labour activity.'}</p>
+                                            </div>
+                                            <div className="step-grid one-column">
+                                                <label>
+                                                    <span>Why are you interested in this role?</span>
+                                                    <textarea className={hasStepWarning(1) && !interestSummary.trim() ? 'field-warning' : ''} rows={4} value={interestSummary} onChange={(e) => setInterestSummary(e.target.value)} required />
+                                                    {showApplicationWarnings && !interestSummary.trim() && <em>Role interest is required.</em>}
+                                                </label>
+                                                <label>
+                                                    <span>Availability</span>
+                                                    <textarea className={hasStepWarning(1) && !availabilitySummary.trim() ? 'field-warning' : ''} rows={3} value={availabilitySummary} onChange={(e) => setAvailabilitySummary(e.target.value)} placeholder="Mention days/times you can work." required />
+                                                    {showApplicationWarnings && !availabilitySummary.trim() && <em>Availability is required.</em>}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+
+                                <section className={`accordion-step ${applicationStep === 2 ? 'active' : ''} ${hasStepWarning(2) ? 'warning' : ''}`}>
+                                    <button type="button" className="accordion-step-head" onClick={() => goToApplicationStep(2)}>
+                                        <span>3</span>
+                                        <strong>Motivation and Commitment</strong>
+                                        {hasStepWarning(2) && <small>{stepWarnings[2][0]}</small>}
+                                    </button>
+                                    {applicationStep === 2 && (
+                                        <div className="accordion-step-body">
+                                            <div className="step-grid one-column">
+                                                <label>
+                                                    <span>Motivation and commitment</span>
+                                                    <textarea className={hasStepWarning(2) && !commitmentSummary.trim() ? 'field-warning' : ''} rows={5} value={commitmentSummary} onChange={(e) => setCommitmentSummary(e.target.value)} placeholder="Explain how you will serve responsibly in this position." required />
+                                                    {showApplicationWarnings && !commitmentSummary.trim() && <em>Motivation and commitment is required.</em>}
+                                                </label>
+                                                <div className="step-grid">
+                                                    <label>
+                                                        <span>Cover Letter (PDF)</span>
+                                                        <div className="file-input-wrap">
+                                                            <Upload size={16} />
+                                                            <span>{coverLetterFile ? coverLetterFile.name : 'Upload cover letter PDF'}</span>
+                                                            <input type="file" accept="application/pdf" onChange={(e) => setCoverLetterFile(e.target.files?.[0] ?? null)} />
+                                                        </div>
+                                                    </label>
+                                                    <label>
+                                                        <span>Transcript (PDF)</span>
+                                                        <div className="file-input-wrap">
+                                                            <FileText size={16} />
+                                                            <span>{transcriptFile ? transcriptFile.name : 'Upload transcript PDF'}</span>
+                                                            <input type="file" accept="application/pdf" onChange={(e) => setTranscriptFile(e.target.files?.[0] ?? null)} />
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </section>
+                            </div>
+
+                            <div className="stepper-actions">
+                                <button type="button" className="secondary" onClick={() => setApplicationStep((step) => Math.max(0, step - 1))} disabled={applicationStep === 0}>
+                                    <ArrowLeft size={16} />
+                                    Back
+                                </button>
+                                {applicationStep < 2 ? (
+                                    <button type="button" onClick={goToNextApplicationStep}>
+                                        Next
+                                        <ArrowRight size={16} />
+                                    </button>
+                                ) : (
+                                    <button type="submit" disabled={isSubmitting || !studentNumber}>
+                                        {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                                        <ArrowRight size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

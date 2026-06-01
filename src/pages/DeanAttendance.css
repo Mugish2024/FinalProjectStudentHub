@@ -1,7 +1,10 @@
 .dean-attendance-simple {
     display: grid;
     gap: 0.85rem;
-    padding: 1rem;
+    margin: 0 auto;
+    max-width: 1180px;
+    padding: 1.1rem 1rem 1.35rem;
+    width: min(1180px, 100%);
 }
 
 .dean-simple-head h1 {
@@ -15,8 +18,8 @@
 }
 
 .dean-simple-error {
-    background: #fee2e2;
-    color: #991b1b;
+    background: #2F4F86;
+    color: #0f172a;
     border-radius: 10px;
     padding: 0.75rem 0.9rem;
 }
@@ -57,6 +60,59 @@
     flex-wrap: wrap;
 }
 
+.attendance-open-confirm {
+    align-items: center;
+    background: #f8fbff;
+    border: 1px solid #c8d9f3;
+    border-left: 4px solid #2f4f86;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(31, 55, 95, 0.08);
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr) auto;
+    padding: 0.85rem 1rem;
+}
+
+.attendance-popup-overlay {
+    align-items: center;
+    background: rgba(6, 18, 40, 0.54);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 1rem;
+    position: fixed;
+    z-index: 1500;
+}
+
+.attendance-open-popup {
+    box-shadow: 0 24px 52px rgba(6, 18, 40, 0.26);
+    grid-template-columns: 1fr;
+    max-width: 520px;
+    padding: 1rem;
+    width: min(520px, 94vw);
+}
+
+.attendance-open-confirm h2 {
+    color: #173562;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.attendance-open-confirm p {
+    color: #526982;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.55;
+    margin: 0.18rem 0 0;
+}
+
+.attendance-open-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: flex-end;
+}
+
 .btn-dark,
 .btn-danger,
 .btn-success {
@@ -77,12 +133,12 @@
 }
 
 .btn-danger {
-    background: #991b1b;
+    background: #0f172a;
     color: #fff;
 }
 
 .btn-success {
-    background: #059669;
+    background: #2F4F86;
     color: #fff;
 }
 
@@ -116,8 +172,8 @@
 }
 
 .metric-card.green {
-    background: #065f46;
-    border-color: #065f46;
+    background: #2F4F86;
+    border-color: #2F4F86;
     color: #fff;
 }
 
@@ -203,7 +259,7 @@
 
 .attendance-modal-head h3 {
     margin: 0;
-    color: #0f2f66;
+    color: #2F4F86;
     font-size: 1rem;
 }
 
@@ -242,8 +298,13 @@
 }
 
 @media (max-width: 980px) {
-    .simple-metrics-grid {
+    .simple-metrics-grid,
+    .attendance-open-confirm {
         grid-template-columns: 1fr;
+    }
+
+    .attendance-open-actions {
+        justify-content: flex-start;
     }
 
     .simple-qr-panel {
@@ -255,4 +316,165 @@
     .attendance-modal-foot {
         flex-wrap: wrap;
     }
+}
+
+/* Polished attendance review cards */
+.dean-attendance-simple {
+    gap: 0.95rem;
+}
+
+.dean-simple-head {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid #dbe6f5;
+    border-left: 4px solid #2F4F86;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(47, 79, 134, 0.1);
+    padding: 1.15rem 1.35rem;
+}
+
+.dean-simple-head::after {
+    content: '';
+    position: absolute;
+    top: -44px;
+    right: -34px;
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: #eaf1fb;
+    border: 1px solid #d5e2f3;
+}
+
+.dean-simple-head > * {
+    position: relative;
+    z-index: 1;
+}
+
+.dean-simple-head h1 {
+    color: #18264b;
+    font-size: 1.45rem;
+    letter-spacing: 0;
+}
+
+.dean-simple-head p {
+    color: #5f7392;
+    font-size: 0.9rem;
+}
+
+.dean-simple-controls {
+    border-color: #d9e4f2;
+    border-radius: 16px;
+    box-shadow: 0 12px 28px rgba(31, 55, 95, 0.08);
+    padding: 0.85rem 1rem;
+}
+
+.control-group label {
+    color: #4f6688;
+    letter-spacing: 0.02em;
+}
+
+.control-group select {
+    background: #f8fbff;
+    border-color: #cfdced;
+    color: #203860;
+    min-width: min(520px, 74vw);
+}
+
+.control-group select:focus {
+    border-color: #2F4F86;
+    box-shadow: 0 0 0 3px rgba(47, 79, 134, 0.12);
+    outline: none;
+}
+
+.btn-dark,
+.btn-danger,
+.btn-success {
+    border: 1px solid transparent;
+    border-radius: 12px;
+    box-shadow: 0 8px 18px rgba(47, 79, 134, 0.12);
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.btn-dark,
+.btn-danger {
+    background: #f4f7fc;
+    border-color: #d6e1ef;
+    color: #2F4F86;
+}
+
+.btn-success {
+    background: #2F4F86;
+    color: #ffffff;
+}
+
+.btn-dark:hover,
+.btn-danger:hover,
+.btn-success:hover {
+    box-shadow: 0 12px 22px rgba(47, 79, 134, 0.18);
+    transform: translateY(-1px);
+}
+
+.simple-metrics-grid {
+    gap: 0.8rem;
+}
+
+.dean-attendance-simple .metric-card {
+    background:
+        radial-gradient(circle at 92% 12%, rgba(47, 79, 134, 0.09), transparent 5.5rem),
+        #ffffff;
+    border: 1px solid #d9e4f2;
+    border-radius: 18px;
+    box-shadow: 0 14px 30px rgba(31, 55, 95, 0.1);
+    min-height: 112px;
+    padding: 1rem 1.1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.dean-attendance-simple .metric-card::before {
+    background: linear-gradient(180deg, #2F4F86, #5f95d4);
+    border-radius: 999px;
+    content: "";
+    inset: 1rem auto 1rem 0;
+    position: absolute;
+    width: 4px;
+}
+
+.dean-attendance-simple .metric-card.dark,
+.dean-attendance-simple .metric-card.green {
+    background:
+        radial-gradient(circle at 92% 12%, rgba(47, 79, 134, 0.11), transparent 5.5rem),
+        linear-gradient(180deg, #ffffff, #fbfdff);
+    border-color: #d9e4f2;
+    color: #17264a;
+}
+
+.dean-attendance-simple .metric-card.clickable:hover {
+    box-shadow: 0 18px 34px rgba(47, 79, 134, 0.16);
+}
+
+.dean-attendance-simple .metric-card .kicker {
+    color: #5f7392;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    opacity: 1;
+}
+
+.dean-attendance-simple .metric-card strong {
+    color: #10224d;
+    font-size: 1.22rem;
+    line-height: 1.2;
+}
+
+.dean-attendance-simple .metric-card strong svg {
+    color: #2F4F86;
+}
+
+.dean-attendance-simple .metric-card p {
+    color: #5d6f8d;
+    font-size: 0.86rem;
+    line-height: 1.4;
+    opacity: 1;
 }

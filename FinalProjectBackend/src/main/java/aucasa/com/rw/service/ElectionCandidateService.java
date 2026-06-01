@@ -132,6 +132,16 @@ public class ElectionCandidateService {
     }
 
     @Transactional(readOnly = true)
+    public List<ElectionCandidateResponse> listApprovedByElection(Long electionId) {
+        if (electionId == null) {
+            return listApproved();
+        }
+        return candidateRepository.findByApprovedTrueAndElectionId(electionId).stream()
+                .map(this::toPublicResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<ElectionCandidateResponse> listApprovedByStatus(String electionStatus) {
         if (isBlank(electionStatus)) {
             return listApproved();

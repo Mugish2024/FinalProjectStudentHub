@@ -13,6 +13,16 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/elections/candidates")
+@CrossOrigin(originPatterns = {
+        "http://localhost:5173",
+        "https://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://127.0.0.1:5173",
+        "http://10.*.*.*:5173",
+        "https://10.*.*.*:5173",
+        "https://*.loca.lt",
+        "https://*.trycloudflare.com"
+})
 public class ElectionCandidateController {
     private final ElectionCandidateService service;
 
@@ -57,8 +67,14 @@ public class ElectionCandidateController {
     }
 
     @GetMapping("/approved")
-    public ResponseEntity<?> getApproved(@RequestParam(required = false) String electionStatus) {
+    public ResponseEntity<?> getApproved(
+            @RequestParam(required = false) String electionStatus,
+            @RequestParam(required = false) Long electionId
+    ) {
         try {
+            if (electionId != null) {
+                return ResponseEntity.ok(service.listApprovedByElection(electionId));
+            }
             return ResponseEntity.ok(service.listApprovedByStatus(electionStatus));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));

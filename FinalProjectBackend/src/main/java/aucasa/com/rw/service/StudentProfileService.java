@@ -337,6 +337,10 @@ public class StudentProfileService {
         String program = normalizeProgram(student.getProgram());
         Integer credits = normalizeCredits(student.getCredits());
         String fullName = student.getUserAccount().getFirstName() + " " + student.getUserAccount().getLastName();
+        String role = student.getUserAccount().getRole() != null && student.getUserAccount().getRole().getName() != null
+                ? student.getUserAccount().getRole().getName().name()
+                : "STUDENT";
+        String disciplineStatus = student.getDisciplineStatus() != null ? student.getDisciplineStatus().name() : "";
 
         return new StudentRegistrationResponse(
                 student.getId(),
@@ -347,7 +351,9 @@ public class StudentProfileService {
                 program,
                 credits,
                 normalizeSemester(student.getSemester()),
-                normalizeGpa(student.getGpa()).doubleValue()
+                normalizeGpa(student.getGpa()).doubleValue(),
+                role,
+                disciplineStatus
         );
     }
 }

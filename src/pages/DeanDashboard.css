@@ -1,197 +1,445 @@
 .dean-labour-dashboard {
     display: grid;
-    gap: 0.9rem;
-    padding: 0.95rem;
+    gap: 0.8rem;
+    margin: 0 auto;
+    max-width: 1180px;
+    padding: 1.1rem 1rem 1.35rem;
+    width: min(1180px, 100%);
     color: #0f1b3d;
-    min-height: calc(100vh - 120px);
     align-content: start;
+    font-size: 0.9rem;
 }
 
 .dean-labour-hero {
     border-radius: 14px;
-    padding: 1.2rem 1.3rem;
-    color: #fff;
+    border: 1px solid #dbe4f0;
+    border-left: 3px solid #2f4f86;
+    padding: 1rem 1.15rem;
+    color: #061b3f;
     display: flex;
     justify-content: space-between;
     gap: 0.8rem;
     align-items: flex-start;
-    background: linear-gradient(120deg, #062f67 0 70%, #0b3f7a 70% 100%);
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(47, 79, 134, 0.08);
+    overflow: hidden;
+    position: relative;
+}
+
+.dean-labour-hero::after {
+    background: #f1f6fd;
+    border-left: 1px solid #e0e9f6;
+    border-bottom: 1px solid #e0e9f6;
+    border-radius: 0 14px 0 44px;
+    content: '';
+    height: 82px;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 82px;
+}
+
+.dean-labour-hero > * {
+    position: relative;
+    z-index: 1;
 }
 
 .hero-kicker {
     text-transform: uppercase;
     letter-spacing: 0.13em;
-    font-size: 0.72rem;
-    color: rgba(191, 219, 254, 0.9);
+    font-size: 0.66rem;
+    color: #2f4f86;
+    font-weight: 760;
 }
 
 .dean-labour-hero h1 {
-    margin: 0.45rem 0 0.35rem;
-    font-size: clamp(1.6rem, 2.4vw, 2.3rem);
-    line-height: 1.08;
+    font-weight: 680;
+    letter-spacing: 0;
+    line-height: 1.12;
+    margin: 0.35rem 0 0.32rem;
+    font-size: clamp(1.45rem, 2vw, 2rem);
 }
 
 .dean-labour-hero p {
     margin: 0;
-    color: rgba(219, 234, 254, 0.9);
+    color: #526982;
     max-width: 68ch;
+    font-size: 0.9rem;
+    line-height: 1.45;
 }
 
 .hero-status-chip {
-    background: rgba(15, 23, 42, 0.34);
-    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: #eef5ff;
+    border: 1px solid #c8d9f3;
     border-radius: 10px;
-    padding: 0.5rem 0.75rem;
+    color: #2f4f86;
+    padding: 0.46rem 0.7rem;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    font-weight: 700;
-    font-size: 0.85rem;
+    font-weight: 680;
+    font-size: 0.8rem;
 }
 
 .labour-kpi-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.7rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
 }
 
 .labour-kpi {
+    position: relative;
+    overflow: hidden;
     background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border: 1px solid #d8e2f1;
+    border-radius: 13px;
     padding: 0.9rem 0.95rem;
+    min-height: 124px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.055);
 }
 
-.kpi-head {
+.labour-kpi::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: #2F4F86;
+}
+
+.labour-kpi::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 74px;
+    height: 74px;
+    border-bottom-left-radius: 44px;
+    background: rgba(47, 79, 134, 0.06);
+}
+
+.labour-kpi-attention::before {
+    background: #2F4F86;
+}
+
+.labour-kpi-success::before {
+    background: #2F4F86;
+}
+
+.labour-kpi-review::before {
+    background: #52657f;
+}
+
+.kpi-topline {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.58rem;
+    color: #001b4d;
+    font-size: 0.9rem;
+    font-weight: 680;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.kpi-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    color: #475569;
-    font-size: 0.79rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    justify-content: center;
+    background: #f3f6fb;
+    color: #2F4F86;
+    box-shadow: inset 0 0 0 1px rgba(47, 79, 134, 0.12);
+    flex: 0 0 auto;
 }
 
-.labour-kpi strong {
+.labour-kpi-attention .kpi-icon {
+    background: #f3f6fb;
+    color: #2F4F86;
+    box-shadow: inset 0 0 0 1px rgba(47, 79, 134, 0.12);
+}
+
+.labour-kpi-success .kpi-icon {
+    background: #f3f6fb;
+    color: #2F4F86;
+    box-shadow: inset 0 0 0 1px rgba(47, 79, 134, 0.12);
+}
+
+.labour-kpi-review .kpi-icon {
+    background: #f5f7fa;
+    color: #52657f;
+    box-shadow: inset 0 0 0 1px rgba(82, 101, 127, 0.14);
+}
+
+.kpi-value-row {
+    position: relative;
+    z-index: 1;
+    margin-top: 0.78rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.kpi-value-row strong {
     display: block;
-    margin-top: 0.45rem;
-    font-size: 2rem;
+    color: #001b4d;
+    font-size: clamp(1.6rem, 2.4vw, 2.05rem);
+    font-weight: 720;
     line-height: 1;
+}
+
+.kpi-value-row small {
+    border-radius: 999px;
+    background: #f6f8fb;
+    color: #5f6f86;
+    border: 1px solid #e1e8f2;
+    padding: 0.22rem 0.52rem;
+    font-size: 0.68rem;
+    font-weight: 720;
 }
 
 .labour-kpi p {
-    margin: 0.25rem 0 0;
-    color: #64748b;
-    font-size: 0.84rem;
-}
-
-.labour-summary-row {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 0.7rem;
-}
-
-.discipline-review-row {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 0.7rem;
-}
-
-.summary-card {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 0.95rem;
-    min-height: 180px;
-}
-
-.summary-card h3 {
-    margin: 0 0 0.7rem;
-    font-size: 1rem;
-}
-
-.score-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.65rem;
-}
-
-.score-row strong {
-    font-size: 1.9rem;
-    line-height: 1;
-}
-
-.score-row span {
-    color: #64748b;
-    font-size: 0.83rem;
-    font-weight: 700;
-}
-
-.score-bar {
-    margin-top: 0.6rem;
-    height: 8px;
-    border-radius: 999px;
-    background: #e2e8f0;
-}
-
-.score-bar div {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #0d9488, #0ea5e9);
-}
-
-.snap-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem;
-}
-
-.snap-grid div {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 0.6rem;
-    background: #f8fafc;
-}
-
-.snap-grid span {
-    display: block;
+    position: relative;
+    z-index: 1;
+    margin: 0.45rem 0 0;
     color: #64748b;
     font-size: 0.78rem;
-    margin-bottom: 0.25rem;
 }
 
-.snap-grid strong {
-    font-size: 1.2rem;
+.dashboard-table-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+    gap: 0.9rem;
+    align-items: start;
 }
 
-.attention-card h3 {
+.labour-people-panel {
+    background: #fff;
+    border: 1px solid #dbe4f0;
+    border-radius: 13px;
+    padding: 0.9rem;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.055);
+    overflow: hidden;
+    position: relative;
+}
+
+.labour-people-panel::before {
+    background: linear-gradient(90deg, #2f4f86, #8fb3df);
+    content: '';
+    height: 3px;
+    inset: 0 0 auto;
+    position: absolute;
+}
+
+.labour-people-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.72rem;
+    position: relative;
+    z-index: 1;
+}
+
+.labour-people-header span {
+    display: block;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 720;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.labour-people-header h2 {
+    margin: 0.2rem 0 0;
+    font-size: 1rem;
+    font-weight: 680;
+    line-height: 1.2;
+}
+
+.labour-people-header button {
+    border: 0;
+    border-radius: 9px;
+    background: #062f67;
+    color: #fff;
+    padding: 0.5rem 0.72rem;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 720;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
-.discipline-note {
-    margin: 0.45rem 0 0;
+.labour-people-header button:hover {
+    background: #0b3f7a;
+}
+
+.labour-people-header.compact small {
+    border: 1px solid #dbe4f0;
+    border-radius: 999px;
     color: #475569;
-    font-size: 0.86rem;
-    line-height: 1.45;
+    background: #f8fafc;
+    padding: 0.28rem 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 720;
+    white-space: nowrap;
 }
 
-.quick-cases {
-    margin-top: 0.7rem;
+.labour-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.labour-people-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 620px;
+}
+
+.people-directory-table {
+    min-width: 480px;
+}
+
+.labour-people-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.66rem;
+    font-weight: 720;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.labour-people-table th,
+.labour-people-table td {
+    padding: 0.66rem 0.72rem;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+    font-size: 0.82rem;
+}
+
+.labour-people-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.labour-people-table tbody tr:hover {
+    background: #fbfdff;
+}
+
+.student-cell {
     display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.58rem;
 }
 
-.quick-cases span {
+.student-cell > span {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e0f2fe;
+    color: #075985;
+    font-size: 0.78rem;
+    font-weight: 760;
+    flex: 0 0 auto;
+}
+
+.student-cell strong,
+.student-cell small {
+    display: block;
+}
+
+.student-cell strong {
+    font-size: 0.84rem;
+    font-weight: 680;
+}
+
+.student-cell small {
+    margin-top: 0.15rem;
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+.status-pill {
+    border-radius: 999px;
+    display: inline-flex;
+    padding: 0.24rem 0.54rem;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 0.66rem;
+    font-weight: 760;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.status-pending {
     background: #fff7ed;
     color: #9a3412;
-    border: 1px solid #fed7aa;
+}
+
+.status-approved {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.discipline-pill {
     border-radius: 999px;
-    padding: 0.22rem 0.55rem;
+    display: inline-flex;
+    padding: 0.24rem 0.56rem;
+    background: #f3f6fb;
+    color: #2F4F86;
+    border: 1px solid #dbe4f0;
+    font-size: 0.66rem;
+    font-weight: 760;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.labour-table-empty {
+    color: #64748b;
+    font-weight: 700;
+    text-align: center;
+}
+
+.people-pagination {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.people-pagination button {
+    border: 1px solid #dbe4f0;
+    border-radius: 9px;
+    background: #fff;
+    color: #2F4F86;
+    padding: 0.42rem 0.68rem;
+    font-size: 0.78rem;
+    font-weight: 720;
+    cursor: pointer;
+}
+
+.people-pagination button:disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+    background: #f8fafc;
+}
+
+.people-pagination span {
+    color: #64748b;
     font-size: 0.76rem;
     font-weight: 700;
 }
@@ -201,11 +449,7 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .labour-summary-row {
-        grid-template-columns: 1fr;
-    }
-
-    .discipline-review-row {
+    .dashboard-table-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -221,5 +465,10 @@
 
     .labour-kpi-grid {
         grid-template-columns: 1fr;
+    }
+
+    .labour-people-header {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

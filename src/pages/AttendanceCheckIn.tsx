@@ -4,7 +4,6 @@ import {
     QrCode,
     Wifi,
     Fingerprint,
-    CreditCard,
     MapPin,
     ShieldCheck,
     CheckCircle2,
@@ -16,7 +15,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import masoroCampus from '../assets/masoro-campus.png';
 import './AttendanceCheckIn.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type AttendanceSession = {
     id: number;
@@ -27,7 +26,7 @@ type AttendanceSession = {
     active: boolean;
 };
 
-type CheckInMethod = 'card' | 'biometric' | 'wifi' | 'qr' | null;
+type CheckInMethod = 'biometric' | 'wifi' | 'qr' | null;
 type ScannerState = 'idle' | 'starting' | 'active' | 'scanned' | 'unsupported' | 'error';
 
 type BarcodeLike = {
@@ -51,6 +50,8 @@ const CAMPUS_GEOFENCE = {
     gishushu: { lat: -1.9559, lng: 30.1041, radiusMeters: 2000 },
     masoro: { lat: -1.9452, lng: 30.1431, radiusMeters: 2000 },
 };
+
+const MAX_ACCEPTABLE_LOCATION_ACCURACY_METERS = 2000;
 
 const getBarcodeDetector = (): BarcodeDetectorCtor | null => {
     const detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
@@ -333,8 +334,20 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
             navigator.geolocation.getCurrentPosition(resolve, reject, {
                 enableHighAccuracy: true,
                 timeout: 12000,
+                maximumAge: 0,
             });
         });
+
+    const getBestCurrentPosition = async () => {
+        let bestPosition = await getCurrentPosition();
+        for (let attempt = 0; attempt < 2 && bestPosition.coords.accuracy > MAX_ACCEPTABLE_LOCATION_ACCURACY_METERS; attempt += 1) {
+            const nextPosition = await getCurrentPosition();
+            if (nextPosition.coords.accuracy < bestPosition.coords.accuracy) {
+                bestPosition = nextPosition;
+            }
+        }
+        return bestPosition;
+    };
 
     const randomBytes = (length: number) => {
         const bytes = new Uint8Array(length);
@@ -386,7 +399,7 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
             throw new Error('Campus geofence is not configured for this session.');
         }
 
-        const position = await getCurrentPosition();
+        const position = await getBestCurrentPosition();
         const userLat = position.coords.latitude;
         const userLng = position.coords.longitude;
         const accuracyMeters = position.coords.accuracy;
@@ -437,7 +450,7 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
                 setBiometricMessage('Confirm your fingerprint or device biometrics.');
                 biometricProof = await requestBiometricVerification();
             }
-            const parsedQr = (() => {
+            const parsedQr = method === 'qr' ? (() => {
                 const trimmed = qrPayload.trim();
                 if (!trimmed.startsWith('http')) {
                     const sessionFromToken = Number(trimmed.split('.')[0]);
@@ -462,7 +475,7 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
                         sessionId: Number.isNaN(sessionFromToken) ? selectedSession.id : sessionFromToken,
                     };
                 }
-            })();
+            })() : { token: '', sessionId: selectedSession.id };
             const response = await fetch(`${API_BASE}/api/attendance/check-in`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -532,10 +545,6 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
                     <section className="methods-section">
                         <h3>Verification Methods</h3>
                         <div className="method-cards">
-                            <button className={method === 'card' ? 'active' : ''} onClick={() => setMethod('card')}>
-                                <span className="icon-pill"><CreditCard size={18} /></span>
-                                <span>Tap Card</span>
-                            </button>
                             <button className={method === 'biometric' ? 'active' : ''} onClick={() => setMethod('biometric')}>
                                 <span className="icon-pill"><Fingerprint size={18} /></span>
                                 <span>Biometric</span>
@@ -585,6 +594,13 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
                                 )}
                                 {method === 'biometric' && biometricStatus !== 'idle' && (
                                     <p className={`scanner-note ${biometricStatus}`}>{biometricMessage}</p>
+                                )}
+                                {status !== 'idle' && (
+                                    <div className={`inline-checkin-status ${status}`}>
+                                        {status === 'success' && <CheckCircle2 size={17} />}
+                                        {status === 'error' && <ShieldCheck size={17} />}
+                                        <span>{message}</span>
+                                    </div>
                                 )}
                                 <input
                                     type="text"
@@ -669,12 +685,6 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
                         </div>
                     </section>
 
-                    {status !== 'idle' && (
-                        <section className={`status-box ${status}`}>
-                            {status === 'success' && <CheckCircle2 size={18} />}
-                            <span>{message}</span>
-                        </section>
-                    )}
                 </aside>
             </div>
         </div>

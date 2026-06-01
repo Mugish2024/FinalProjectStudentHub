@@ -1,20 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import { KeyRound, ShieldCheck, UserCog, UserPlus, Users } from 'lucide-react';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts';
+    BadgeDollarSign,
+    BookOpenCheck,
+    BriefcaseBusiness,
+    Building2,
+    ChevronLeft,
+    ChevronRight,
+    GraduationCap,
+    KeyRound,
+    Pencil,
+    Search,
+    ShieldCheck,
+    Star,
+    Trash2,
+    X,
+    UserCog,
+    UserPlus,
+    Users,
+    UserRoundCheck,
+} from 'lucide-react';
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
+import { getPasswordStrength } from '../utils/passwordPolicy';
 import './AdminDashboard.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type DirectoryItem = {
     id: number;
@@ -25,6 +34,7 @@ type DirectoryItem = {
     email?: string | null;
     firstName?: string | null;
     lastName?: string | null;
+    disciplineStatus?: string | null;
 };
 
 type StudentRegistrationRequest = {
@@ -49,13 +59,15 @@ type StudentSummary = {
     gpa?: number;
 };
 
+type LeadershipRole = 'guild_president' | 'finance' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs';
+
 type SystemUserRequest = {
     username: string;
     email: string;
     password: string;
     firstName: string;
     lastName: string;
-    role: 'admin' | 'dean' | 'staff' | 'finance' | 'guild_president';
+    role: 'admin' | 'dean' | 'staff' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs';
 };
 
 type SystemUserUpdateRequest = {
@@ -65,7 +77,7 @@ type SystemUserUpdateRequest = {
     password: string;
     firstName: string;
     lastName: string;
-    role: 'admin' | 'dean' | 'staff' | 'finance' | 'guild_president';
+    role: 'admin' | 'dean' | 'staff' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs';
 };
 
 interface AdminDashboardProps {
@@ -88,6 +100,11 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         program: 'Day',
         credits: '0',
     });
+    const [studentFormOpen, setStudentFormOpen] = useState(false);
+    const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
+    const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+    const [studentSearch, setStudentSearch] = useState('');
+    const [studentPage, setStudentPage] = useState(1);
     const [setupForm, setSetupForm] = useState({ studentNumber: '', password: '' });
     const [systemUserForm, setSystemUserForm] = useState<SystemUserRequest>({
         username: '',
@@ -105,6 +122,13 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         firstName: '',
         lastName: '',
         role: 'guild_president',
+    });
+    const [leadershipForm, setLeadershipForm] = useState<{ studentNumber: string; role: LeadershipRole; username: string; email: string; password: string }>({
+        studentNumber: '',
+        role: 'guild_president',
+        username: '',
+        email: '',
+        password: '',
     });
 
     const [error, setError] = useState('');
@@ -156,14 +180,6 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         };
     }, [staff]);
 
-    const roleChartData = useMemo(() => ([
-        { name: 'Admin', value: staffSummary.admins, color: '#0f2f66' },
-        { name: 'Dean', value: staffSummary.deans, color: '#2563eb' },
-        { name: 'Finance', value: staffSummary.finance, color: '#0891b2' },
-        { name: 'Guild', value: staffSummary.guild, color: '#10b981' },
-        { name: 'Staff', value: staffSummary.staff, color: '#6366f1' },
-    ]).filter((item) => item.value > 0), [staffSummary]);
-
     const facultyChartData = useMemo(() => {
         const map = new Map<string, number>();
         studentSummaries.forEach((item) => {
@@ -174,25 +190,6 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 8);
-    }, [studentSummaries]);
-
-    const semesterBehaviorData = useMemo(() => {
-        const map = new Map<number, { semester: number; students: number; totalGpa: number }>();
-        studentSummaries.forEach((item) => {
-            const semester = Number(item.semester ?? 1);
-            const gpa = Number(item.gpa ?? 0);
-            const current = map.get(semester) ?? { semester, students: 0, totalGpa: 0 };
-            current.students += 1;
-            current.totalGpa += gpa;
-            map.set(semester, current);
-        });
-        return Array.from(map.values())
-            .sort((a, b) => a.semester - b.semester)
-            .map((item) => ({
-                semester: `Sem ${item.semester}`,
-                students: item.students,
-                avgGpa: item.students > 0 ? Number((item.totalGpa / item.students).toFixed(2)) : 0,
-            }));
     }, [studentSummaries]);
 
     const systemHealth = useMemo(() => {
@@ -226,13 +223,50 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
     }, [detailRows, detailPage]);
 
     const totalPages = Math.max(1, Math.ceil(detailRows.length / pageSize));
+    const studentTablePageSize = 3;
+    const filteredStudentRows = useMemo(() => {
+        const query = studentSearch.trim().toLowerCase();
+        if (!query) return studentSummaries;
+        return studentSummaries.filter((student) => [
+            student.fullName,
+            student.studentNumber,
+            student.faculty,
+            student.department,
+            student.program,
+        ].some((value) => String(value ?? '').toLowerCase().includes(query)));
+    }, [studentSearch, studentSummaries]);
+    const studentTableTotalPages = Math.max(1, Math.ceil(filteredStudentRows.length / studentTablePageSize));
+    const studentTableRows = useMemo(() => {
+        const safePage = Math.min(studentPage, studentTableTotalPages);
+        const start = (safePage - 1) * studentTablePageSize;
+        return filteredStudentRows.slice(start, start + studentTablePageSize);
+    }, [filteredStudentRows, studentPage, studentTableTotalPages]);
+    const selectedStudent = studentSummaries.find((student) => student.studentId === selectedStudentId) ?? null;
+
+    const resetStudentForm = () => {
+        setStudentForm({
+            studentNumber: '',
+            firstName: '',
+            lastName: '',
+            faculty: '',
+            department: '',
+            program: 'Day',
+            credits: '0',
+        });
+        setEditingStudentId(null);
+    };
+
+    const splitStudentName = (fullName: string) => {
+        const [firstName = '', ...rest] = fullName.trim().split(/\s+/);
+        return { firstName, lastName: rest.join(' ') };
+    };
 
     const handleRegisterStudent = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setSuccess('');
-        const response = await fetch(`${API_BASE}/api/students/register`, {
-            method: 'POST',
+        const response = await fetch(editingStudentId ? `${API_BASE}/api/students/${editingStudentId}` : `${API_BASE}/api/students/register`, {
+            method: editingStudentId ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ...studentForm,
@@ -244,17 +278,42 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
             setError(data.error ?? 'Failed to create student account.');
             return;
         }
-        setSuccess(`Student ${data.fullName ?? ''} created successfully.`);
+        setSuccess(editingStudentId ? `Student ${data.fullName ?? ''} updated successfully.` : `Student ${data.fullName ?? ''} created successfully.`);
         setSetupForm((prev) => ({ ...prev, studentNumber: data.studentNumber ?? prev.studentNumber }));
+        resetStudentForm();
+        setStudentFormOpen(false);
+        await loadDirectory();
+    };
+
+    const handleEditStudent = (student: StudentSummary) => {
+        const names = splitStudentName(student.fullName);
         setStudentForm({
-            studentNumber: '',
-            firstName: '',
-            lastName: '',
-            faculty: '',
-            department: '',
-            program: 'Day',
-            credits: '0',
+            studentNumber: student.studentNumber ?? '',
+            firstName: names.firstName,
+            lastName: names.lastName,
+            faculty: student.faculty ?? '',
+            department: student.department ?? '',
+            program: student.program ?? 'Day',
+            credits: String(student.credits ?? 0),
         });
+        setEditingStudentId(student.studentId);
+        setSelectedStudentId(student.studentId);
+        setStudentFormOpen(true);
+    };
+
+    const handleDeleteStudent = async (student: StudentSummary) => {
+        const confirmed = window.confirm(`Delete ${student.fullName}? This will remove the student profile and linked login.`);
+        if (!confirmed) return;
+        setError('');
+        setSuccess('');
+        const response = await fetch(`${API_BASE}/api/students/${student.studentId}`, { method: 'DELETE' });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            setError(data.error ?? 'Failed to delete student.');
+            return;
+        }
+        setSuccess(`${student.fullName} deleted successfully.`);
+        setSelectedStudentId(null);
         await loadDirectory();
     };
 
@@ -262,6 +321,10 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         e.preventDefault();
         setError('');
         setSuccess('');
+        if (!getPasswordStrength(setupForm.password).isValid) {
+            setError('Please use a stronger password that meets all requirements.');
+            return;
+        }
         const response = await fetch(`${API_BASE}/api/auth/setup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -280,6 +343,10 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         e.preventDefault();
         setError('');
         setSuccess('');
+        if (!getPasswordStrength(systemUserForm.password).isValid) {
+            setError('Please use a stronger password for the system user.');
+            return;
+        }
         const response = await fetch(`${API_BASE}/api/admin/users`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -300,6 +367,33 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
             role: 'guild_president',
         });
         await loadDirectory();
+    };
+
+    const handlePromoteStudent = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+        try {
+            if (!getPasswordStrength(leadershipForm.password).isValid) {
+                setError('Please use a stronger password for the leadership account.');
+                return;
+            }
+            const response = await fetch(`${API_BASE}/api/admin/users/promote-student`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(leadershipForm),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                setError(data.error ?? 'Failed to assign leadership privilege.');
+                return;
+            }
+            setSuccess(`${data.fullName ?? 'Student'} now has a separate ${String(data.role ?? leadershipForm.role).replace('_', ' ')} login.`);
+            setLeadershipForm({ studentNumber: '', role: 'guild_president', username: '', email: '', password: '' });
+            await loadDirectory();
+        } catch {
+            setError('Failed to connect to the backend. Please restart the Spring server and try again.');
+        }
     };
 
     const handleSelectSystemUserForEdit = (selectedId: string) => {
@@ -337,6 +431,10 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         setSuccess('');
         if (!systemUserEditForm.id) {
             setError('Please select a system user to update.');
+            return;
+        }
+        if (systemUserEditForm.password && !getPasswordStrength(systemUserEditForm.password).isValid) {
+            setError('Please use a stronger password, or leave the password field empty.');
             return;
         }
 
@@ -389,195 +487,282 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
             {mode === 'overview' && (
             <section className="admin-kpi-grid">
                 <article className="clickable-kpi" onClick={() => openDetails('Total Platform Users', [
-                    ...students.map((s) => ({ name: s.fullName, meta: `Student · ${s.studentNumber ?? '-'}` })),
-                    ...staff.map((s) => ({ name: s.fullName, meta: `${s.role.replace('_', ' ')} · ${s.username ?? '-'}` })),
+                    ...students.map((s) => ({ name: s.fullName, meta: `Student - ${s.studentNumber ?? '-'}` })),
+                    ...staff.map((s) => ({ name: s.fullName, meta: `${s.role.replace('_', ' ')} - ${s.username ?? '-'}` })),
                 ])}>
+                    <span className="kpi-icon kpi-icon--blue"><Users size={16} /></span>
                     <small>Total Platform Users</small>
                     <strong>{isLoading ? '...' : systemHealth.totalUsers}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('Students With GPA Records', studentSummaries
                     .filter((s) => Number(s.gpa ?? 0) > 0)
-                    .map((s) => ({ name: s.fullName, meta: `${s.studentNumber} · GPA ${Number(s.gpa ?? 0).toFixed(2)}/20` })))}>
+                    .map((s) => ({ name: s.fullName, meta: `${s.studentNumber} - GPA ${Number(s.gpa ?? 0).toFixed(2)}/20` })))}>
+                    <span className="kpi-icon kpi-icon--teal"><GraduationCap size={16} /></span>
                     <small>Students With GPA</small>
                     <strong>{isLoading ? '...' : systemHealth.gpaRecords}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('Students With Credit Records', studentSummaries
                     .filter((s) => Number(s.credits ?? 0) > 0)
-                    .map((s) => ({ name: s.fullName, meta: `${s.studentNumber} · Credits ${s.credits}` })))}>
+                    .map((s) => ({ name: s.fullName, meta: `${s.studentNumber} - Credits ${s.credits}` })))}>
+                    <span className="kpi-icon kpi-icon--slate"><BookOpenCheck size={16} /></span>
                     <small>Students With Credits</small>
                     <strong>{isLoading ? '...' : systemHealth.creditRecords}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('Top Faculty Students', studentSummaries
                     .filter((s) => (s.faculty ?? '').trim() === systemHealth.dominantFaculty)
-                    .map((s) => ({ name: s.fullName, meta: `${s.studentNumber} · ${s.department}` })))}>
+                    .map((s) => ({ name: s.fullName, meta: `${s.studentNumber} - ${s.department}` })))}>
+                    <span className="kpi-icon kpi-icon--blue"><Building2 size={16} /></span>
                     <small>Top Faculty</small>
-                    <strong style={{ fontSize: '1rem' }}>{isLoading ? '...' : systemHealth.dominantFaculty}</strong>
+                    <strong className="kpi-long-value">{isLoading ? '...' : systemHealth.dominantFaculty}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('All Students', students
                     .map((s) => ({ name: s.fullName, meta: s.studentNumber ?? '-' })))}>
+                    <span className="kpi-icon kpi-icon--teal"><UserRoundCheck size={16} /></span>
                     <small>Total Students</small>
                     <strong>{isLoading ? '...' : students.length}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('All Staff', staff
-                    .map((s) => ({ name: s.fullName, meta: `${s.role.replace('_', ' ')} · ${s.username ?? '-'}` })))}>
+                    .map((s) => ({ name: s.fullName, meta: `${s.role.replace('_', ' ')} - ${s.username ?? '-'}` })))}>
+                    <span className="kpi-icon kpi-icon--slate"><BriefcaseBusiness size={16} /></span>
                     <small>Total Staff</small>
                     <strong>{isLoading ? '...' : staffSummary.total}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('Admin Accounts', staff
                     .filter((s) => s.role === 'admin')
                     .map((s) => ({ name: s.fullName, meta: s.username ?? '-' })))}>
+                    <span className="kpi-icon kpi-icon--blue"><ShieldCheck size={16} /></span>
                     <small>Admins</small>
                     <strong>{isLoading ? '...' : staffSummary.admins}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('Dean + Staff Accounts', staff
                     .filter((s) => s.role === 'dean' || s.role === 'staff')
-                    .map((s) => ({ name: s.fullName, meta: `${s.role} · ${s.username ?? '-'}` })))}>
+                    .map((s) => ({ name: s.fullName, meta: `${s.role} - ${s.username ?? '-'}` })))}>
+                    <span className="kpi-icon kpi-icon--teal"><Star size={16} /></span>
                     <small>Dean + Staff</small>
                     <strong>{isLoading ? '...' : staffSummary.deans + staffSummary.staff}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('Finance Accounts', staff
                     .filter((s) => s.role === 'finance')
                     .map((s) => ({ name: s.fullName, meta: s.username ?? '-' })))}>
+                    <span className="kpi-icon kpi-icon--gold"><BadgeDollarSign size={16} /></span>
                     <small>Finance</small>
                     <strong>{isLoading ? '...' : staffSummary.finance}</strong>
                 </article>
                 <article className="clickable-kpi" onClick={() => openDetails('Guild President Accounts', staff
                     .filter((s) => s.role === 'guild_president')
                     .map((s) => ({ name: s.fullName, meta: s.username ?? '-' })))}>
+                    <span className="kpi-icon kpi-icon--blue"><UserCog size={16} /></span>
                     <small>Guild President</small>
                     <strong>{isLoading ? '...' : staffSummary.guild}</strong>
                 </article>
             </section>
             )}
 
-            {mode === 'overview' && (
-            <section className="admin-chart-grid">
-                <article className="admin-card chart-card">
-                    <div className="card-head">
-                        <Users size={17} />
-                        <h3>Staff Role Distribution</h3>
+            {mode === 'management' && (
+            <section className="admin-student-workspace">
+                <article className={`admin-card student-form-panel ${studentFormOpen ? 'is-open' : ''}`}>
+                    <div className="section-command-head">
+                        <div>
+                            <span>Student Profile Form</span>
+                            <h3>{editingStudentId ? 'Edit selected student' : 'Register new student'}</h3>
+                            <p>Create a student profile first, then activate login credentials in the password section.</p>
+                        </div>
+                        <div className="section-command-actions">
+                            <button type="button" onClick={() => {
+                                resetStudentForm();
+                                setStudentFormOpen(true);
+                            }}>
+                                <UserPlus size={15} />
+                                New Student
+                            </button>
+                            {studentFormOpen && (
+                                <button type="button" className="ghost-action" onClick={() => {
+                                    resetStudentForm();
+                                    setStudentFormOpen(false);
+                                }}>
+                                    <X size={15} />
+                                    Close
+                                </button>
+                            )}
+                        </div>
                     </div>
-                    <div className="chart-wrap">
-                        <ResponsiveContainer width="100%" height={260}>
-                            <PieChart>
-                                <Pie data={roleChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
-                                    {roleChartData.map((entry) => (
-                                        <Cell key={entry.name} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+
+                    {studentFormOpen ? (
+                        <form className="admin-form student-profile-form" onSubmit={handleRegisterStudent}>
+                            <label>
+                                <span>Student ID</span>
+                                <input
+                                    placeholder="Student Number"
+                                    value={studentForm.studentNumber}
+                                    onChange={(e) => setStudentForm((prev) => ({ ...prev, studentNumber: e.target.value }))}
+                                    required
+                                />
+                            </label>
+                            <div className="split">
+                                <label>
+                                    <span>First Name</span>
+                                    <input
+                                        placeholder="First Name"
+                                        value={studentForm.firstName}
+                                        onChange={(e) => setStudentForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                                        required
+                                    />
+                                </label>
+                                <label>
+                                    <span>Last Name</span>
+                                    <input
+                                        placeholder="Last Name"
+                                        value={studentForm.lastName}
+                                        onChange={(e) => setStudentForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                                        required
+                                    />
+                                </label>
+                            </div>
+                            <div className="split">
+                                <label>
+                                    <span>Faculty</span>
+                                    <input
+                                        placeholder="Faculty"
+                                        value={studentForm.faculty}
+                                        onChange={(e) => setStudentForm((prev) => ({ ...prev, faculty: e.target.value }))}
+                                        required
+                                    />
+                                </label>
+                                <label>
+                                    <span>Department</span>
+                                    <input
+                                        placeholder="Department"
+                                        value={studentForm.department}
+                                        onChange={(e) => setStudentForm((prev) => ({ ...prev, department: e.target.value }))}
+                                        required
+                                    />
+                                </label>
+                            </div>
+                            <div className="split">
+                                <label>
+                                    <span>Program</span>
+                                    <select
+                                        value={studentForm.program}
+                                        onChange={(e) => setStudentForm((prev) => ({ ...prev, program: e.target.value }))}
+                                    >
+                                        <option value="Day">Day</option>
+                                        <option value="Evening">Evening</option>
+                                        <option value="Weekend">Weekend</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>Credits</span>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        placeholder="Credits"
+                                        value={studentForm.credits}
+                                        onChange={(e) => setStudentForm((prev) => ({ ...prev, credits: e.target.value }))}
+                                        required
+                                    />
+                                </label>
+                            </div>
+                            <button type="submit">
+                                <ShieldCheck size={15} />
+                                {editingStudentId ? 'Save Student Changes' : 'Register Student'}
+                            </button>
+                        </form>
+                    ) : (
+                        <div className="form-launch-empty">
+                            <UserPlus size={26} />
+                            <strong>Open the form when you need to add or edit student records.</strong>
+                            <p>Select a row in the table to edit an existing student.</p>
+                        </div>
+                    )}
                 </article>
 
-                <article className="admin-card chart-card">
-                    <div className="card-head">
-                        <Users size={17} />
-                        <h3>Students by Faculty</h3>
+                <article className="admin-card student-table-card">
+                    <div className="student-table-top">
+                        <div>
+                            <span>Student Directory</span>
+                            <h3>Registered Students</h3>
+                            <p>Showing 3 rows per page. Select a row to manage it.</p>
+                        </div>
+                        <label className="student-search">
+                            <Search size={16} />
+                            <input
+                                placeholder="Search students..."
+                                value={studentSearch}
+                                onChange={(e) => {
+                                    setStudentSearch(e.target.value);
+                                    setStudentPage(1);
+                                }}
+                            />
+                        </label>
                     </div>
-                    <div className="chart-wrap">
-                        <ResponsiveContainer width="100%" height={260}>
-                            <BarChart data={facultyChartData} margin={{ top: 10, right: 15, left: 0, bottom: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" angle={-15} textAnchor="end" height={55} interval={0} />
-                                <YAxis allowDecimals={false} />
-                                <Tooltip />
-                                <Bar dataKey="value" fill="#1d4ed8" radius={[6, 6, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="student-table-wrap">
+                        <table className="student-management-table">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Faculty</th>
+                                    <th>Semester</th>
+                                    <th>GPA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {studentTableRows.map((item) => (
+                                    <tr
+                                        key={item.studentId}
+                                        className={selectedStudentId === item.studentId ? 'selected' : ''}
+                                        onClick={() => setSelectedStudentId((current) => current === item.studentId ? null : item.studentId)}
+                                    >
+                                        <td>{item.studentNumber}</td>
+                                        <td>{item.fullName}</td>
+                                        <td>{item.faculty || '-'}</td>
+                                        <td>{item.semester ?? '-'}</td>
+                                        <td>{Number(item.gpa ?? 0).toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                                {!isLoading && studentTableRows.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5}>No student records match your search.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                </article>
-
-                <article className="admin-card chart-card wide">
-                    <div className="card-head">
-                        <UserCog size={17} />
-                        <h3>Semester Behavior and GPA Trend</h3>
+                    <div className="student-table-footer">
+                        <span>Page {Math.min(studentPage, studentTableTotalPages)} of {studentTableTotalPages}</span>
+                        <div>
+                            <button type="button" disabled={studentPage <= 1} onClick={() => setStudentPage((page) => Math.max(1, page - 1))}>
+                                <ChevronLeft size={15} />
+                                Previous
+                            </button>
+                            <button type="button" disabled={studentPage >= studentTableTotalPages} onClick={() => setStudentPage((page) => Math.min(studentTableTotalPages, page + 1))}>
+                                Next
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
                     </div>
-                    <div className="chart-wrap">
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={semesterBehaviorData} margin={{ top: 10, right: 15, left: 0, bottom: 10 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="semester" />
-                                <YAxis yAxisId="left" allowDecimals={false} />
-                                <YAxis yAxisId="right" orientation="right" domain={[0, 20]} />
-                                <Tooltip />
-                                <Bar yAxisId="left" dataKey="students" fill="#0f766e" radius={[6, 6, 0, 0]} />
-                                <Bar yAxisId="right" dataKey="avgGpa" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                    {selectedStudent && (
+                        <div className="selected-student-actions">
+                            <div>
+                                <span>Selected student</span>
+                                <strong>{selectedStudent.fullName}</strong>
+                            </div>
+                            <button type="button" onClick={() => handleEditStudent(selectedStudent)}>
+                                <Pencil size={15} />
+                                Edit
+                            </button>
+                            <button type="button" className="danger-action" onClick={() => handleDeleteStudent(selectedStudent)}>
+                                <Trash2 size={15} />
+                                Delete
+                            </button>
+                        </div>
+                    )}
                 </article>
             </section>
             )}
 
             {mode === 'management' && (
             <section className="admin-grid">
-                <article className="admin-card">
-                    <div className="card-head">
-                        <UserPlus size={17} />
-                        <h3>Create Student Profile</h3>
-                    </div>
-                    <form className="admin-form" onSubmit={handleRegisterStudent}>
-                        <input
-                            placeholder="Student Number"
-                            value={studentForm.studentNumber}
-                            onChange={(e) => setStudentForm((prev) => ({ ...prev, studentNumber: e.target.value }))}
-                            required
-                        />
-                        <div className="split">
-                            <input
-                                placeholder="First Name"
-                                value={studentForm.firstName}
-                                onChange={(e) => setStudentForm((prev) => ({ ...prev, firstName: e.target.value }))}
-                                required
-                            />
-                            <input
-                                placeholder="Last Name"
-                                value={studentForm.lastName}
-                                onChange={(e) => setStudentForm((prev) => ({ ...prev, lastName: e.target.value }))}
-                                required
-                            />
-                        </div>
-                        <div className="split">
-                            <input
-                                placeholder="Faculty"
-                                value={studentForm.faculty}
-                                onChange={(e) => setStudentForm((prev) => ({ ...prev, faculty: e.target.value }))}
-                                required
-                            />
-                            <input
-                                placeholder="Department"
-                                value={studentForm.department}
-                                onChange={(e) => setStudentForm((prev) => ({ ...prev, department: e.target.value }))}
-                                required
-                            />
-                        </div>
-                        <div className="split">
-                            <select
-                                value={studentForm.program}
-                                onChange={(e) => setStudentForm((prev) => ({ ...prev, program: e.target.value }))}
-                            >
-                                <option value="Day">Day</option>
-                                <option value="Evening">Evening</option>
-                                <option value="Weekend">Weekend</option>
-                            </select>
-                            <input
-                                type="number"
-                                min={0}
-                                placeholder="Credits"
-                                value={studentForm.credits}
-                                onChange={(e) => setStudentForm((prev) => ({ ...prev, credits: e.target.value }))}
-                                required
-                            />
-                        </div>
-                        <button type="submit">
-                            <ShieldCheck size={15} />
-                            Register Student
-                        </button>
-                    </form>
-                </article>
-
                 <article className="admin-card">
                     <div className="card-head">
                         <KeyRound size={17} />
@@ -593,11 +778,12 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
                         <input
                             placeholder="Temporary Password"
                             type="password"
-                            minLength={6}
+                            minLength={8}
                             value={setupForm.password}
                             onChange={(e) => setSetupForm((prev) => ({ ...prev, password: e.target.value }))}
                             required
                         />
+                        <PasswordStrengthMeter password={setupForm.password} />
                         <button type="submit">
                             <KeyRound size={15} />
                             Update Password
@@ -648,27 +834,107 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
                                 onChange={(e) => setSystemUserForm((prev) => ({ ...prev, role: e.target.value as SystemUserRequest['role'] }))}
                             >
                                 <option value="guild_president">Guild President</option>
+                                <option value="minister_sport">Minister of Sport</option>
+                                <option value="minister_evangelism">Minister of Evangelism</option>
+                                <option value="minister_international_affairs">Minister of International Affairs</option>
                                 <option value="dean">Dean</option>
                                 <option value="staff">Staff</option>
-                                <option value="finance">Finance</option>
+                                <option value="finance">Minister of Finance</option>
+                                <option value="student_card_manager">Student Card Manager</option>
                                 <option value="admin">Admin</option>
                             </select>
                             <input
                                 placeholder="Password"
                                 type="password"
-                                minLength={6}
+                                minLength={8}
                                 value={systemUserForm.password}
                                 onChange={(e) => setSystemUserForm((prev) => ({ ...prev, password: e.target.value }))}
                                 required
                             />
                         </div>
+                        <PasswordStrengthMeter password={systemUserForm.password} />
                         <button type="submit">
                             <ShieldCheck size={15} />
                             Create System User
                         </button>
                     </form>
                     <div className="mini-note">
-                        Use this to create Guild President, Dean, Staff, Finance, and Admin accounts.
+                        Use this to create Guild President, ministers, Dean, Staff, Finance, and Admin accounts.
+                    </div>
+                </article>
+
+                <article className="admin-card">
+                    <div className="card-head">
+                        <UserCog size={17} />
+                        <h3>Assign Elected Student Privilege</h3>
+                    </div>
+                    <form className="admin-form" onSubmit={handlePromoteStudent}>
+                        <select
+                            value={leadershipForm.studentNumber}
+                            onChange={(e) => {
+                                const studentNumber = e.target.value;
+                                const rolePrefix = leadershipForm.role.replaceAll('_', '');
+                                setLeadershipForm((prev) => ({
+                                    ...prev,
+                                    studentNumber,
+                                    username: studentNumber ? `${rolePrefix}${studentNumber}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() : prev.username,
+                                }));
+                            }}
+                            required
+                        >
+                            <option value="">Select student</option>
+                            {students.map((item) => (
+                                <option key={item.id} value={item.studentNumber ?? ''}>
+                                    {item.fullName} ({item.studentNumber ?? 'No ID'})
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            value={leadershipForm.role}
+                            onChange={(e) => {
+                                const role = e.target.value as LeadershipRole;
+                                const rolePrefix = role.replaceAll('_', '');
+                                setLeadershipForm((prev) => ({
+                                    ...prev,
+                                    role,
+                                    username: prev.studentNumber ? `${rolePrefix}${prev.studentNumber}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() : prev.username,
+                                }));
+                            }}
+                        >
+                            <option value="guild_president">Guild President</option>
+                            <option value="finance">Minister of Finance</option>
+                            <option value="minister_sport">Minister of Sport</option>
+                            <option value="minister_evangelism">Minister of Evangelism</option>
+                            <option value="minister_international_affairs">Minister of International Affairs</option>
+                        </select>
+                        <input
+                            placeholder="Leadership username"
+                            value={leadershipForm.username}
+                            onChange={(e) => setLeadershipForm((prev) => ({ ...prev, username: e.target.value }))}
+                            required
+                        />
+                        <input
+                            placeholder="Leadership email (optional)"
+                            type="email"
+                            value={leadershipForm.email}
+                            onChange={(e) => setLeadershipForm((prev) => ({ ...prev, email: e.target.value }))}
+                        />
+                        <input
+                            placeholder="Leadership password"
+                            type="password"
+                            minLength={8}
+                            value={leadershipForm.password}
+                            onChange={(e) => setLeadershipForm((prev) => ({ ...prev, password: e.target.value }))}
+                            required
+                        />
+                        <PasswordStrengthMeter password={leadershipForm.password} />
+                        <button type="submit">
+                            <ShieldCheck size={15} />
+                            Assign Privilege
+                        </button>
+                    </form>
+                    <div className="mini-note">
+                        This creates a separate leadership login. The student's normal account remains unchanged.
                     </div>
                 </article>
 
@@ -723,19 +989,24 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
                                 onChange={(e) => setSystemUserEditForm((prev) => ({ ...prev, role: e.target.value as SystemUserUpdateRequest['role'] }))}
                             >
                                 <option value="guild_president">Guild President</option>
+                                <option value="minister_sport">Minister of Sport</option>
+                                <option value="minister_evangelism">Minister of Evangelism</option>
+                                <option value="minister_international_affairs">Minister of International Affairs</option>
                                 <option value="dean">Dean</option>
                                 <option value="staff">Staff</option>
-                                <option value="finance">Finance</option>
+                                <option value="finance">Minister of Finance</option>
+                                <option value="student_card_manager">Student Card Manager</option>
                                 <option value="admin">Admin</option>
                             </select>
                             <input
                                 placeholder="New Password (optional)"
                                 type="password"
-                                minLength={6}
+                                minLength={8}
                                 value={systemUserEditForm.password}
                                 onChange={(e) => setSystemUserEditForm((prev) => ({ ...prev, password: e.target.value }))}
                             />
                         </div>
+                        {systemUserEditForm.password && <PasswordStrengthMeter password={systemUserEditForm.password} />}
                         <button type="submit">
                             <KeyRound size={15} />
                             Save Credentials
@@ -750,36 +1021,6 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
 
             {mode === 'management' && (
             <section className="admin-grid">
-                <article className="admin-card">
-                    <div className="card-head">
-                        <Users size={17} />
-                        <h3>Recent Students</h3>
-                    </div>
-                    <div className="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Student Number</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {students.slice(0, 8).map((item) => (
-                                    <tr key={item.id}>
-                                        <td>{item.fullName}</td>
-                                        <td>{item.studentNumber ?? '-'}</td>
-                                    </tr>
-                                ))}
-                                {!isLoading && students.length === 0 && (
-                                    <tr>
-                                        <td colSpan={2}>No student accounts found.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-
                 <article className="admin-card">
                     <div className="card-head">
                         <UserCog size={17} />
@@ -843,3 +1084,5 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
 };
 
 export default AdminDashboard;
+
+

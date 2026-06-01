@@ -128,6 +128,18 @@ public class PaymentController {
         return ResponseEntity.ok(Map.of("createdObligations", created));
     }
 
+    @PostMapping("/obligations/active-term")
+    public ResponseEntity<?> createObligationsForActiveTerm() {
+        try {
+            int created = service.createMandatoryObligationsForTerm(null);
+            return ResponseEntity.ok(Map.of("createdObligations", created));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @PostMapping("/{paymentId}/submit")
     public ResponseEntity<?> submitPayment(@PathVariable Long paymentId, @RequestBody SubmitPaymentRequest request) {
         try {
@@ -202,6 +214,37 @@ public class PaymentController {
             Long verifiedByUserId = request != null ? request.getVerifiedByUserId() : null;
             Payment payment = service.verifyPayment(paymentId, verifiedByUserId);
             return ResponseEntity.ok(toResponse(payment));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/clear-debt")
+    public ResponseEntity<?> clearStudentDebt(@RequestBody Map<String, Object> body) {
+        try {
+            String studentNumber = body.get("studentNumber") != null ? body.get("studentNumber").toString() : null;
+            String bankName = body.get("bankName") != null ? body.get("bankName").toString() : null;
+            String notes = body.get("notes") != null ? body.get("notes").toString() : null;
+            Long verifiedByUserId = null;
+            Object verifierValue = body.get("verifiedByUserId");
+            if (verifierValue instanceof Number number) {
+                verifiedByUserId = number.longValue();
+            } else if (verifierValue != null && !verifierValue.toString().isBlank()) {
+                verifiedByUserId = Long.parseLong(verifierValue.toString());
+            }
+            List<Payment> payments = service.clearStudentDebtByReceipt(studentNumber, bankName, verifiedByUserId, notes);
+            BigDecimal clearedAmount = payments.stream()
+                    .map(payment -> payment.getAmount() != null ? payment.getAmount() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Student debt cleared successfully.",
+                    "studentNumber", studentNumber,
+                    "clearedCount", payments.size(),
+                    "clearedAmount", clearedAmount,
+                    "payments", payments.stream().map(this::toResponse).toList()
+            ));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {

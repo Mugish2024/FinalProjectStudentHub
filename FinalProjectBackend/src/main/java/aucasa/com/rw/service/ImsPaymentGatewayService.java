@@ -52,7 +52,7 @@ public class ImsPaymentGatewayService {
         return result;
     }
 
-    public Map<String, Object> fetchAllStudentPayments() {
+    public Map<String, Object> fetchAllStudentPayments() throws Exception {
         if (!isConfigured()) {
             throw new IllegalArgumentException("IMS API credentials are not configured.");
         }

@@ -9,9 +9,10 @@ public class UserDirectoryItem {
     private String email;
     private String firstName;
     private String lastName;
+    private String disciplineStatus;
 
     public UserDirectoryItem(Long id, String fullName, String role, String studentNumber) {
-        this(id, fullName, role, studentNumber, null, null, null, null);
+        this(id, fullName, role, studentNumber, null, null, null, null, null);
     }
 
     public UserDirectoryItem(Long id,
@@ -22,6 +23,18 @@ public class UserDirectoryItem {
                              String email,
                              String firstName,
                              String lastName) {
+        this(id, fullName, role, studentNumber, username, email, firstName, lastName, null);
+    }
+
+    public UserDirectoryItem(Long id,
+                             String fullName,
+                             String role,
+                             String studentNumber,
+                             String username,
+                             String email,
+                             String firstName,
+                             String lastName,
+                             String disciplineStatus) {
         this.id = id;
         this.fullName = fullName;
         this.role = role;
@@ -30,6 +43,7 @@ public class UserDirectoryItem {
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.disciplineStatus = disciplineStatus;
     }
 
     public Long getId() {
@@ -62,5 +76,9 @@ public class UserDirectoryItem {
 
     public String getLastName() {
         return lastName;
+    }
+
+    public String getDisciplineStatus() {
+        return disciplineStatus;
     }
 }

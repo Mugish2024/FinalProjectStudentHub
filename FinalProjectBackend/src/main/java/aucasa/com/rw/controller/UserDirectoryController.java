@@ -43,7 +43,11 @@ public class UserDirectoryController {
                 RoleType.DEAN,
                 RoleType.ADMIN,
                 RoleType.FINANCE,
-                RoleType.GUILD_PRESIDENT
+                RoleType.STUDENT_CARD_MANAGER,
+                RoleType.GUILD_PRESIDENT,
+                RoleType.MINISTER_SPORT,
+                RoleType.MINISTER_EVANGELISM,
+                RoleType.MINISTER_INTERNATIONAL_AFFAIRS
         );
         List<UserDirectoryItem> staff = new ArrayList<>();
         for (RoleType roleType : staffRoles) {

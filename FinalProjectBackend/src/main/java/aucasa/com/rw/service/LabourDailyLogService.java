@@ -37,6 +37,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,6 +59,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LabourDailyLogService {
+    private static final BigDecimal LABOUR_HOURLY_RATE = new BigDecimal("250");
+
     private final LabourDailyLogRepository repository;
     private final LabourApplicationRepository applicationRepository;
     private final LabourBackfillApprovalRepository backfillApprovalRepository;
@@ -445,82 +448,24 @@ public class LabourDailyLogService {
                 .sorted(Comparator.comparing(LabourDailyLog::getLogDate, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
 
-        Font titleFont = new Font(Font.HELVETICA, 18, Font.BOLD, new Color(44, 62, 80));
-        Font subtitleFont = new Font(Font.HELVETICA, 11, Font.NORMAL, new Color(107, 114, 128));
-        Font sectionFont = new Font(Font.HELVETICA, 11, Font.BOLD, new Color(44, 62, 80));
-        Font bodyFont = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY);
-
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document document = new Document(PageSize.A4.rotate(), 24f, 24f, 62f, 38f);
-            PdfWriter writer = PdfWriter.getInstance(document, out);
-            writer.setPageEvent(new LabourPdfPageDecorator(reportLogoPath, "Adventist University of Central Africa", "StudentHub System"));
+            Document document = new Document(PageSize.A4, 66f, 66f, 54f, 48f);
+            PdfWriter.getInstance(document, out);
             document.open();
 
-            try {
-                if (reportLogoPath != null && !reportLogoPath.isBlank()) {
-                    Image centeredLogo = Image.getInstance(reportLogoPath);
-                    centeredLogo.scaleToFit(360, 360);
-                    centeredLogo.setAlignment(Element.ALIGN_CENTER);
-                    document.add(centeredLogo);
+            Map<YearMonth, List<LabourDailyLog>> logsByMonth = groupStudentLogsByMonth(logs);
+            if (logsByMonth.isEmpty()) {
+                logsByMonth.put(YearMonth.now(), List.of());
+            }
+
+            int page = 0;
+            for (Map.Entry<YearMonth, List<LabourDailyLog>> entry : logsByMonth.entrySet()) {
+                if (page > 0) {
+                    document.newPage();
                 }
-            } catch (Exception ignored) {
-                // logo optional
+                addStudentLabourMonthlyReportPage(document, student, approvedApplication, entry.getKey(), entry.getValue());
+                page++;
             }
-
-            Paragraph uni = new Paragraph("ADVENTIST UNIVERSITY OF CENTRAL AFRICA", titleFont);
-            uni.setAlignment(Element.ALIGN_CENTER);
-            document.add(uni);
-
-            Paragraph reportTitle = new Paragraph("Individual Monthly Student Labour Report", subtitleFont);
-            reportTitle.setAlignment(Element.ALIGN_CENTER);
-            document.add(reportTitle);
-
-            Paragraph meta = new Paragraph(
-                    "Student: " + getStudentName(approvedApplication)
-                            + "  |  Student No: " + safe(student.getStudentNumber())
-                            + "  |  Campus: " + getDepartmentName(approvedApplication)
-                            + "  |  Position: " + safe(approvedApplication.getRoleTitle()),
-                    subtitleFont
-            );
-            meta.setAlignment(Element.ALIGN_CENTER);
-            document.add(meta);
-            document.add(new Paragraph(" "));
-
-            document.add(new Paragraph("MONTHLY LOG RECORDS", sectionFont));
-            document.add(new Paragraph(" "));
-
-            PdfPTable logsTable = new PdfPTable(3);
-            logsTable.setWidthPercentage(100);
-            logsTable.setWidths(new float[]{1.1f, 0.8f, 4.1f});
-            addHeaderCell(logsTable, "Date (Days Worked)");
-            addHeaderCell(logsTable, "Hours (Worked)");
-            addHeaderCell(logsTable, "Task (Done on that Date)");
-
-            DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd MMM yyyy");
-            for (LabourDailyLog log : logs) {
-                addBodyCell(logsTable, log.getLogDate() != null ? log.getLogDate().format(dateFmt) : "-");
-                addBodyCell(logsTable, log.getHoursWorked() != null ? log.getHoursWorked().toPlainString() : "-");
-                addBodyCell(logsTable, safe(log.getTaskDescription()));
-            }
-
-            if (logs.isEmpty()) {
-                PdfPCell empty = new PdfPCell(new Phrase("No daily log records found for this student.", bodyFont));
-                empty.setColspan(3);
-                empty.setHorizontalAlignment(Element.ALIGN_CENTER);
-                empty.setPadding(6f);
-                logsTable.addCell(empty);
-            }
-
-            document.add(logsTable);
-            document.add(new Paragraph(" "));
-            document.add(new Paragraph(" "));
-
-            Paragraph supervisorLine = new Paragraph("Name of Supervisor: ________________________________", sectionFont);
-            supervisorLine.setAlignment(Element.ALIGN_LEFT);
-            document.add(supervisorLine);
-            Paragraph signatureLine = new Paragraph("Signature: ________________________________", sectionFont);
-            signatureLine.setAlignment(Element.ALIGN_LEFT);
-            document.add(signatureLine);
 
             document.close();
             return out.toByteArray();
@@ -550,6 +495,219 @@ public class LabourDailyLogService {
                 Boolean.TRUE.equals(log.getLocationValidated()),
                 log.getLateSubmissionReason()
         );
+    }
+
+    private Map<YearMonth, List<LabourDailyLog>> groupStudentLogsByMonth(List<LabourDailyLog> logs) {
+        Map<YearMonth, List<LabourDailyLog>> grouped = new LinkedHashMap<>();
+        logs.stream()
+                .filter(log -> log.getLogDate() != null)
+                .sorted(Comparator.comparing(LabourDailyLog::getLogDate).reversed())
+                .forEach(log -> {
+                    YearMonth month = YearMonth.from(log.getLogDate());
+                    grouped.computeIfAbsent(month, ignored -> new ArrayList<>()).add(log);
+                });
+        return grouped;
+    }
+
+    private void addStudentLabourMonthlyReportPage(Document document,
+                                                   StudentProfile student,
+                                                   LabourApplication application,
+                                                   YearMonth month,
+                                                   List<LabourDailyLog> monthLogs) throws DocumentException, IOException {
+        Font infoFont = new Font(Font.TIMES_ROMAN, 10, Font.BOLD, Color.BLACK);
+        Font titleFont = new Font(Font.TIMES_ROMAN, 11, Font.BOLD, Color.BLACK);
+        Font monthFont = new Font(Font.TIMES_ROMAN, 10, Font.BOLD, Color.BLACK);
+        Font tableHeaderFont = new Font(Font.TIMES_ROMAN, 9, Font.BOLD, Color.BLACK);
+        Font tableFont = new Font(Font.TIMES_ROMAN, 9, Font.NORMAL, Color.BLACK);
+        Font totalFont = new Font(Font.TIMES_ROMAN, 9, Font.BOLD, Color.BLACK);
+
+        Image header = loadAucaReportHeader();
+        if (header != null) {
+            header.scaleToFit(462f, 104f);
+            header.setAlignment(Element.ALIGN_CENTER);
+            document.add(header);
+        } else {
+            Paragraph fallbackHeader = new Paragraph("Adventist University of Central Africa", new Font(Font.TIMES_ROMAN, 20, Font.BOLD, new Color(0, 70, 130)));
+            fallbackHeader.setAlignment(Element.ALIGN_CENTER);
+            document.add(fallbackHeader);
+        }
+
+        PdfPTable studentInfo = new PdfPTable(4);
+        studentInfo.setWidthPercentage(100);
+        studentInfo.setWidths(new float[]{1.1f, 2.8f, 0.9f, 2.2f});
+        studentInfo.setSpacingBefore(3f);
+        studentInfo.addCell(noBorderCell("NAME:", infoFont, Element.ALIGN_LEFT));
+        studentInfo.addCell(noBorderCell(getStudentName(application), infoFont, Element.ALIGN_LEFT));
+        studentInfo.addCell(noBorderCell("Year :", infoFont, Element.ALIGN_LEFT));
+        studentInfo.addCell(noBorderCell(safe(student.getProgram()), infoFont, Element.ALIGN_CENTER));
+        studentInfo.addCell(noBorderCell("ID:", infoFont, Element.ALIGN_LEFT));
+        studentInfo.addCell(noBorderCell(safe(student.getStudentNumber()), infoFont, Element.ALIGN_LEFT));
+        studentInfo.addCell(noBorderCell("", infoFont, Element.ALIGN_LEFT));
+        studentInfo.addCell(noBorderCell(String.valueOf(month.getYear()), infoFont, Element.ALIGN_CENTER));
+        document.add(studentInfo);
+
+        String title = "STUDENT LABOUR  REPORT " + safe(application.getRoleTitle()).toUpperCase(Locale.ROOT)
+                + "(" + getDepartmentName(application).toUpperCase(Locale.ROOT) + ")";
+        Paragraph reportTitle = new Paragraph(title, titleFont);
+        reportTitle.setAlignment(Element.ALIGN_CENTER);
+        reportTitle.setSpacingBefore(4f);
+        document.add(reportTitle);
+
+        Paragraph monthTitle = new Paragraph(month.getMonth().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH), monthFont);
+        monthTitle.setAlignment(Element.ALIGN_CENTER);
+        monthTitle.setSpacingAfter(3f);
+        document.add(monthTitle);
+
+        Map<LocalDate, LabourDailyLog> logsByDate = new LinkedHashMap<>();
+        monthLogs.stream()
+                .filter(log -> log.getLogDate() != null)
+                .sorted(Comparator.comparing(LabourDailyLog::getLogDate))
+                .forEach(log -> logsByDate.put(log.getLogDate(), log));
+
+        PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.05f, 1.05f, 1.05f, 1.05f, 1.05f, 1.05f});
+        table.setSpacingBefore(2f);
+
+        PdfPCell dateHeader = timesheetHeader("Date", tableHeaderFont);
+        dateHeader.setRowspan(2);
+        table.addCell(dateHeader);
+        PdfPCell morningHeader = timesheetHeader("Morning", tableHeaderFont);
+        morningHeader.setColspan(2);
+        table.addCell(morningHeader);
+        PdfPCell afternoonHeader = timesheetHeader("Afternoon", tableHeaderFont);
+        afternoonHeader.setColspan(2);
+        table.addCell(afternoonHeader);
+        PdfPCell hoursHeader = timesheetHeader("Hours", tableHeaderFont);
+        hoursHeader.setRowspan(2);
+        table.addCell(hoursHeader);
+        table.addCell(timesheetHeader("Time in", tableHeaderFont));
+        table.addCell(timesheetHeader("Time out", tableHeaderFont));
+        table.addCell(timesheetHeader("Time in", tableHeaderFont));
+        table.addCell(timesheetHeader("Time out", tableHeaderFont));
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("H:mm");
+        BigDecimal totalHours = BigDecimal.ZERO;
+        for (int day = 1; day <= month.lengthOfMonth(); day++) {
+            LocalDate date = month.atDay(day);
+            LabourDailyLog log = logsByDate.get(date);
+            table.addCell(timesheetBody(date.format(dateFormatter), tableFont, Element.ALIGN_RIGHT));
+            if (log == null) {
+                PdfPCell absence = timesheetBody("No attendance", tableFont, Element.ALIGN_CENTER);
+                absence.setColspan(4);
+                table.addCell(absence);
+                table.addCell(timesheetBody("", tableFont, Element.ALIGN_RIGHT));
+                continue;
+            }
+
+            LocalTime start = log.getWorkStartTime();
+            LocalTime end = log.getWorkEndTime();
+            boolean startsMorning = start != null && start.isBefore(LocalTime.NOON);
+            boolean endsMorning = end != null && !end.isAfter(LocalTime.NOON);
+
+            table.addCell(timesheetBody(startsMorning ? start.format(timeFormatter) : "", tableFont, Element.ALIGN_RIGHT));
+            table.addCell(timesheetBody(endsMorning && end != null ? end.format(timeFormatter) : "", tableFont, Element.ALIGN_RIGHT));
+            table.addCell(timesheetBody(!startsMorning && start != null ? start.format(timeFormatter) : "", tableFont, Element.ALIGN_RIGHT));
+            table.addCell(timesheetBody(!endsMorning && end != null ? end.format(timeFormatter) : "", tableFont, Element.ALIGN_RIGHT));
+
+            BigDecimal hours = log.getHoursWorked() != null ? log.getHoursWorked() : BigDecimal.ZERO;
+            totalHours = totalHours.add(hours);
+            table.addCell(timesheetBody(formatHours(hours), tableFont, Element.ALIGN_RIGHT));
+        }
+
+        PdfPCell totalHoursLabel = timesheetBody("Total Hours", totalFont, Element.ALIGN_CENTER);
+        totalHoursLabel.setColspan(5);
+        table.addCell(totalHoursLabel);
+        table.addCell(timesheetBody(formatHours(totalHours), totalFont, Element.ALIGN_RIGHT));
+
+        BigDecimal totalAmount = totalHours.multiply(LABOUR_HOURLY_RATE).setScale(0, RoundingMode.HALF_UP);
+        PdfPCell totalAmountLabel = timesheetBody("Total Amount", totalFont, Element.ALIGN_CENTER);
+        totalAmountLabel.setColspan(5);
+        table.addCell(totalAmountLabel);
+        table.addCell(timesheetBody(NumberFormat.getIntegerInstance(Locale.US).format(totalAmount), totalFont, Element.ALIGN_RIGHT));
+        document.add(table);
+
+        PdfPTable signatures = new PdfPTable(2);
+        signatures.setWidthPercentage(100);
+        signatures.setWidths(new float[]{1f, 1f});
+        signatures.addCell(noBorderCell("Student labor's name", tableFont, Element.ALIGN_LEFT));
+        signatures.addCell(noBorderCell("SUPERVISOR", tableFont, Element.ALIGN_CENTER));
+        signatures.addCell(noBorderCell(getStudentName(application), totalFont, Element.ALIGN_LEFT));
+        signatures.addCell(noBorderCell(getSupervisorName(application), totalFont, Element.ALIGN_CENTER));
+        document.add(signatures);
+    }
+
+    private Image loadAucaReportHeader() throws IOException, DocumentException {
+        List<String> candidates = new ArrayList<>();
+        if (!isBlank(reportLogoPath)) {
+            candidates.add(reportLogoPath);
+        }
+        candidates.add("report.png");
+        candidates.add("../report.png");
+        candidates.add("../FinalProjectStudentHub/report.png");
+        candidates.add("src/assets/auca-logo.png");
+
+        for (String candidate : candidates) {
+            try {
+                java.io.File file = new java.io.File(candidate);
+                if (file.exists() && file.isFile()) {
+                    return Image.getInstance(file.getAbsolutePath());
+                }
+            } catch (Exception ignored) {
+                // Try the next configured/local report asset.
+            }
+        }
+        return null;
+    }
+
+    private PdfPCell noBorderCell(String text, Font font, int alignment) {
+        PdfPCell cell = new PdfPCell(new Phrase(text == null ? "" : text, font));
+        cell.setBorder(Rectangle.NO_BORDER);
+        cell.setPadding(0f);
+        cell.setHorizontalAlignment(alignment);
+        return cell;
+    }
+
+    private PdfPCell timesheetHeader(String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setPadding(2f);
+        cell.setMinimumHeight(14f);
+        cell.setBorderWidth(0.75f);
+        cell.setBorderColor(Color.BLACK);
+        return cell;
+    }
+
+    private PdfPCell timesheetBody(String text, Font font, int alignment) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setHorizontalAlignment(alignment);
+        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        cell.setPadding(2f);
+        cell.setMinimumHeight(13f);
+        cell.setBorderWidth(0.75f);
+        cell.setBorderColor(Color.BLACK);
+        return cell;
+    }
+
+    private String formatHours(BigDecimal hours) {
+        if (hours == null) {
+            return "";
+        }
+        BigDecimal normalized = hours.stripTrailingZeros();
+        return normalized.scale() <= 0 ? normalized.toPlainString() : hours.setScale(1, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String getSupervisorName(LabourApplication application) {
+        if (application != null && application.getReviewedBy() != null) {
+            UserAccount reviewer = application.getReviewedBy();
+            String fullName = (safe(reviewer.getFirstName()) + " " + safe(reviewer.getLastName())).trim();
+            if (!fullName.isBlank() && !"- -".equals(fullName)) {
+                return fullName;
+            }
+        }
+        return "________________";
     }
 
     private LabourLogStatus parseStatus(String status) {

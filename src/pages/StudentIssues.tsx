@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     AlertTriangle,
     BarChart3,
@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import './StudentIssues.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type TicketItem = {
     id: number;
@@ -138,7 +138,7 @@ const StudentIssues = ({ studentNumber }: StudentIssuesProps) => {
             return;
         }
 
-        setSuccess('Issue submitted. The Guild President will review it.');
+        setSuccess('Issue submitted successfully. Your request has been sent for review.');
         setSubject('');
         setMessage('');
         setCategory(CATEGORY_OPTIONS[0]);
@@ -167,8 +167,7 @@ const StudentIssues = ({ studentNumber }: StudentIssuesProps) => {
                 <span className="issues-eyebrow">Student Services</span>
                 <h1>Student Issues & Support</h1>
                 <p>
-                    Encountered a technical hurdle or an academic discrepancy? Share the details below.
-                    Our support team typically responds within 24 business hours.
+                    Submit your issue and track support updates in one place.
                 </p>
             </header>
 
@@ -220,7 +219,7 @@ const StudentIssues = ({ studentNumber }: StudentIssuesProps) => {
                             placeholder="Provide a detailed description of your issue..."
                         />
 
-                        <button type="submit">Submit Ticket</button>
+                        <button type="submit">Submit Request</button>
                     </form>
 
                     <div className="escalation-card">
@@ -235,17 +234,17 @@ const StudentIssues = ({ studentNumber }: StudentIssuesProps) => {
                 <section className="issues-right-column">
                     <div className="recent-header">
                         <div>
-                            <h3>My Recent Tickets</h3>
+                            <h3>My Recent Requests</h3>
                             <p>Tracking your recent interactions with support.</p>
                         </div>
                         <button type="button" className="view-all-btn">
-                            View All Tickets
+                            View All Requests
                         </button>
                     </div>
 
                     <div className="recent-ticket-list">
                         {recentTickets.length === 0 && (
-                            <div className="ticket-empty">No issues submitted yet. Your new ticket will appear here.</div>
+                            <div className="ticket-empty">No issues submitted yet. Your new request will appear here.</div>
                         )}
 
                         {recentTickets.map((ticket) => {
@@ -260,7 +259,7 @@ const StudentIssues = ({ studentNumber }: StudentIssuesProps) => {
                                     <div className="ticket-content">
                                         <h4>{ticket.subject}</h4>
                                         <p>
-                                            ID: #SP-{ticket.id} <span>•</span> {formatTicketDate(ticket.createdAt)}
+                                            {formatTicketDate(ticket.createdAt)}
                                         </p>
                                     </div>
                                     <div className={`ticket-status ticket-status--${statusClass}`}>

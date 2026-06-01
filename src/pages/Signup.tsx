@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowLeft, IdCard, Lock } from 'lucide-react';
+import { ArrowLeft, IdCard, Lock, Eye, EyeOff } from 'lucide-react';
 import aucaLogo from '../assets/auca-logo.png';
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
+import { getPasswordStrength } from '../utils/passwordPolicy';
 import './Login.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 interface SignupProps {
     onBack: () => void;
@@ -14,6 +16,8 @@ const Signup: React.FC<SignupProps> = ({ onBack, onLogin }) => {
     const [studentNumber, setStudentNumber] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +28,10 @@ const Signup: React.FC<SignupProps> = ({ onBack, onLogin }) => {
         setMessage('');
         if (password !== confirmPassword) {
             setError('Passwords do not match.');
+            return;
+        }
+        if (!getPasswordStrength(password).isValid) {
+            setError('Please create a stronger password that meets all requirements.');
             return;
         }
         setIsSubmitting(true);
@@ -71,16 +79,33 @@ const Signup: React.FC<SignupProps> = ({ onBack, onLogin }) => {
                     </div>
                     <div className="form-group">
                         <label>Password</label>
-                        <div className="input-wrapper">
+                        <div className="input-wrapper has-password-toggle">
                             <Lock size={18} className="input-icon" />
-                            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create password" />
+                            <input type={showPassword ? 'text' : 'password'} required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create password" />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
+                        <PasswordStrengthMeter password={password} />
                     </div>
                     <div className="form-group">
                         <label>Confirm Password</label>
-                        <div className="input-wrapper">
+                        <div className="input-wrapper has-password-toggle">
                             <Lock size={18} className="input-icon" />
-                            <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat password" />
+                            <input type={showConfirmPassword ? 'text' : 'password'} required minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat password" />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
                     </div>
                     <button type="submit" className="btn-login" disabled={isSubmitting}>

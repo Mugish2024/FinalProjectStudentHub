@@ -35,8 +35,8 @@ const MemberGrowthChart: React.FC = () => {
                     >
                         <defs>
                             <linearGradient id="colorMembers" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
-                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                                <stop offset="5%" stopColor="#2F4F86" stopOpacity={0.1} />
+                                <stop offset="95%" stopColor="#2F4F86" stopOpacity={0} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -45,7 +45,7 @@ const MemberGrowthChart: React.FC = () => {
                         <Tooltip
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                         />
-                        <Area type="monotone" dataKey="members" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorMembers)" />
+                        <Area type="monotone" dataKey="members" stroke="#2F4F86" strokeWidth={2} fillOpacity={1} fill="url(#colorMembers)" />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>

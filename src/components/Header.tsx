@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { MessageSquare, Search, Bell, Settings, Menu } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { MessageSquare, Bell, Settings, Menu } from 'lucide-react';
 import './Header.css';
 
 interface HeaderProps {
@@ -7,10 +7,11 @@ interface HeaderProps {
     userName?: string;
     userId?: string;
     activePage?: string;
-    userRole?: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president' | null;
+    userRole?: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs' | null;
     onNavigate?: (page: string) => void;
     onMenuClick?: () => void;
     onChatClick?: () => void;
+    chatUnreadCount?: number;
     onNotificationsClick?: () => void;
     onSettingsClick?: () => void;
 }
@@ -22,11 +23,11 @@ const Header: React.FC<HeaderProps> = ({
     onNavigate,
     onMenuClick,
     onChatClick,
+    chatUnreadCount = 0,
     onNotificationsClick,
     onSettingsClick,
 }) => {
-    const [searchText, setSearchText] = useState('');
-    const navItems = useMemo(
+    const topNavItems = useMemo(
         () => {
             if (userRole !== 'student') {
                 return [];
@@ -40,16 +41,6 @@ const Header: React.FC<HeaderProps> = ({
         [userRole]
     );
 
-    const navigateFromSearch = () => {
-        const term = searchText.trim().toLowerCase();
-        if (!term || !onNavigate) return;
-        const match = navItems.find((item) => item.label.toLowerCase().includes(term));
-        if (match) {
-            onNavigate(match.page);
-            setSearchText('');
-        }
-    };
-
     return (
         <header className="header">
             <div className="header-left-section">
@@ -62,9 +53,9 @@ const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="header-center">
-                {navItems.length > 0 && (
+                {topNavItems.length > 0 && (
                     <nav className="top-nav-tabs">
-                        {navItems.map((item) => (
+                        {topNavItems.map((item) => (
                             <button
                                 key={item.page}
                                 className={`top-nav-tab ${activePage === item.page ? 'active' : ''}`}
@@ -76,20 +67,6 @@ const Header: React.FC<HeaderProps> = ({
                     </nav>
                 )}
 
-                <div className="global-search">
-                    <Search size={16} />
-                    <input
-                        type="text"
-                        placeholder="Search grades, courses..."
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                navigateFromSearch();
-                            }
-                        }}
-                    />
-                </div>
             </div>
 
             <div className="header-actions">
@@ -100,9 +77,14 @@ const Header: React.FC<HeaderProps> = ({
                     <Settings size={18} />
                 </button>
                 {onChatClick && (
-                    <button className="btn-header-fill btn-blue" onClick={onChatClick}>
+                    <button className="btn-header-fill btn-blue chat-header-btn" onClick={onChatClick}>
                         <MessageSquare size={16} />
                         <span>Chat</span>
+                        {chatUnreadCount > 0 && (
+                            <span className="chat-header-badge" aria-label={`${chatUnreadCount} unread chat messages`}>
+                                {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                            </span>
+                        )}
                     </button>
                 )}
             </div>

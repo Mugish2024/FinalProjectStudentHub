@@ -1,6 +1,7 @@
 package aucasa.com.rw.controller;
 
 import aucasa.com.rw.dto.admin.CreateSystemUserRequest;
+import aucasa.com.rw.dto.admin.PromoteStudentRoleRequest;
 import aucasa.com.rw.dto.admin.UpdateSystemUserRequest;
 import aucasa.com.rw.dto.user.UserDirectoryItem;
 import aucasa.com.rw.service.AdminUserService;
@@ -34,6 +35,18 @@ public class AdminUserController {
     @GetMapping
     public List<UserDirectoryItem> listSystemUsers() {
         return adminUserService.listSystemUsers();
+    }
+
+    @PostMapping("/promote-student")
+    public ResponseEntity<?> promoteStudent(@RequestBody PromoteStudentRoleRequest request) {
+        try {
+            UserDirectoryItem response = adminUserService.promoteStudentToLeadership(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @PutMapping("/{userId}")

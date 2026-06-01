@@ -1,13 +1,16 @@
 package aucasa.com.rw.service;
 
 import aucasa.com.rw.domain.Role;
+import aucasa.com.rw.domain.StudentProfile;
 import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.domain.enums.AccountStatus;
 import aucasa.com.rw.domain.enums.RoleType;
 import aucasa.com.rw.dto.admin.CreateSystemUserRequest;
+import aucasa.com.rw.dto.admin.PromoteStudentRoleRequest;
 import aucasa.com.rw.dto.admin.UpdateSystemUserRequest;
 import aucasa.com.rw.dto.user.UserDirectoryItem;
 import aucasa.com.rw.repository.RoleRepository;
+import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
 import java.util.Arrays;
 import java.util.List;
@@ -19,15 +22,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AdminUserService {
     private final UserAccountRepository userAccountRepository;
+    private final StudentProfileRepository studentProfileRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicyService passwordPolicyService;
 
     public AdminUserService(UserAccountRepository userAccountRepository,
+                            StudentProfileRepository studentProfileRepository,
                             RoleRepository roleRepository,
-                            PasswordEncoder passwordEncoder) {
+                            PasswordEncoder passwordEncoder,
+                            PasswordPolicyService passwordPolicyService) {
         this.userAccountRepository = userAccountRepository;
+        this.studentProfileRepository = studentProfileRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordPolicyService = passwordPolicyService;
     }
 
     @Transactional
@@ -45,9 +54,7 @@ public class AdminUserService {
         if (username.isEmpty() || email.isEmpty() || password.isEmpty() || firstName.isEmpty() || lastName.isEmpty() || roleInput.isEmpty()) {
             throw new IllegalArgumentException("username, email, password, firstName, lastName, and role are required.");
         }
-        if (password.length() < 6) {
-            throw new IllegalArgumentException("Password must have at least 6 characters.");
-        }
+        passwordPolicyService.validate(password);
 
         RoleType roleType = parseRole(roleInput);
         if (roleType == RoleType.STUDENT) {
@@ -61,11 +68,7 @@ public class AdminUserService {
             throw new IllegalArgumentException("Email already exists.");
         }
 
-        Role role = roleRepository.findByName(roleType).orElseGet(() -> {
-            Role created = new Role();
-            created.setName(roleType);
-            return roleRepository.save(created);
-        });
+        Role role = getOrCreateRole(roleType);
 
         UserAccount user = new UserAccount();
         user.setUsername(username);
@@ -89,17 +92,56 @@ public class AdminUserService {
     public List<UserDirectoryItem> listSystemUsers() {
         return userAccountRepository.findAll().stream()
                 .filter(user -> user.getRole() != null && user.getRole().getName() != RoleType.STUDENT)
-                .map(user -> new UserDirectoryItem(
-                        user.getId(),
-                        user.getFirstName() + " " + user.getLastName(),
-                        user.getRole().getName().name().toLowerCase(Locale.ROOT),
-                        null,
-                        user.getUsername(),
-                        user.getEmail(),
-                        user.getFirstName(),
-                        user.getLastName()
-                ))
+                .map(this::toDirectoryItem)
                 .toList();
+    }
+
+    @Transactional
+    public UserDirectoryItem promoteStudentToLeadership(PromoteStudentRoleRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request body is required.");
+        }
+        String studentNumber = trim(request.getStudentNumber());
+        if (studentNumber.isEmpty()) {
+            throw new IllegalArgumentException("studentNumber is required.");
+        }
+
+        RoleType roleType = parseRole(request.getRole());
+        if (!isLeadershipRole(roleType)) {
+            throw new IllegalArgumentException("Only elected leadership roles can be assigned here.");
+        }
+
+        StudentProfile student = studentProfileRepository.findByStudentNumber(studentNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found."));
+        String username = trim(request.getUsername());
+        String password = trim(request.getPassword());
+        if (username.isEmpty() || password.isEmpty()) {
+            throw new IllegalArgumentException("username and password are required for the separate leadership account.");
+        }
+        passwordPolicyService.validate(password);
+        if (userAccountRepository.findByUsername(username).isPresent()) {
+            throw new IllegalArgumentException("Username already exists.");
+        }
+
+        String email = trim(request.getEmail()).toLowerCase(Locale.ROOT);
+        if (email.isEmpty()) {
+            email = username.toLowerCase(Locale.ROOT) + "@aucasa.local";
+        }
+        if (userAccountRepository.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("Email already exists.");
+        }
+
+        UserAccount source = student.getUserAccount();
+        UserAccount leadershipUser = new UserAccount();
+        leadershipUser.setUsername(username);
+        leadershipUser.setEmail(email);
+        leadershipUser.setPasswordHash(passwordEncoder.encode(password));
+        leadershipUser.setFirstName(source != null ? source.getFirstName() : "Student");
+        leadershipUser.setLastName(source != null ? source.getLastName() : student.getStudentNumber());
+        leadershipUser.setRole(getOrCreateRole(roleType));
+        leadershipUser.setStatus(AccountStatus.ACTIVE);
+        UserAccount saved = userAccountRepository.save(leadershipUser);
+        return toDirectoryItem(saved);
     }
 
     @Transactional
@@ -128,8 +170,8 @@ public class AdminUserService {
         if (username.isEmpty() || email.isEmpty() || firstName.isEmpty() || lastName.isEmpty() || roleInput.isEmpty()) {
             throw new IllegalArgumentException("username, email, firstName, lastName, and role are required.");
         }
-        if (!password.isEmpty() && password.length() < 6) {
-            throw new IllegalArgumentException("Password must have at least 6 characters.");
+        if (!password.isEmpty()) {
+            passwordPolicyService.validate(password);
         }
 
         RoleType roleType = parseRole(roleInput);
@@ -149,11 +191,7 @@ public class AdminUserService {
             }
         });
 
-        Role role = roleRepository.findByName(roleType).orElseGet(() -> {
-            Role created = new Role();
-            created.setName(roleType);
-            return roleRepository.save(created);
-        });
+        Role role = getOrCreateRole(roleType);
 
         user.setUsername(username);
         user.setEmail(email);
@@ -183,6 +221,37 @@ public class AdminUserService {
                 .filter(role -> role.name().equals(normalized))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported role: " + roleRaw));
+    }
+
+    private Role getOrCreateRole(RoleType roleType) {
+        return roleRepository.findByName(roleType).orElseGet(() -> {
+            Role created = new Role();
+            created.setName(roleType);
+            return roleRepository.save(created);
+        });
+    }
+
+    private boolean isLeadershipRole(RoleType roleType) {
+        return roleType == RoleType.GUILD_PRESIDENT
+                || roleType == RoleType.FINANCE
+                || roleType == RoleType.MINISTER_SPORT
+                || roleType == RoleType.MINISTER_EVANGELISM
+                || roleType == RoleType.MINISTER_INTERNATIONAL_AFFAIRS;
+    }
+
+    private UserDirectoryItem toDirectoryItem(UserAccount user) {
+        StudentProfile student = studentProfileRepository.findByUserAccountId(user.getId()).orElse(null);
+        return new UserDirectoryItem(
+                user.getId(),
+                user.getFirstName() + " " + user.getLastName(),
+                user.getRole().getName().name().toLowerCase(Locale.ROOT),
+                student != null ? student.getStudentNumber() : null,
+                user.getUsername(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                student != null && student.getDisciplineStatus() != null ? student.getDisciplineStatus().name() : null
+        );
     }
 
     private String trim(String value) {

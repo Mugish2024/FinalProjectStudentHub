@@ -4,7 +4,7 @@ import './SettingsCenter.css';
 interface SettingsCenterProps {
     fullName?: string;
     userId?: string;
-    userRole?: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president' | null;
+    userRole?: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs' | null;
 }
 
 const SETTINGS_KEY = 'aucasa_user_settings';
@@ -91,4 +91,3 @@ const SettingsCenter = ({ fullName = 'User', userId = 'N/A', userRole = null }: 
 };
 
 export default SettingsCenter;
-

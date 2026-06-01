@@ -2,6 +2,7 @@ package aucasa.com.rw.service;
 
 import aucasa.com.rw.domain.AcademicTerm;
 import aucasa.com.rw.domain.Payment;
+import aucasa.com.rw.domain.PaymentTransaction;
 import aucasa.com.rw.domain.StudentProfile;
 import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.domain.enums.PaymentMethod;
@@ -299,6 +300,54 @@ public class PaymentService {
             payment.setPaidAt(LocalDateTime.now());
         }
         return repository.save(payment);
+    }
+
+    @Transactional
+    public List<Payment> clearStudentDebtByReceipt(String studentNumber, String bankName, Long verifiedByUserId, String notes) {
+        if (studentNumber == null || studentNumber.isBlank()) {
+            throw new IllegalArgumentException("studentNumber is required.");
+        }
+        String bank = bankName != null ? bankName.trim().toUpperCase() : "";
+        if (!bank.equals("BK") && !bank.equals("EQUITY")) {
+            throw new IllegalArgumentException("Select the bank the student paid through: BK or Equity.");
+        }
+
+        StudentProfile student = studentProfileRepository.findByStudentNumber(studentNumber.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Student not found for number: " + studentNumber));
+
+        UserAccount verifier = null;
+        if (verifiedByUserId != null) {
+            verifier = userAccountRepository.findById(verifiedByUserId)
+                    .orElseThrow(() -> new IllegalArgumentException("Verifier user not found: " + verifiedByUserId));
+        }
+
+        EnumSet<PaymentStatus> paidStatuses = EnumSet.of(PaymentStatus.COMPLETED, PaymentStatus.VERIFIED, PaymentStatus.PAID);
+        List<Payment> outstanding = repository.findByStudentIdOrderByCreatedAtDesc(student.getId()).stream()
+                .filter(payment -> payment.getStatus() == null || !paidStatuses.contains(payment.getStatus()))
+                .toList();
+
+        if (outstanding.isEmpty()) {
+            throw new IllegalArgumentException("This student has no outstanding debt to clear.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        for (Payment payment : outstanding) {
+            payment.setStatus(PaymentStatus.PAID);
+            payment.setReceiptStatus(PaymentReceiptStatus.VALID);
+            payment.setPaidAt(now);
+            payment.setReceiptVerifiedAt(now);
+            payment.setReceiptIssuedAt(now);
+            payment.setReceiptValidUntil(now.plusYears(1));
+            String financeNote = notes != null && !notes.isBlank()
+                    ? notes.trim()
+                    : "Debt cleared by finance office after checking the student's payment receipt.";
+            payment.setReceiptNotes("Bank: " + bank + ". " + financeNote);
+            if (verifier != null) {
+                payment.setVerifiedBy(verifier);
+            }
+        }
+
+        return repository.saveAll(outstanding);
     }
 
     @Transactional
@@ -651,6 +700,23 @@ public class PaymentService {
         if (!isSimulationPayment(payment)) {
             PaymentTransactionService.MatchResult match = transactionService.evaluateMatch(payment);
             if (!"MATCHED".equals(match.getStatus())) {
+                if ("USED".equals(match.getStatus())) {
+                    Payment alreadyClearedPayment = transactionService.findByTransactionId(payment.getExternalReference())
+                            .map(PaymentTransaction::getMatchedPayment)
+                            .orElse(null);
+                    if (alreadyClearedPayment != null
+                            && alreadyClearedPayment.getStudent() != null
+                            && alreadyClearedPayment.getStudent().getId().equals(studentId)) {
+                        alreadyClearedPayment.setReceiptStatus(PaymentReceiptStatus.VALID);
+                        alreadyClearedPayment.setStatus(PaymentStatus.PAID);
+                        if (alreadyClearedPayment.getReceiptVerifiedAt() == null) {
+                            alreadyClearedPayment.setReceiptVerifiedAt(LocalDateTime.now());
+                        }
+                        alreadyClearedPayment.setReceiptNotes("Already cleared by institution transaction registry.");
+                        repository.save(alreadyClearedPayment);
+                        return buildClearedReceiptResponse(alreadyClearedPayment, "You are cleared with your payment.");
+                    }
+                }
                 throw new IllegalArgumentException("Receipt verification failed: " + match.getMessage());
             }
         }
@@ -670,6 +736,10 @@ public class PaymentService {
                     .ifPresent(record -> transactionService.markMatched(record, payment));
         }
 
+        return buildClearedReceiptResponse(payment, null);
+    }
+
+    private ReceiptAccessQrResponse buildClearedReceiptResponse(Payment payment, String message) {
         String fullName = payment.getStudent().getUserAccount().getFirstName() + " "
                 + payment.getStudent().getUserAccount().getLastName();
         String firstName = payment.getStudent().getUserAccount().getFirstName();
@@ -677,7 +747,9 @@ public class PaymentService {
 
         ReceiptAccessQrResponse response = new ReceiptAccessQrResponse();
         response.setGoodToGo(true);
-        response.setMessage("Good to go, " + firstName + ". Receipt is verified.");
+        response.setMessage(message != null && !message.isBlank()
+                ? message
+                : "Good to go, " + firstName + ". Receipt is verified.");
         response.setQrToken(payload);
         response.setStudentName(fullName);
         response.setStudentNumber(payment.getStudent().getStudentNumber());

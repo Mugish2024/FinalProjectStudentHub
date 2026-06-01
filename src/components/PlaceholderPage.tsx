@@ -24,15 +24,17 @@ const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '2rem'
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                color: 'var(--text-main)'
             }}>
-                🚧
+                ...
             </div>
             <div>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
                     {title}
                 </h2>
-                <p>This module is currently under development.</p>
+                <p>This section is not available yet.</p>
             </div>
         </div>
     );

@@ -52,6 +52,16 @@ public class ChatController {
         return chatService.getInboxSenders(userId);
     }
 
+    @GetMapping("/unread-count")
+    public Map<String, Long> unreadCount(@RequestParam Long userId) {
+        return Map.of("count", chatService.getUnreadCount(userId));
+    }
+
+    @PostMapping("/read")
+    public Map<String, Long> markRead(@RequestParam Long userId, @RequestParam Long peerId) {
+        return Map.of("count", chatService.markThreadRead(userId, peerId));
+    }
+
     private ChatMessageResponse toResponse(ChatMessage message) {
         ChatMessageResponse response = new ChatMessageResponse();
         response.setId(message.getId());

@@ -1,0 +1,88 @@
+.dashboard-footer {
+    align-items: center;
+    background: #ffffff;
+    border-top: 1px solid #dbe4f0;
+    color: #5b6d88;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    font-weight: 600;
+    gap: 0.45rem 0.55rem;
+    justify-content: center;
+    margin: auto auto 0;
+    max-width: 1380px;
+    padding: 0.65rem 0.75rem;
+    width: min(1380px, calc(100% - 4rem));
+    flex-shrink: 0;
+}
+
+.dashboard-footer--finance {
+    border-radius: 0 0 10px 10px;
+    width: min(1180px, calc(100% - 7rem));
+}
+
+.content-wrapper > .student-card-manager-page + .dashboard-footer {
+    margin: auto auto 0;
+    max-width: 1180px;
+    width: min(1180px, calc(100% - 6rem));
+}
+
+.content-wrapper > .election-admin-page + .dashboard-footer {
+    margin: auto auto 0;
+    max-width: 1180px;
+    width: min(1180px, calc(100% - 2rem));
+}
+
+.content-wrapper > :is(
+    .dean-labour-dashboard,
+    .dean-labour-page,
+    .dean-attendance-simple,
+    .election-admin-page
+) + .dashboard-footer {
+    margin: auto auto 0;
+    max-width: 1180px;
+    width: min(1180px, 100%);
+}
+
+.content-wrapper > .semester-page + .dashboard-footer {
+    margin: auto auto 0;
+    max-width: none;
+    width: 100%;
+}
+
+.dashboard-footer__dot {
+    background: #2f4f86;
+    border-radius: 999px;
+    height: 4px;
+    opacity: 0.45;
+    width: 4px;
+}
+
+@media (max-width: 520px) {
+    .dashboard-footer {
+        font-size: 0.7rem;
+        width: min(1180px, calc(100% - 2rem));
+    }
+
+    .dashboard-footer--finance {
+        width: min(1180px, calc(100% - 2rem));
+    }
+
+    .content-wrapper > .student-card-manager-page + .dashboard-footer {
+        width: min(1180px, calc(100% - 2rem));
+    }
+
+    .content-wrapper > .election-admin-page + .dashboard-footer {
+        width: min(100%, calc(100% - 1rem));
+    }
+
+    .content-wrapper > :is(
+        .dean-labour-dashboard,
+        .dean-labour-page,
+        .dean-attendance-simple,
+        .election-admin-page,
+        .semester-page
+    ) + .dashboard-footer {
+        width: 100%;
+    }
+}

@@ -22,19 +22,25 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final StudentProfileService studentProfileService;
     private final ImsStudentGatewayService imsStudentGatewayService;
+    private final PasswordPolicyService passwordPolicyService;
+    private final LoginAttemptService loginAttemptService;
 
     public AuthService(
             UserAccountRepository userAccountRepository,
             StudentProfileRepository studentProfileRepository,
             PasswordEncoder passwordEncoder,
             StudentProfileService studentProfileService,
-            ImsStudentGatewayService imsStudentGatewayService
+            ImsStudentGatewayService imsStudentGatewayService,
+            PasswordPolicyService passwordPolicyService,
+            LoginAttemptService loginAttemptService
     ) {
         this.userAccountRepository = userAccountRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.studentProfileService = studentProfileService;
         this.imsStudentGatewayService = imsStudentGatewayService;
+        this.passwordPolicyService = passwordPolicyService;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @Transactional
@@ -44,32 +50,41 @@ public class AuthService {
         }
 
         String studentNumber = request.getStudentNumber().trim();
+        String password = request.getPassword();
+        passwordPolicyService.validate(password);
         StudentProfile student = studentProfileRepository
                 .findByStudentNumber(studentNumber)
                 .orElseGet(() -> importStudentFromIms(studentNumber));
 
         UserAccount user = student.getUserAccount();
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setPasswordHash(passwordEncoder.encode(password));
         userAccountRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         if (request == null || isBlank(request.getUsernameOrEmail()) || isBlank(request.getPassword())) {
             throw new IllegalArgumentException("usernameOrEmail and password are required.");
         }
 
         String input = request.getUsernameOrEmail().trim();
+        loginAttemptService.assertNotLocked(input);
         Optional<UserAccount> userOpt = userAccountRepository.findByEmail(input);
         if (userOpt.isEmpty()) {
             String normalized = normalizeUsername(input);
             userOpt = userAccountRepository.findByUsername(normalized);
         }
 
-        UserAccount user = userOpt.orElseThrow(() -> new IllegalArgumentException("Invalid credentials."));
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        UserAccount user = userOpt.orElse(null);
+        if (user == null) {
+            loginAttemptService.recordFailure(input);
             throw new IllegalArgumentException("Invalid credentials.");
         }
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            loginAttemptService.recordFailure(input);
+            throw new IllegalArgumentException("Invalid credentials.");
+        }
+        loginAttemptService.recordSuccess(input);
 
         Optional<StudentProfile> studentOpt = studentProfileRepository.findByUserAccountId(user.getId());
         if (studentOpt.isEmpty()) {

@@ -42,6 +42,9 @@ public class Election extends BaseEntity {
     @Column(nullable = false)
     private Integer totalVotes = 0;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean showVoteProgress = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ElectionStatus status = ElectionStatus.DRAFT;
@@ -124,6 +127,14 @@ public class Election extends BaseEntity {
 
     public void setTotalVotes(Integer totalVotes) {
         this.totalVotes = totalVotes;
+    }
+
+    public Boolean getShowVoteProgress() {
+        return showVoteProgress;
+    }
+
+    public void setShowVoteProgress(Boolean showVoteProgress) {
+        this.showVoteProgress = showVoteProgress;
     }
 
     public ElectionStatus getStatus() {

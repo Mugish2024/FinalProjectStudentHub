@@ -3,9 +3,11 @@ package aucasa.com.rw.controller;
 import aucasa.com.rw.dto.finance.CreateBudgetRequest;
 import aucasa.com.rw.dto.finance.CreateExpenseRequest;
 import aucasa.com.rw.dto.finance.CreateFundRequestRequest;
+import aucasa.com.rw.dto.finance.CreateIncomeRequest;
 import aucasa.com.rw.dto.finance.FinanceBudgetResponse;
 import aucasa.com.rw.dto.finance.FinanceExpenseResponse;
 import aucasa.com.rw.dto.finance.FinanceFundRequestResponse;
+import aucasa.com.rw.dto.finance.FinanceIncomeResponse;
 import aucasa.com.rw.dto.finance.FinanceReportResponse;
 import aucasa.com.rw.dto.finance.FinanceTransparencyResponse;
 import aucasa.com.rw.dto.finance.PublishFinanceUpdateRequest;
@@ -67,6 +69,11 @@ public class FinanceController {
     @GetMapping("/expenses")
     public List<FinanceExpenseResponse> listExpenses() {
         return financeService.listExpenses();
+    }
+
+    @GetMapping("/incomes")
+    public List<FinanceIncomeResponse> listIncomes() {
+        return financeService.listIncomes();
     }
 
     @GetMapping("/fund-requests")
@@ -179,15 +186,32 @@ public class FinanceController {
     }
 
     @GetMapping("/reports/financial-statement/pdf")
-    public ResponseEntity<?> downloadFinancialStatementPdf() {
+    public ResponseEntity<?> downloadFinancialStatementPdf(
+            @RequestParam(required = false, defaultValue = "full") String type,
+            @RequestParam(required = false, defaultValue = "monthly") String period
+    ) {
         try {
-            byte[] pdf = financeService.buildFinancialReportPdf();
-            String filename = "finance-statement-" + LocalDate.now() + ".pdf";
+            byte[] pdf = financeService.buildFinancialReportPdf(type, period);
+            String filename = "finance-" + type.toLowerCase().replaceAll("[^a-z0-9-]", "-") + "-" + period.toLowerCase().replaceAll("[^a-z0-9-]", "-") + "-" + LocalDate.now() + ".pdf";
             return ResponseEntity.ok()
                     .header(HttpHeaders.CACHE_CONTROL, "no-store")
                     .header(HttpHeaders.CONTENT_TYPE, "application/pdf")
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .body(pdf);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/incomes")
+    public ResponseEntity<?> createIncome(@RequestBody CreateIncomeRequest request) {
+        try {
+            FinanceIncomeResponse response = financeService.createIncome(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {
             return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
         }

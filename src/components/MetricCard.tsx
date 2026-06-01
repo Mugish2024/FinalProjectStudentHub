@@ -8,7 +8,7 @@ interface MetricCardProps {
     icon: LucideIcon;
     trend?: string;
     trendType?: 'up' | 'down' | 'neutral';
-    color?: string; // hex color or class
+    color?: string;
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({
@@ -19,6 +19,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
     trendType = 'neutral',
     color = 'var(--primary)'
 }) => {
+    const trendLabel = trendType === 'up' ? 'Up' : trendType === 'down' ? 'Down' : 'No change';
+
     return (
         <div className="metric-card">
             <div className="metric-header">
@@ -29,7 +31,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 <div
                     className="metric-icon-wrapper"
                     style={{
-                        backgroundColor: `${color}15`, // 15 is roughly 10% opacity in hex
+                        backgroundColor: `${color}15`,
                         color: color
                     }}
                 >
@@ -40,7 +42,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
             {trend && (
                 <div className="metric-footer">
                     <span className={`trend-${trendType} font-bold`}>
-                        {trendType === 'up' ? '↑' : trendType === 'down' ? '↓' : '•'} {trend}
+                        {trendLabel}: {trend}
                     </span>
                     <span className="text-secondary">vs last month</span>
                 </div>

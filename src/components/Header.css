@@ -19,6 +19,7 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
+    flex: 0 1 240px;
     min-width: 170px;
     min-height: 0;
 }
@@ -30,7 +31,7 @@
 .header-title {
     font-size: 1.15rem;
     font-weight: 800;
-    color: #0f2452;
+    color: #2F4F86;
     text-transform: uppercase;
     letter-spacing: 0.2px;
     margin: 0;
@@ -43,7 +44,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1.5rem;
+    gap: 1.15rem;
     flex: 1;
     min-width: 0;
 }
@@ -66,38 +67,13 @@
 }
 
 .top-nav-tab:hover {
-    color: #0b4ea2;
+    color: #2F4F86;
     background: #f1f5ff;
 }
 
 .top-nav-tab.active {
-    color: #0b4ea2;
+    color: #2F4F86;
     background: #eef4ff;
-}
-
-.global-search {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 0.55rem 0.8rem;
-    min-width: 280px;
-}
-
-.global-search svg {
-    color: #94a3b8;
-}
-
-.global-search input {
-    border: none;
-    background: transparent;
-    outline: none;
-    width: 100%;
-    color: #0f172a;
-    font-weight: 600;
-    font-size: 0.9rem;
 }
 
 .header-actions {
@@ -117,7 +93,7 @@
 }
 
 .top-icon-btn:hover {
-    color: #0b4ea2;
+    color: #2F4F86;
     background: #eef4ff;
 }
 
@@ -135,13 +111,38 @@
     gap: 0.5rem;
 }
 
+.chat-header-btn {
+    overflow: visible;
+    position: relative;
+}
+
+.chat-header-badge {
+    align-items: center;
+    background: #ef4444;
+    border: 2px solid #ffffff;
+    border-radius: 999px;
+    box-shadow: 0 5px 12px rgba(239, 68, 68, 0.32);
+    color: #ffffff;
+    display: inline-flex;
+    font-size: 0.64rem;
+    font-weight: 900;
+    height: 20px;
+    justify-content: center;
+    line-height: 1;
+    min-width: 20px;
+    padding: 0 0.28rem;
+    position: absolute;
+    right: -8px;
+    top: -8px;
+}
+
 .btn-blue {
-    background-color: #0b4ea2;
+    background-color: #2F4F86;
     color: white;
 }
 
 .btn-blue:hover {
-    background-color: #0d5abb;
+    background-color: #2F4F86;
 }
 
 .user-pill {
@@ -157,7 +158,7 @@
 .user-avatar-small {
     width: 30px;
     height: 30px;
-    background-color: #0b4ea2;
+    background-color: #2F4F86;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -220,26 +221,18 @@
 
 .icon-btn:hover {
     background-color: #eef4ff;
-    color: #0b4ea2;
+    color: #2F4F86;
 }
 
 @media (max-width: 1240px) {
     .top-nav-tabs {
         display: none;
     }
-
-    .global-search {
-        min-width: 220px;
-    }
 }
 
 @media (max-width: 980px) {
     .header-menu-btn {
         display: inline-flex;
-    }
-
-    .global-search {
-        display: none;
     }
 
     .btn-header-fill {

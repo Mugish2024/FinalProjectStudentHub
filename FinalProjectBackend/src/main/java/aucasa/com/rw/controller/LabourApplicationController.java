@@ -64,4 +64,16 @@ public class LabourApplicationController {
             return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
         }
     }
+
+    @PostMapping("/{id}/withdraw")
+    public ResponseEntity<?> withdraw(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        try {
+            LabourApplicationResponse response = service.withdrawApplication(id, request != null ? request.get("studentNumber") : null);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
 }

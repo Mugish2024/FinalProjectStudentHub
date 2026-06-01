@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Clock3, QrCode as QrIcon, Users } from 'lucide-react';
 import './DeanAttendance.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type SessionItem = {
     id: number;
@@ -37,6 +37,7 @@ const DeanAttendance = () => {
     const [recordsLoading, setRecordsLoading] = useState(false);
     const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
     const [presentPage, setPresentPage] = useState(1);
+    const [openConfirmOpen, setOpenConfirmOpen] = useState(false);
     const pageSize = 10;
 
     useEffect(() => {
@@ -192,6 +193,19 @@ const DeanAttendance = () => {
         await loadPresentRecords(sessionId);
     };
 
+    const prepareOpenSession = () => {
+        if (!sessionId) return;
+        setError('');
+        setOpenConfirmOpen(true);
+    };
+
+    const confirmOpenSession = async () => {
+        if (!sessionId) return;
+        setError('');
+        await handleToggleSession(true);
+        setOpenConfirmOpen(false);
+    };
+
     const handleDownloadPresentPdf = () => {
         if (!sessionId) {
             setError('Select a session first.');
@@ -232,12 +246,30 @@ const DeanAttendance = () => {
                             </button>
                         </>
                     ) : (
-                        <button className="btn-success" onClick={() => handleToggleSession(true)}>
-                            Open Session (Auto-closes in 1h)
+                        <button className="btn-success" onClick={prepareOpenSession}>
+                            Open Session
                         </button>
                     )}
                 </div>
             </section>
+
+            {openConfirmOpen && (
+                <div className="attendance-popup-overlay" onClick={() => setOpenConfirmOpen(false)}>
+                    <section className="attendance-open-confirm attendance-open-popup" onClick={(event) => event.stopPropagation()}>
+                        <div>
+                            <h2>Confirm opening attendance</h2>
+                            <p>
+                                You are opening the attendance session for {selectedSession?.campus ?? 'this campus'} at {dateTimeLabel}.
+                                Students will be able to check in immediately.
+                            </p>
+                        </div>
+                        <div className="attendance-open-actions">
+                            <button className="btn-dark" type="button" onClick={() => setOpenConfirmOpen(false)}>Cancel</button>
+                            <button className="btn-success" type="button" onClick={confirmOpenSession}>Confirm Open</button>
+                        </div>
+                    </section>
+                </div>
+            )}
 
             <section className="simple-metrics-grid">
                 <article className="metric-card dark clickable" onClick={() => void openPresentModal()}>
@@ -255,7 +287,7 @@ const DeanAttendance = () => {
                 <article className="metric-card">
                     <span className="kicker">Session Running Time</span>
                     <strong>{elapsedLabel}</strong>
-                    <p>Elapsed since session was opened</p>
+                    <p>Time since this session opened</p>
                 </article>
             </section>
 

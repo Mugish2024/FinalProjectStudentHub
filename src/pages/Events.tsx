@@ -143,21 +143,20 @@ const Events = () => {
                     <h2>Campus Events & News</h2>
                     <p>Stay updated with the latest announcements, activities, and reports from your Student Association leaders.</p>
                 </div>
-            </div>
-
-            <div className="events-tabs">
-                <button
-                    className={`tab-btn ${activeTab === 'upcoming' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('upcoming')}
-                >
-                    Upcoming Events
-                </button>
-                <button
-                    className={`tab-btn ${activeTab === 'past' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('past')}
-                >
-                    Past Reports & Results
-                </button>
+                <div className="events-tabs">
+                    <button
+                        className={`tab-btn ${activeTab === 'upcoming' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('upcoming')}
+                    >
+                        Upcoming Events
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'past' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('past')}
+                    >
+                        Past Reports & Results
+                    </button>
+                </div>
             </div>
 
             <div className="events-grid">

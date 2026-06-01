@@ -5,6 +5,12 @@
     margin: 0 auto;
 }
 
+.events-page + .dashboard-footer {
+    margin: 1rem auto 0;
+    max-width: 1200px;
+    width: min(1200px, 100%);
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -19,51 +25,83 @@
 
 /* Header */
 .events-header {
-    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid #dbe6f5;
+    border-left: 4px solid #2F4F86;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(47, 79, 134, 0.1);
+    margin-bottom: 1.25rem;
+    padding: 1.15rem 1.35rem 1rem;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.events-header::after {
+    content: '';
+    position: absolute;
+    top: -44px;
+    right: -34px;
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: #eaf1fb;
+    border: 1px solid #d5e2f3;
+}
+
+.events-header > * {
+    position: relative;
+    z-index: 1;
 }
 
 .events-header h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary);
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #0b1f4b;
     margin-bottom: 0.5rem;
 }
 
 .events-header p {
-    color: var(--text-secondary);
+    color: #4b5565;
     max-width: 600px;
     font-size: 0.9rem;
+    line-height: 1.55;
 }
 
 /* Filter/Tabs - Horus Tab Style */
 .events-tabs {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid var(--border);
-    padding: 0 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    border-bottom: 0;
+    padding: 0;
 }
 
 .tab-btn {
-    padding: 0.5rem 1rem;
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    transition: all 0.2s;
-    border-bottom: 2px solid transparent;
+    background: #ffffff;
+    border: 1px solid #dbe6f5;
+    border-radius: 999px;
+    color: #526987;
     cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 0.58rem 1rem;
+    transition: all 0.2s;
 }
 
 .tab-btn:hover {
-    color: var(--primary);
+    border-color: #2F4F86;
+    color: #2F4F86;
 }
 
 .tab-btn.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
+    background: #2F4F86;
+    border-color: #2F4F86;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(47, 79, 134, 0.18);
 }
 
 /* Events Grid */

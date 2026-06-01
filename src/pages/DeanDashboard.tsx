@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BriefcaseBusiness, ClipboardCheck, Clock3, ShieldAlert, Users } from 'lucide-react';
+import { ArrowRight, BriefcaseBusiness, ClipboardCheck, ShieldAlert, Users } from 'lucide-react';
 import './DeanDashboard.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type LabourApplication = {
     id: number;
+    studentName?: string;
+    studentNumber?: string;
+    department?: string;
+    roleTitle?: string;
     status: string;
+    submittedAt?: string;
 };
 
 type LabourLog = {
@@ -15,13 +20,21 @@ type LabourLog = {
     status: string;
 };
 
-type AttendanceAdminRecord = {
+type AucasaPerson = {
     id: number;
-    studentName?: string;
+    fullName: string;
+    role?: string;
+    disciplineStatus?: string;
     studentNumber?: string;
-    status?: string;
-    verificationStatus?: string;
 };
+
+const LEADERSHIP_ROLES = new Set([
+    'guild_president',
+    'finance',
+    'minister_sport',
+    'minister_evangelism',
+    'minister_international_affairs',
+]);
 
 const safeList = async <T,>(url: string): Promise<T[]> => {
     try {
@@ -34,14 +47,28 @@ const safeList = async <T,>(url: string): Promise<T[]> => {
     }
 };
 
-const DeanDashboard: React.FC = () => {
+type DeanDashboardProps = {
+    onNavigate?: (page: string) => void;
+};
+
+const formatDate = (value?: string) => {
+    if (!value) return 'Not submitted';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Not submitted';
+    return date.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+};
+
+const DeanDashboard: React.FC<DeanDashboardProps> = ({ onNavigate }) => {
     const [pendingApplications, setPendingApplications] = useState<LabourApplication[]>([]);
     const [approvedApplications, setApprovedApplications] = useState<LabourApplication[]>([]);
-    const [rejectedApplications, setRejectedApplications] = useState<LabourApplication[]>([]);
     const [pendingLogs, setPendingLogs] = useState<LabourLog[]>([]);
     const [verifiedLogs, setVerifiedLogs] = useState<LabourLog[]>([]);
-    const [absentAttendanceRecords, setAbsentAttendanceRecords] = useState<AttendanceAdminRecord[]>([]);
-    const [pendingDisciplineReviews, setPendingDisciplineReviews] = useState<AttendanceAdminRecord[]>([]);
+    const [aucasaPeople, setAucasaPeople] = useState<AucasaPerson[]>([]);
+    const [peoplePage, setPeoplePage] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -50,28 +77,26 @@ const DeanDashboard: React.FC = () => {
             const [
                 pendingApps,
                 approvedApps,
-                rejectedApps,
                 logsPending,
                 logsVerified,
-                absentRecords,
-                pendingAbsenceReviews,
+                people,
             ] = await Promise.all([
                 safeList<LabourApplication>(`${API_BASE}/api/labour-applications?status=PENDING`),
                 safeList<LabourApplication>(`${API_BASE}/api/labour-applications?status=APPROVED`),
-                safeList<LabourApplication>(`${API_BASE}/api/labour-applications?status=REJECTED`),
                 safeList<LabourLog>(`${API_BASE}/api/labour-daily-logs?status=PENDING_REVIEW`),
                 safeList<LabourLog>(`${API_BASE}/api/labour-daily-logs?status=VERIFIED`),
-                safeList<AttendanceAdminRecord>(`${API_BASE}/api/attendance/admin/records?status=ABSENT`),
-                safeList<AttendanceAdminRecord>(`${API_BASE}/api/attendance/admin/records?status=ABSENT&verificationStatus=PENDING`),
+                safeList<AucasaPerson>(`${API_BASE}/api/admin/users`),
             ]);
+
+            const electedLeaders = people.filter(
+                (person) => LEADERSHIP_ROLES.has(person.role?.toLowerCase() ?? '')
+            );
 
             setPendingApplications(pendingApps);
             setApprovedApplications(approvedApps);
-            setRejectedApplications(rejectedApps);
             setPendingLogs(logsPending);
             setVerifiedLogs(logsVerified);
-            setAbsentAttendanceRecords(absentRecords);
-            setPendingDisciplineReviews(pendingAbsenceReviews);
+            setAucasaPeople(electedLeaders);
             setIsLoading(false);
         };
 
@@ -80,34 +105,36 @@ const DeanDashboard: React.FC = () => {
 
     const metrics = useMemo(() => {
         const totalApplications =
-            pendingApplications.length + approvedApplications.length + rejectedApplications.length;
+            pendingApplications.length + approvedApplications.length;
         const approvalRate =
             totalApplications === 0 ? 0 : Math.round((approvedApplications.length / totalApplications) * 100);
-        const rejectionRate =
-            totalApplications === 0 ? 0 : Math.round((rejectedApplications.length / totalApplications) * 100);
 
-        const totalVerifiedHours = verifiedLogs.reduce(
-            (sum, log) => sum + Number(log.hoursWorked || 0),
-            0
-        );
         const totalLogs = pendingLogs.length + verifiedLogs.length;
         const reviewCompletion =
             totalLogs === 0 ? 0 : Math.round((verifiedLogs.length / totalLogs) * 100);
 
-        const labourHealthScore = Math.round(
-            Math.max(0, Math.min(100, approvalRate * 0.45 + reviewCompletion * 0.55 - rejectionRate * 0.2))
-        );
-
         return {
-            totalApplications,
             approvalRate,
-            rejectionRate,
-            totalVerifiedHours: totalVerifiedHours.toFixed(1),
-            totalLogs,
             reviewCompletion,
-            labourHealthScore,
         };
-    }, [pendingApplications, approvedApplications, rejectedApplications, pendingLogs, verifiedLogs]);
+    }, [pendingApplications, approvedApplications, pendingLogs, verifiedLogs]);
+
+    const labourPeople = useMemo(() => {
+        return [...pendingApplications, ...approvedApplications]
+            .sort((a, b) => new Date(b.submittedAt ?? '').getTime() - new Date(a.submittedAt ?? '').getTime())
+            .slice(0, 3);
+    }, [pendingApplications, approvedApplications]);
+
+    const peoplePageSize = 3;
+    const peoplePageCount = Math.max(1, Math.ceil(aucasaPeople.length / peoplePageSize));
+    const visibleAucasaPeople = useMemo(() => {
+        const start = peoplePage * peoplePageSize;
+        return aucasaPeople.slice(start, start + peoplePageSize);
+    }, [aucasaPeople, peoplePage]);
+
+    const getPersonName = (person: AucasaPerson) => {
+        return person.fullName || 'Name pending';
+    };
 
     return (
         <div className="dean-labour-dashboard">
@@ -116,137 +143,193 @@ const DeanDashboard: React.FC = () => {
                     <span className="hero-kicker">Dean Console</span>
                     <h1>Student Labour Management Overview</h1>
                     <p>
-                        A focused summary of labour operations: approvals, pending reviews, verified hours, and
-                        compliance health for quick executive action.
+                        A focused summary of labour operations: approvals, pending reviews, and candidate activity
+                        for quick executive action.
                     </p>
                 </div>
                 <div className="hero-status-chip">
                     <BriefcaseBusiness size={18} />
-                    <span>{isLoading ? 'Loading labour data...' : 'Live labour analytics'}</span>
+                    <span>{isLoading ? 'Loading work data...' : 'Live overview'}</span>
                 </div>
             </section>
 
             <section className="labour-kpi-grid">
-                <article className="labour-kpi">
-                    <div className="kpi-head">
-                        <Users size={18} />
+                <article className="labour-kpi labour-kpi-attention">
+                    <div className="kpi-topline">
+                        <div className="kpi-icon">
+                            <Users size={20} />
+                        </div>
                         <span>Applications Pending</span>
                     </div>
-                    <strong>{isLoading ? '...' : pendingApplications.length}</strong>
+                    <div className="kpi-value-row">
+                        <strong>{isLoading ? '...' : pendingApplications.length}</strong>
+                        <small>Queue</small>
+                    </div>
                     <p>Waiting for dean action</p>
                 </article>
 
-                <article className="labour-kpi">
-                    <div className="kpi-head">
-                        <ClipboardCheck size={18} />
+                <article className="labour-kpi labour-kpi-success">
+                    <div className="kpi-topline">
+                        <div className="kpi-icon">
+                            <ClipboardCheck size={20} />
+                        </div>
                         <span>Approval Rate</span>
                     </div>
-                    <strong>{isLoading ? '...' : `${metrics.approvalRate}%`}</strong>
+                    <div className="kpi-value-row">
+                        <strong>{isLoading ? '...' : `${metrics.approvalRate}%`}</strong>
+                        <small>Reviewed</small>
+                    </div>
                     <p>Across reviewed applications</p>
                 </article>
 
-                <article className="labour-kpi">
-                    <div className="kpi-head">
-                        <Clock3 size={18} />
-                        <span>Verified Labour Hours</span>
-                    </div>
-                    <strong>{isLoading ? '...' : metrics.totalVerifiedHours}</strong>
-                    <p>Total verified work output</p>
-                </article>
-
-                <article className="labour-kpi">
-                    <div className="kpi-head">
-                        <ShieldAlert size={18} />
+                <article className="labour-kpi labour-kpi-review">
+                    <div className="kpi-topline">
+                        <div className="kpi-icon">
+                            <ShieldAlert size={20} />
+                        </div>
                         <span>Review Completion</span>
                     </div>
-                    <strong>{isLoading ? '...' : `${metrics.reviewCompletion}%`}</strong>
+                    <div className="kpi-value-row">
+                        <strong>{isLoading ? '...' : `${metrics.reviewCompletion}%`}</strong>
+                        <small>Logs</small>
+                    </div>
                     <p>Daily logs reviewed</p>
                 </article>
             </section>
 
-            <section className="labour-summary-row">
-                <article className="summary-card">
-                    <h3>Labour Health Score</h3>
-                    <div className="score-row">
-                        <strong>{isLoading ? '...' : `${metrics.labourHealthScore}/100`}</strong>
-                        <span>Overall programme stability</span>
+            <section className="dashboard-table-grid">
+                <article className="labour-people-panel">
+                    <div className="labour-people-header">
+                        <div>
+                            <span>Student Labour</span>
+                            <h2>Recent Labour Candidates</h2>
+                        </div>
+                        <button type="button" onClick={() => onNavigate?.('labour-mgmt')}>
+                            View more
+                            <ArrowRight size={16} />
+                        </button>
                     </div>
-                    <div className="score-bar">
-                        <div style={{ width: `${isLoading ? 0 : metrics.labourHealthScore}%` }} />
+
+                    <div className="labour-table-wrap">
+                        <table className="labour-people-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Role</th>
+                                    <th>Campus</th>
+                                    <th>Status</th>
+                                    <th>Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {isLoading && (
+                                    <tr>
+                                        <td colSpan={5} className="labour-table-empty">Loading labour candidates...</td>
+                                    </tr>
+                                )}
+                                {!isLoading && labourPeople.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="labour-table-empty">No labour candidates found.</td>
+                                    </tr>
+                                )}
+                                {!isLoading && labourPeople.map((person) => (
+                                    <tr key={`${person.status}-${person.id}`}>
+                                        <td>
+                                            <div className="student-cell">
+                                                <span>{person.studentName?.slice(0, 1).toUpperCase() || 'S'}</span>
+                                                <div>
+                                                    <strong>{person.studentName || 'Student name pending'}</strong>
+                                                    <small>{person.studentNumber || 'Student ID pending'}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{person.roleTitle || 'Role pending'}</td>
+                                        <td>{person.department || 'Campus pending'}</td>
+                                        <td>
+                                            <span className={`status-pill status-${person.status.toLowerCase()}`}>
+                                                {person.status.replaceAll('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td>{formatDate(person.submittedAt)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </article>
 
-                <article className="summary-card">
-                    <h3>Operational Snapshot</h3>
-                    <div className="snap-grid">
+                <article className="labour-people-panel">
+                    <div className="labour-people-header compact">
                         <div>
-                            <span>Total Applications</span>
-                            <strong>{isLoading ? '...' : metrics.totalApplications}</strong>
+                            <span>AUCASA Leadership</span>
+                            <h2>Elected Officers</h2>
                         </div>
-                        <div>
-                            <span>Rejected</span>
-                            <strong>{isLoading ? '...' : `${metrics.rejectionRate}%`}</strong>
-                        </div>
-                        <div>
-                            <span>Pending Logs</span>
-                            <strong>{isLoading ? '...' : pendingLogs.length}</strong>
-                        </div>
-                        <div>
-                            <span>Total Logs</span>
-                            <strong>{isLoading ? '...' : metrics.totalLogs}</strong>
-                        </div>
+                        <small>{aucasaPeople.length} records</small>
+                    </div>
+
+                    <div className="labour-table-wrap">
+                        <table className="labour-people-table people-directory-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Discipline Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {isLoading && (
+                                    <tr>
+                                        <td colSpan={3} className="labour-table-empty">Loading elected officers...</td>
+                                    </tr>
+                                )}
+                                {!isLoading && visibleAucasaPeople.length === 0 && (
+                                    <tr>
+                                        <td colSpan={3} className="labour-table-empty">No elected officers found.</td>
+                                    </tr>
+                                )}
+                                {!isLoading && visibleAucasaPeople.map((person) => (
+                                    <tr key={person.id}>
+                                        <td>
+                                            <div className="student-cell">
+                                                <span>{getPersonName(person).slice(0, 1).toUpperCase()}</span>
+                                                <div>
+                                                    <strong>{getPersonName(person)}</strong>
+                                                    <small>{person.studentNumber || `User #${person.id}`}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{person.role?.replaceAll('_', ' ') || 'Officer'}</td>
+                                        <td>
+                                            <span className="discipline-pill">
+                                                {person.disciplineStatus?.replaceAll('_', ' ') || 'N/A'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="people-pagination">
+                        <button
+                            type="button"
+                            onClick={() => setPeoplePage((page) => Math.max(0, page - 1))}
+                            disabled={peoplePage === 0}
+                        >
+                            Previous
+                        </button>
+                        <span>Page {peoplePage + 1} of {peoplePageCount}</span>
+                        <button
+                            type="button"
+                            onClick={() => setPeoplePage((page) => Math.min(peoplePageCount - 1, page + 1))}
+                            disabled={peoplePage >= peoplePageCount - 1}
+                        >
+                            Next
+                        </button>
                     </div>
                 </article>
             </section>
 
-            <section className="discipline-review-row">
-                <article className="summary-card attention-card">
-                    <h3><AlertTriangle size={16} /> Discipline Review Queue</h3>
-                    <div className="score-row">
-                        <strong>{isLoading ? '...' : pendingDisciplineReviews.length}</strong>
-                        <span>Cases waiting dean verification</span>
-                    </div>
-                    <p className="discipline-note">
-                        Review and validate high-priority discipline cases before final status updates are applied.
-                    </p>
-                    <div className="quick-cases">
-                        {(isLoading ? [] : pendingDisciplineReviews.slice(0, 3)).map((item) => (
-                            <span key={item.id}>
-                                {item.studentNumber || item.studentName || `Record #${item.id}`}
-                            </span>
-                        ))}
-                        {!isLoading && pendingDisciplineReviews.length === 0 && (
-                            <span>No pending discipline attendance cases.</span>
-                        )}
-                    </div>
-                </article>
-
-                <article className="summary-card">
-                    <h3>Discipline Oversight Snapshot</h3>
-                    <div className="snap-grid">
-                        <div>
-                            <span>Total Discipline Inputs</span>
-                            <strong>{isLoading ? '...' : absentAttendanceRecords.length}</strong>
-                        </div>
-                        <div>
-                            <span>Pending Review</span>
-                            <strong>{isLoading ? '...' : pendingDisciplineReviews.length}</strong>
-                        </div>
-                        <div>
-                            <span>Reviewed Cases</span>
-                            <strong>
-                                {isLoading
-                                    ? '...'
-                                    : Math.max(0, absentAttendanceRecords.length - pendingDisciplineReviews.length)}
-                            </strong>
-                        </div>
-                        <div>
-                            <span>Dean Action Needed</span>
-                            <strong>{isLoading ? '...' : pendingDisciplineReviews.length > 0 ? 'YES' : 'NO'}</strong>
-                        </div>
-                    </div>
-                </article>
-            </section>
         </div>
     );
 };

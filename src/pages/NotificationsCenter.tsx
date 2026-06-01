@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import './NotificationsCenter.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 interface NotificationsCenterProps {
-    userRole: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president' | null;
+    userRole: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs' | null;
     studentId?: number | null;
 }
 

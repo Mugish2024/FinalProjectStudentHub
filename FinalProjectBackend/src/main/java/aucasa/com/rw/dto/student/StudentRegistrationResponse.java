@@ -10,8 +10,14 @@ public class StudentRegistrationResponse {
     private Integer credits;
     private Integer semester;
     private Double gpa;
+    private String role;
+    private String disciplineStatus;
 
     public StudentRegistrationResponse(Long studentId, String studentNumber, String fullName, String faculty, String department, String program, Integer credits, Integer semester, Double gpa) {
+        this(studentId, studentNumber, fullName, faculty, department, program, credits, semester, gpa, "Student", "");
+    }
+
+    public StudentRegistrationResponse(Long studentId, String studentNumber, String fullName, String faculty, String department, String program, Integer credits, Integer semester, Double gpa, String role, String disciplineStatus) {
         this.studentId = studentId;
         this.studentNumber = studentNumber;
         this.fullName = fullName;
@@ -21,6 +27,8 @@ public class StudentRegistrationResponse {
         this.credits = credits;
         this.semester = semester;
         this.gpa = gpa;
+        this.role = role;
+        this.disciplineStatus = disciplineStatus;
     }
 
     public Long getStudentId() {
@@ -57,5 +65,13 @@ public class StudentRegistrationResponse {
 
     public Double getGpa() {
         return gpa;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public String getDisciplineStatus() {
+        return disciplineStatus;
     }
 }

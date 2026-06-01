@@ -1,25 +1,25 @@
 :root {
   /* AUCA Official Style Guide - Exact Brand Specs */
-  --primary: #01447B;
+  --primary: #2F4F86;
   /* Regal Blue */
-  --primary-dark: #00335d;
-  --primary-light: rgba(1, 68, 123, 0.08);
-  --accent-orange: #CF6218;
+  --primary-dark: #2F4F86;
+  --primary-light: rgba(47, 79, 134, 0.14);
+  --accent-orange: #2F4F86;
   /* Official secondary color */
 
-  --secondary: #007e7a;
+  --secondary: #2F4F86;
   /* Kept from CyberHub for variety, but used sparingly */
-  --accent: #efcb97;
+  --accent: #2F4F86;
   /* Gold accent */
-  --error: #bd2c5f;
-  --warning: #d25721;
-  --purple: #7076d0;
+  --error: #b91c1c;
+  --warning: #b91c1c;
+  --purple: #2F4F86;
 
   /* Neutral Colors */
   --background: #f2f3f5;
   --surface: #ffffff;
-  --surface-hover: #0847800a;
-  --surface-active: #08478014;
+  --surface-hover: #2F4F86;
+  --surface-active: #2F4F86;
 
   /* Text Colors */
   --text-main: #2c3149;
@@ -29,7 +29,7 @@
 
   /* Borders & Dividers */
   --border: rgba(44, 49, 73, 0.1);
-  --border-focus: #084780;
+  --border-focus: #2F4F86;
 
   /* Layout Dimensions */
   --sidebar-width: 256px;
@@ -42,9 +42,9 @@
   --shadow-sm: 0 1px 2px rgba(44, 49, 73, 0.1);
   --shadow: 0 2px 2px rgba(44, 49, 73, 0.15);
   --shadow-lg: 0 4px 6px rgba(44, 49, 73, 0.1);
-  --shadow-xl: 0 14px 28px rgba(1, 28, 53, 0.1);
-  --gradient-soft: radial-gradient(circle at 0% 0%, rgba(1, 68, 123, 0.08) 0%, rgba(1, 68, 123, 0) 55%),
-    radial-gradient(circle at 100% 100%, rgba(207, 98, 24, 0.09) 0%, rgba(207, 98, 24, 0) 45%);
+  --shadow-xl: 0 14px 28px rgba(47, 79, 134, 0.1);
+  --gradient-soft: radial-gradient(circle at 0% 0%, rgba(47, 79, 134, 0.14) 0%, rgba(47, 79, 134, 0.14) 55%),
+    radial-gradient(circle at 100% 100%, rgba(47, 79, 134, 0.14) 0%, rgba(47, 79, 134, 0.14) 45%);
 
   /* Typography */
   font-family: 'Montserrat', sans-serif;
@@ -116,7 +116,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid rgba(1, 68, 123, 0.35);
+  outline: 2px solid rgba(47, 79, 134, 0.14);
   outline-offset: 2px;
 }
 
@@ -253,4 +253,29 @@ textarea:focus-visible {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(44, 49, 73, 0.3);
+}
+
+/* Semantic warnings/errors stay red even when the main app palette is blue. */
+.admin-alert--error,
+.alert.error,
+.alert.warn,
+.banner--error,
+.chat-error,
+.chat-warning,
+.dean-alert,
+.dean-simple-error,
+.dean-students__error,
+.finance-alert.error,
+.flash-error,
+.guild-dash-alert,
+.guild-inbox__alert,
+.scanner-note.error,
+.status-box.error,
+.status-strip.error,
+.student-card-error,
+.student-issues__alert.error,
+.warn-strip {
+  background: #fee2e2 !important;
+  border-color: #fecaca !important;
+  color: #991b1b !important;
 }

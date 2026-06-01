@@ -27,4 +27,15 @@ public class VoteController {
             return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
         }
     }
+
+    @GetMapping("/status")
+    public ResponseEntity<?> status(@RequestParam Long electionId, @RequestParam String studentNumber) {
+        try {
+            return ResponseEntity.ok(Map.of("voted", voteService.hasStudentVoted(electionId, studentNumber)));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
 }

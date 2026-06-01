@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-    Search,
-    Bell,
-    UserCircle2,
     QrCode,
     Clock3,
     Users,
@@ -13,7 +10,7 @@ import gishushuImage from '../assets/gishushu-campus.jpg';
 import masoroImage from '../assets/masoro-campus.png';
 import './Attendance.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type AttendanceRecord = {
     id: number;
@@ -43,7 +40,7 @@ interface AttendanceProps {
 const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
     const [sessions, setSessions] = useState<AttendanceSession[]>([]);
     const [records, setRecords] = useState<AttendanceRecord[]>([]);
-    const [sessionSearch, setSessionSearch] = useState('');
+    const sessionSearch = '';
     const [activeQrPayload, setActiveQrPayload] = useState('');
     const [activeQrExpiry, setActiveQrExpiry] = useState('');
 
@@ -146,22 +143,6 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
 
     return (
         <div className="attendance-portal-v2">
-            <div className="attendance-topbar">
-                <span className="portal-label">Attendance Portal</span>
-                <div className="topbar-actions">
-                    <div className="search-box">
-                        <Search size={16} />
-                        <input
-                            placeholder="Search sessions..."
-                            value={sessionSearch}
-                            onChange={(e) => setSessionSearch(e.target.value)}
-                        />
-                    </div>
-                    <Bell size={18} />
-                    <UserCircle2 size={22} />
-                </div>
-            </div>
-
             {!studentNumber && (
                 <div className="warn-strip">Please login to check in and view your attendance records.</div>
             )}
@@ -169,7 +150,7 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
             <section className="welcome-row">
                 <div>
                     <span className="welcome-kicker">Scholar Attendance Dashboard</span>
-                    <h1>Welcome back, Distinguished Scholar</h1>
+                    <h1>Today&apos;s Attendance</h1>
                 </div>
                 <button
                     className="checkin-now"
@@ -186,56 +167,16 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
                 </button>
             </section>
 
-            <section className="summary-grid">
-                <article className="summary-card">
-                    <h4>Overall Attendance</h4>
-                    <div className="value-row">
-                        <strong>{attendanceRate}%</strong>
-                        <span>~2.4%</span>
-                    </div>
-                    <div className="mini-bar"><div style={{ width: `${Math.min(attendanceRate, 100)}%` }} /></div>
-                    <p>Excellent standing. Keep maintaining your consistency.</p>
-                </article>
-
-                <article className="summary-card">
-                    <h4>Sessions Attended</h4>
-                    <div className="value-row">
-                        <strong>{sessionsAttended}</strong>
-                        <span>/{Math.max(sessions.length, sessionsAttended)}</span>
-                    </div>
-                    <div className="dot-row">
-                        <span />
-                        <span />
-                        <span />
-                        <span />
-                    </div>
-                    <p>You are on track to exceed your previous semester goal.</p>
-                </article>
-
-                <article className="upcoming-card">
-                    <h5>Upcoming Session</h5>
-                    <h3>{nextUpcoming?.title ?? 'No upcoming sessions'}</h3>
-                    <p>
-                        <Clock3 size={14} />
-                        {nextUpcoming ? `Starts at ${new Date(nextUpcoming.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Check back later'}
-                    </p>
-                    <div className="chip-row">
-                        <span>{nextUpcoming?.campus ?? 'Campus'}</span>
-                        <span>{nextUpcoming ? new Date(nextUpcoming.startsAt).toLocaleDateString() : 'TBD'}</span>
-                    </div>
-                </article>
-            </section>
-
             <section className="assemblies-section">
                 <div className="section-head">
-                    <h2>Today&apos;s Assemblies</h2>
+                    <h2 className="sr-only">Today&apos;s Assemblies</h2>
                     <div className="view-pill">
                         <button className="active">Active</button>
                         <button>Calendar</button>
                     </div>
                 </div>
 
-                <div className="assemblies-grid">
+                    <div className="assemblies-grid">
                     {activeSessions.map((session) => (
                         <article key={session.id} className="assembly-card active-card">
                             <div
@@ -289,6 +230,47 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
                 </div>
             </section>
 
+            <article className="upcoming-card recent-upcoming-card">
+                <h5>{nextUpcoming ? 'Upcoming Session' : 'Session Status'}</h5>
+                <h3>{nextUpcoming?.title ?? 'No upcoming sessions'}</h3>
+                <p>
+                    <Clock3 size={14} />
+                    {nextUpcoming ? `Starts at ${new Date(nextUpcoming.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Check back later'}
+                </p>
+                <div className="chip-row">
+                    <span>{nextUpcoming?.campus ?? 'Campus'}</span>
+                    <span>{nextUpcoming ? new Date(nextUpcoming.startsAt).toLocaleDateString() : 'TBD'}</span>
+                </div>
+            </article>
+
+            <section className="summary-grid">
+                <article className="summary-card">
+                    <div className="summary-card-head">
+                        <h4>Overall Attendance</h4>
+                        <span className="summary-status">Live</span>
+                    </div>
+                    <div className="value-row">
+                        <strong>{attendanceRate}%</strong>
+                        <span>{records.length} records</span>
+                    </div>
+                    <div className="mini-bar"><div style={{ width: `${Math.min(attendanceRate, 100)}%` }} /></div>
+                    <p>{records.length === 0 ? 'No attendance records yet.' : 'Attendance based on recorded sessions.'}</p>
+                </article>
+
+                <article className="summary-card">
+                    <div className="summary-card-head">
+                        <h4>Sessions Attended</h4>
+                        <span className="summary-status">{sessions.length} total</span>
+                    </div>
+                    <div className="value-row">
+                        <strong>{sessionsAttended}</strong>
+                        <span>/{Math.max(sessions.length, sessionsAttended)}</span>
+                    </div>
+                    <div className="mini-bar"><div style={{ width: `${sessions.length ? Math.min((sessionsAttended / sessions.length) * 100, 100) : 0}%` }} /></div>
+                    <p>{sessionsAttended > 0 ? 'Sessions confirmed as present.' : 'Check in when a session opens.'}</p>
+                </article>
+            </section>
+
             {activeQrPayload && (
                 <section className="history-section">
                     <div className="section-head">
@@ -319,7 +301,7 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
                 </section>
             )}
 
-            <section className="history-section">
+            <section className="history-section recent-history-section">
                 <div className="section-head">
                     <h2>Recent History</h2>
                     <a href="#top">View full report</a>

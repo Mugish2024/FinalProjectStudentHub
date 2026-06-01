@@ -1,7 +1,9 @@
 package aucasa.com.rw.repository;
 
 import aucasa.com.rw.domain.ChatMessage;
+import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,4 +33,19 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             order by min(m.sentAt) asc
             """)
     List<Object[]> findInboxSenders(@Param("userId") Long userId);
+
+    long countByReceiverIdAndBroadcastFalseAndReadAtIsNull(Long receiverId);
+
+    @Modifying
+    @Query("""
+            update ChatMessage m
+            set m.readAt = :readAt
+            where m.receiver.id = :userId
+              and m.sender.id = :peerId
+              and m.broadcast = false
+              and m.readAt is null
+            """)
+    int markThreadRead(@Param("userId") Long userId,
+                       @Param("peerId") Long peerId,
+                       @Param("readAt") LocalDateTime readAt);
 }

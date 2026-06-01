@@ -16,7 +16,7 @@ const DashboardHome: React.FC = () => {
                     icon={Users}
                     trend="12%"
                     trendType="up"
-                    color="#2563eb"
+                    color="#2F4F86"
                 />
                 <MetricCard
                     label="Active Events"
@@ -24,7 +24,7 @@ const DashboardHome: React.FC = () => {
                     icon={Calendar}
                     trend="2"
                     trendType="up"
-                    color="#10b981"
+                    color="#2F4F86"
                 />
                 <MetricCard
                     label="Total Contributions"
@@ -32,13 +32,13 @@ const DashboardHome: React.FC = () => {
                     icon={DollarSign}
                     trend="5%"
                     trendType="down"
-                    color="#8b5cf6"
+                    color="#2F4F86"
                 />
                 <MetricCard
                     label="Pending Requests"
                     value="24"
                     icon={UserPlus}
-                    color="#f59e0b"
+                    color="#2F4F86"
                 />
             </div>
 

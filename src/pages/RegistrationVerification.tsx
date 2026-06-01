@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
+import { getPasswordStrength } from '../utils/passwordPolicy';
 import './RegistrationVerification.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 interface RegistrationResult {
     studentId: number;
@@ -26,8 +28,6 @@ const RegistrationVerification: React.FC = () => {
     const [credits, setCredits] = useState('');
     const [semester, setSemester] = useState('1');
     const [gpa, setGpa] = useState('0');
-    const [students, setStudents] = useState<RegistrationResult[]>([]);
-    const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [result, setResult] = useState<RegistrationResult | null>(null);
@@ -35,15 +35,6 @@ const RegistrationVerification: React.FC = () => {
     const [accountPassword, setAccountPassword] = useState('');
     const [accountStatus, setAccountStatus] = useState('');
     const [isSettingUpAccount, setIsSettingUpAccount] = useState(false);
-
-    const loadStudents = async () => {
-        const response = await fetch(`${API_BASE}/api/students/summary`);
-        if (!response.ok) {
-            throw new Error('Failed to load students.');
-        }
-        const data = await response.json().catch(() => []);
-        setStudents(Array.isArray(data) ? data : []);
-    };
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -84,7 +75,6 @@ const RegistrationVerification: React.FC = () => {
             setCredits('');
             setSemester('1');
             setGpa('0');
-            await loadStudents();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registration failed.');
         } finally {
@@ -121,91 +111,14 @@ const RegistrationVerification: React.FC = () => {
 
     const departments = faculty ? (facultyDepartments[faculty] ?? []) : [];
 
-    const resetForm = () => {
-        setStudentNumber('');
-        setFirstName('');
-        setLastName('');
-        setFaculty('');
-        setDepartment('');
-        setProgram('');
-        setCredits('');
-        setSemester('1');
-        setGpa('0');
-        setEditingStudentId(null);
-    };
-
-    const handleEditStudent = (item: RegistrationResult) => {
-        setEditingStudentId(item.studentId);
-        setStudentNumber(item.studentNumber ?? '');
-        const nameParts = (item.fullName ?? '').trim().split(' ');
-        setFirstName(nameParts[0] ?? '');
-        setLastName(nameParts.slice(1).join(' ') ?? '');
-        setFaculty(item.faculty ?? '');
-        setDepartment(item.department ?? '');
-        setProgram(item.program ?? '');
-        setCredits(String(item.credits ?? 0));
-        setSemester(String(item.semester ?? 1));
-        setGpa(String(item.gpa ?? 0));
-    };
-
-    const handleUpdateStudent = async () => {
-        if (!editingStudentId) return;
-        setError('');
-        setIsSubmitting(true);
-        try {
-            const response = await fetch(`${API_BASE}/api/students/${editingStudentId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    studentNumber,
-                    firstName,
-                    lastName,
-                    faculty,
-                    department,
-                    program,
-                    credits: credits ? Number(credits) : 0,
-                    semester: semester ? Number(semester) : 1,
-                    gpa: gpa ? Number(gpa) : 0,
-                }),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data.error ?? 'Update failed.');
-            }
-            setResult(data as RegistrationResult);
-            resetForm();
-            await loadStudents();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Update failed.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleDeleteStudent = async (id: number) => {
-        setError('');
-        try {
-            const response = await fetch(`${API_BASE}/api/students/${id}`, { method: 'DELETE' });
-            if (!response.ok) {
-                throw new Error('Delete failed.');
-            }
-            if (editingStudentId === id) {
-                resetForm();
-            }
-            await loadStudents();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Delete failed.');
-        }
-    };
-
-    React.useEffect(() => {
-        loadStudents().catch(() => undefined);
-    }, []);
-
     const handleAccountSetup = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setAccountStatus('');
+        if (!getPasswordStrength(accountPassword).isValid) {
+            setError('Please create a stronger password that meets all requirements.');
+            return;
+        }
         setIsSettingUpAccount(true);
 
         try {
@@ -236,7 +149,7 @@ const RegistrationVerification: React.FC = () => {
         <div className="registration-container">
             <h1 className="page-title">STUDENT REGISTRATION & VERIFICATION</h1>
 
-            <section className="section-block" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <section className="section-block" style={{ maxWidth: '1180px', margin: '0 auto' }}>
                 <h3 className="section-title">REGISTER NEW STUDENT</h3>
 
                 {error && (
@@ -246,7 +159,7 @@ const RegistrationVerification: React.FC = () => {
                 )}
 
                 {result && (
-                    <div style={{ background: '#dcfce7', color: '#166534', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                    <div style={{ background: '#2F4F86', color: '#2F4F86', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
                         <strong>Student registered successfully.</strong><br />
                         Student ID: {result.studentNumber} | Name: {result.fullName}
                     </div>
@@ -374,76 +287,14 @@ const RegistrationVerification: React.FC = () => {
                     <button className="btn-gold" type="submit" disabled={isSubmitting}>
                         {isSubmitting ? 'Saving...' : 'Register Student'}
                     </button>
-                    {editingStudentId && (
-                        <>
-                            <button
-                                className="btn-gold"
-                                type="button"
-                                onClick={handleUpdateStudent}
-                                disabled={isSubmitting}
-                                style={{ marginLeft: '0.75rem' }}
-                            >
-                                {isSubmitting ? 'Updating...' : 'Update Student'}
-                            </button>
-                            <button
-                                className="btn-gold"
-                                type="button"
-                                onClick={resetForm}
-                                disabled={isSubmitting}
-                                style={{ marginLeft: '0.75rem', background: '#64748b' }}
-                            >
-                                Cancel Edit
-                            </button>
-                        </>
-                    )}
                 </form>
-
-                <div style={{ marginTop: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: '#f8fafc' }}>
-                            <tr>
-                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Student ID</th>
-                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Name</th>
-                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Semester</th>
-                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>GPA</th>
-                                <th style={{ textAlign: 'left', padding: '0.6rem' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {students.map((item) => (
-                                <tr key={item.studentId} style={{ borderTop: '1px solid #e2e8f0' }}>
-                                    <td style={{ padding: '0.6rem' }}>{item.studentNumber}</td>
-                                    <td style={{ padding: '0.6rem' }}>{item.fullName}</td>
-                                    <td style={{ padding: '0.6rem' }}>{item.semester ?? 1}</td>
-                                    <td style={{ padding: '0.6rem' }}>{(item.gpa ?? 0).toFixed(2)}</td>
-                                    <td style={{ padding: '0.6rem', display: 'flex', gap: '0.5rem' }}>
-                                        <button className="btn-gold" type="button" onClick={() => handleEditStudent(item)}>Edit</button>
-                                        <button
-                                            className="btn-gold"
-                                            type="button"
-                                            onClick={() => handleDeleteStudent(item.studentId)}
-                                            style={{ background: '#b91c1c' }}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {students.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} style={{ padding: '0.8rem', color: '#64748b' }}>No students found.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
             </section>
 
-            <section className="section-block" style={{ maxWidth: '900px', margin: '1rem auto 0' }}>
+            <section className="section-block" style={{ maxWidth: '1180px', margin: '1rem auto 0' }}>
                 <h3 className="section-title">CREATE LOGIN ACCOUNT</h3>
 
                 {accountStatus && (
-                    <div style={{ background: '#dcfce7', color: '#166534', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                    <div style={{ background: '#2F4F86', color: '#2F4F86', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
                         {accountStatus}
                     </div>
                 )}
@@ -463,12 +314,14 @@ const RegistrationVerification: React.FC = () => {
                         <div className="search-input-wrapper" style={{ flex: 1 }}>
                             <input
                                 type="password"
+                                minLength={8}
                                 placeholder="Create Password"
                                 className="search-input"
                                 value={accountPassword}
                                 onChange={(e) => setAccountPassword(e.target.value)}
                                 required
                             />
+                            <PasswordStrengthMeter password={accountPassword} />
                         </div>
                     </div>
 
@@ -478,7 +331,7 @@ const RegistrationVerification: React.FC = () => {
                 </form>
             </section>
 
-            <section className="section-block" style={{ maxWidth: '900px', margin: '1rem auto 0' }}>
+            <section className="section-block" style={{ maxWidth: '1180px', margin: '1rem auto 0' }}>
                 <h3 className="section-title">NEXT STEP FOR PAYMENT TEST</h3>
                 <div className="status-row" style={{ justifyContent: 'flex-start' }}>
                     <div className="status-pill success">

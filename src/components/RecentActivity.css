@@ -70,12 +70,12 @@
 }
 
 .status-success {
-    background-color: rgba(0, 126, 122, 0.1);
+    background-color: rgba(47, 79, 134, 0.14);
     color: var(--secondary);
 }
 
 .status-warning {
-    background-color: rgba(210, 87, 33, 0.1);
+    background-color: rgba(47, 79, 134, 0.14);
     color: var(--warning);
 }
 

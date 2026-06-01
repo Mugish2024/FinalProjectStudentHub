@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { User, Lock, ArrowLeft } from 'lucide-react';
+import { User, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import aucaLogo from '../assets/auca-logo.png';
 import './Login.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8082';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
 
 type LoginProfile = {
     userId: number;
@@ -15,7 +15,7 @@ type LoginProfile = {
     department: string;
     program: string;
     credits: number;
-    role: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'guild_president';
+    role: 'student' | 'staff' | 'dean' | 'admin' | 'finance' | 'student_card_manager' | 'guild_president' | 'minister_sport' | 'minister_evangelism' | 'minister_international_affairs';
     gpa: string;
     semester: number;
     disciplineStatus: string;
@@ -30,12 +30,15 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [info, setInfo] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setInfo('');
         setIsSubmitting(true);
 
         try {
@@ -43,7 +46,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    usernameOrEmail: email,
+                    usernameOrEmail: email.trim(),
                     password,
                 }),
             });
@@ -99,6 +102,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
                             {error}
                         </div>
                     )}
+                    {info && (
+                        <div className="login-info-message">
+                            {info}
+                        </div>
+                    )}
                     <div className="form-group">
                         <label>Email / ID Number</label>
                         <div className="input-wrapper">
@@ -115,16 +123,37 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
 
                     <div className="form-group">
                         <label>Password</label>
-                        <div className="input-wrapper">
+                        <div className="input-wrapper has-password-toggle">
                             <Lock size={18} className="input-icon" />
                             <input
-                                type="password"
+                                type={showPassword ? 'text' : 'password'}
                                 placeholder="********"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
+                            <button
+                                type="button"
+                                className="password-toggle-btn"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
+                    </div>
+
+                    <div className="login-form-options">
+                        <button
+                            type="button"
+                            className="forgot-password-link"
+                            onClick={() => {
+                                setError('');
+                                setInfo('Forgot your password? Please contact ICT or Student Support to reset your account password.');
+                            }}
+                        >
+                            Forgot password?
+                        </button>
                     </div>
 
                     <button type="submit" className="btn-login" disabled={isSubmitting}>

@@ -166,6 +166,31 @@ public class LabourApplicationService {
         return toResponse(application);
     }
 
+    @Transactional
+    public LabourApplicationResponse withdrawApplication(Long id, String studentNumber) {
+        if (isBlank(studentNumber)) {
+            throw new IllegalArgumentException("studentNumber is required.");
+        }
+
+        LabourApplication application = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Application not found."));
+
+        String ownerStudentNumber = application.getStudent() != null ? application.getStudent().getStudentNumber() : "";
+        if (!studentNumber.trim().equalsIgnoreCase(ownerStudentNumber)) {
+            throw new IllegalArgumentException("You can withdraw only your own application.");
+        }
+
+        if (application.getStatus() != LabourApplicationStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending applications can be withdrawn.");
+        }
+
+        application.setStatus(LabourApplicationStatus.WITHDRAWN);
+        application.setReviewedAt(LocalDateTime.now());
+        application.setReviewNotes("Withdrawn by student.");
+        application = repository.save(application);
+        return toResponse(application);
+    }
+
     private LabourApplicationResponse toResponse(LabourApplication application) {
         String studentName = application.getStudent() != null && application.getStudent().getUserAccount() != null
                 ? application.getStudent().getUserAccount().getFirstName() + " " + application.getStudent().getUserAccount().getLastName()

@@ -28,10 +28,12 @@
     height: 100px;
     margin-bottom: 1rem;
     object-fit: contain;
+    border-radius: 50%;
+    background: white;
 }
 
 .login-brand h2 {
-    color: #01447B;
+    color: #2F4F86;
     font-size: 1.5rem;
     font-weight: 800;
     letter-spacing: -0.025em;
@@ -81,14 +83,68 @@
 
 .login-form input:focus {
     outline: none;
-    border-color: #01447B;
+    border-color: #2F4F86;
     background: white;
-    box-shadow: 0 0 0 4px rgba(1, 68, 123, 0.05);
+    box-shadow: 0 0 0 4px rgba(47, 79, 134, 0.14);
+}
+
+.input-wrapper.has-password-toggle input {
+    padding-right: 2.7rem;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0.7rem;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0.1rem;
+}
+
+.password-toggle-btn:hover {
+    color: #1e293b;
+}
+
+.login-info-message {
+    background: #eef5ff;
+    border: 1px solid #c8d9f3;
+    border-radius: 8px;
+    color: #2F4F86;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.45;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.login-form-options {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -0.6rem;
+}
+
+.forgot-password-link {
+    background: none;
+    border: 0;
+    color: #2F4F86;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    padding: 0;
+}
+
+.forgot-password-link:hover {
+    text-decoration: underline;
 }
 
 .btn-login {
     width: 100%;
-    background: #01447B;
+    background: #2F4F86;
     color: white;
     padding: 0.875rem;
     border: none;
@@ -101,7 +157,7 @@
 }
 
 .btn-login:hover {
-    background: #00335d;
+    background: #2F4F86;
     transform: translateY(-1px);
 }
 
@@ -117,6 +173,88 @@
 .login-footer p {
     font-size: 0.85rem;
     color: #64748b;
+}
+
+.password-strength {
+    background: #f8fbff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-top: 0.65rem;
+    padding: 0.7rem;
+}
+
+.password-strength__head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.45rem;
+}
+
+.password-strength__head span {
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.password-strength__head strong {
+    color: #b91c1c;
+    font-size: 0.78rem;
+}
+
+.password-strength--2 .password-strength__head strong,
+.password-strength--3 .password-strength__head strong {
+    color: #9a5b00;
+}
+
+.password-strength--4 .password-strength__head strong {
+    color: #047857;
+}
+
+.password-strength__bar {
+    display: grid;
+    gap: 0.25rem;
+    grid-template-columns: repeat(4, 1fr);
+    margin-bottom: 0.55rem;
+}
+
+.password-strength__bar span {
+    background: #e2e8f0;
+    border-radius: 999px;
+    height: 5px;
+}
+
+.password-strength--1 .password-strength__bar span:nth-child(-n + 1),
+.password-strength--2 .password-strength__bar span:nth-child(-n + 2) {
+    background: #f59e0b;
+}
+
+.password-strength--3 .password-strength__bar span:nth-child(-n + 3) {
+    background: #2563eb;
+}
+
+.password-strength--4 .password-strength__bar span {
+    background: #10b981;
+}
+
+.password-strength ul {
+    display: grid;
+    gap: 0.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.password-strength li {
+    align-items: center;
+    color: #64748b;
+    display: flex;
+    font-size: 0.74rem;
+    gap: 0.35rem;
+}
+
+.password-strength li.valid {
+    color: #047857;
 }
 
 .signup-link {
@@ -176,7 +314,7 @@
 }
 
 .contact-item strong {
-    color: #01447B;
+    color: #2F4F86;
     min-width: 80px;
 }
 
@@ -195,7 +333,7 @@
     width: 64px;
     height: 64px;
     background: #e0f2fe;
-    color: #01447B;
+    color: #2F4F86;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -204,7 +342,7 @@
 }
 
 .info-modal h3 {
-    color: #01447B;
+    color: #2F4F86;
     font-size: 1.25rem;
     margin-bottom: 1rem;
 }

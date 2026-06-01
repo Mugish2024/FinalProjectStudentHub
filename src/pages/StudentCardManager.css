@@ -1,0 +1,454 @@
+.student-card-manager-page {
+    display: grid;
+    gap: 1rem;
+    margin: 0 auto;
+    max-width: 1180px;
+    padding: 1.1rem 1rem 1.35rem;
+    width: min(1180px, calc(100% - 6rem));
+}
+
+.student-card-manager-page + .dashboard-footer {
+    margin: 1rem auto 0;
+    max-width: 1180px;
+    width: min(1180px, calc(100% - 6rem));
+}
+
+.card-manager-hero,
+.card-manager-panel {
+    background: #ffffff;
+    border: 1px solid #dbe4f0;
+    border-left: 4px solid #2f4f86;
+    border-radius: 12px;
+    box-shadow: 0 14px 30px rgba(47, 79, 134, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+.card-manager-hero {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 1.1rem;
+}
+
+.card-manager-hero::after,
+.card-manager-panel::after {
+    background: #f1f6fd;
+    border-left: 1px solid #e0e9f6;
+    border-bottom: 1px solid #e0e9f6;
+    border-radius: 0 12px 0 42px;
+    content: '';
+    height: 72px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 72px;
+}
+
+.card-manager-hero > * {
+    position: relative;
+    z-index: 1;
+}
+
+.card-manager-hero span {
+    color: #2f4f86;
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.card-manager-hero h1 {
+    color: #061b3f;
+    font-size: 1.35rem;
+    margin: 0.2rem 0 0.1rem;
+}
+
+.card-manager-hero p {
+    color: #60728f;
+    font-size: 0.88rem;
+    margin: 0;
+}
+
+.card-manager-hero svg {
+    color: #2f4f86;
+}
+
+.card-manager-alert {
+    border-radius: 10px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    padding: 0.7rem 0.9rem;
+}
+
+.card-manager-alert.error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.card-manager-alert.success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+.card-manager-panel {
+    padding: 1rem;
+}
+
+.card-manager-toolbar {
+    align-items: center;
+    display: flex;
+    gap: 0.8rem;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+}
+
+.card-manager-export-actions {
+    display: flex;
+    gap: 0.45rem;
+}
+
+.card-manager-export-actions button {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #cbd8ea;
+    border-radius: 10px;
+    color: #2f4f86;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.78rem;
+    font-weight: 800;
+    gap: 0.35rem;
+    padding: 0.5rem 0.72rem;
+}
+
+.card-manager-export-actions button:hover {
+    background: #eef5ff;
+    border-color: #a9bfdf;
+}
+
+.card-manager-tabs {
+    background: #f3f7fc;
+    border: 1px solid #dbe4f0;
+    border-radius: 12px;
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+}
+
+.card-manager-tabs button,
+.card-manager-pagination button {
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    color: #2f4f86;
+    cursor: pointer;
+    font-weight: 800;
+    padding: 0.45rem 0.75rem;
+}
+
+.card-manager-tabs button.active,
+.card-manager-pagination button {
+    background: #2f4f86;
+    color: #ffffff;
+}
+
+.card-manager-search {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #dbe4f0;
+    border-radius: 12px;
+    display: flex;
+    gap: 0.45rem;
+    min-width: 280px;
+    padding: 0.5rem 0.7rem;
+}
+
+.card-manager-search svg {
+    color: #2f4f86;
+}
+
+.card-manager-search input {
+    background: transparent;
+    border: 0;
+    color: #12243f;
+    font: inherit;
+    outline: none;
+    width: 100%;
+}
+
+.card-request-grid {
+    display: grid;
+    gap: 0.8rem;
+    margin-top: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.card-request-card {
+    align-items: stretch;
+    background: #f8fbff;
+    border: 1px solid #dbe6f4;
+    border-radius: 12px;
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: 96px 1fr;
+    padding: 0.72rem;
+}
+
+.card-request-card img {
+    aspect-ratio: 3 / 4;
+    border: 1px solid #cbd8ea;
+    border-radius: 10px;
+    height: 128px;
+    object-fit: cover;
+    width: 96px;
+}
+
+.card-request-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.card-request-title {
+    align-items: flex-start;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.card-request-title h3 {
+    color: #061b3f;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.card-request-title span,
+.card-request-main small,
+.card-request-main p {
+    color: #60728f;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.card-request-main .card-request-printed-details {
+    color: #166534;
+    font-weight: 800;
+}
+
+.card-request-title em {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    color: #9a3412;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 800;
+    padding: 0.25rem 0.6rem;
+}
+
+.card-request-title em.printed {
+    background: #ecfdf5;
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
+.receipt-review-strip {
+    background: #eef5ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid #2f6fdb;
+    border-radius: 10px;
+    color: #173462;
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.55rem 0.65rem;
+}
+
+.receipt-review-strip.not-required {
+    background: #ffffff;
+    border-color: #dbe6f4;
+    border-left-color: #94a3b8;
+}
+
+.receipt-review-strip.not-required strong {
+    color: #475569;
+}
+
+.receipt-review-strip strong {
+    color: #0f3d7f;
+    font-size: 0.78rem;
+}
+
+.receipt-review-strip span {
+    color: #526982;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.receipt-review-strip.approved {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    border-left-color: #16a34a;
+}
+
+.receipt-review-strip.approved strong {
+    color: #166534;
+}
+
+.receipt-review-strip.rejected {
+    background: #fef2f2;
+    border-color: #fecaca;
+    border-left-color: #dc2626;
+}
+
+.receipt-review-strip.rejected strong {
+    color: #991b1b;
+}
+
+.receipt-review-inline-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+}
+
+.receipt-review-inline-actions button {
+    align-items: center;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.74rem;
+    font-weight: 800;
+    gap: 0.3rem;
+    padding: 0.38rem 0.58rem;
+}
+
+.receipt-review-inline-actions button.view-receipt {
+    background: #ffffff;
+    border: 1px solid #bfd5f4;
+    color: #17407a;
+}
+
+.receipt-review-inline-actions button.approve-receipt {
+    background: #166534;
+    border: 1px solid #166534;
+    color: #ffffff;
+}
+
+.receipt-review-inline-actions button.reject-receipt {
+    background: #b91c1c;
+    border: 1px solid #b91c1c;
+    color: #ffffff;
+}
+
+.receipt-review-inline-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.card-request-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.2rem;
+}
+
+.card-request-actions button {
+    align-items: center;
+    background: #2f4f86;
+    border: 1px solid #2f4f86;
+    border-radius: 9px;
+    color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.78rem;
+    font-weight: 800;
+    gap: 0.35rem;
+    padding: 0.45rem 0.72rem;
+}
+
+.card-request-actions button.mark-printed {
+    background: #0f766e;
+    border-color: #0f766e;
+}
+
+.card-request-actions button.view-receipt {
+    background: #ffffff;
+    border-color: #bfd5f4;
+    color: #17407a;
+}
+
+.card-request-actions button.approve-receipt {
+    background: #166534;
+    border-color: #166534;
+}
+
+.card-request-actions button.reject-receipt {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.card-request-actions button:disabled,
+.card-manager-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.card-manager-empty {
+    background: #f8fbff;
+    border: 1px dashed #cbd8ea;
+    border-radius: 12px;
+    color: #60728f;
+    font-weight: 700;
+    padding: 1rem;
+    text-align: center;
+}
+
+.card-manager-pagination {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.85rem;
+    position: relative;
+    z-index: 1;
+}
+
+.card-manager-pagination span {
+    color: #60728f;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.card-manager-pagination div {
+    display: flex;
+    gap: 0.45rem;
+}
+
+@media (max-width: 760px) {
+    .student-card-manager-page,
+    .student-card-manager-page + .dashboard-footer {
+        width: min(1180px, calc(100% - 2rem));
+    }
+
+    .card-manager-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .card-manager-export-actions {
+        justify-content: flex-start;
+    }
+
+    .card-manager-search {
+        min-width: 0;
+    }
+
+    .card-request-card {
+        grid-template-columns: 1fr;
+    }
+}

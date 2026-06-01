@@ -4,7 +4,9 @@ public enum FinanceExpenseCategory {
     OPERATIONS,
     EVENTS,
     TRANSPORT,
+    REFRESHMENTS,
     WELFARE,
+    STAFF_WELFARE,
     EQUIPMENT,
     COMMUNICATION,
     OTHER

@@ -75,4 +75,21 @@ public class ChatService {
         }
         return items;
     }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(Long userId) {
+        if (userId == null) {
+            return 0;
+        }
+        return chatMessageRepository.countByReceiverIdAndBroadcastFalseAndReadAtIsNull(userId);
+    }
+
+    @Transactional
+    public long markThreadRead(Long userId, Long peerId) {
+        if (userId == null || peerId == null) {
+            return getUnreadCount(userId);
+        }
+        chatMessageRepository.markThreadRead(userId, peerId, LocalDateTime.now());
+        return getUnreadCount(userId);
+    }
 }

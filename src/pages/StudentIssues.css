@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 .student-issues-page {
     padding: 1.5rem;
@@ -7,7 +7,32 @@
 }
 
 .issues-hero {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid #dbe6f5;
+    border-left: 4px solid #2F4F86;
+    border-radius: 14px;
+    box-shadow: 0 14px 30px rgba(47, 79, 134, 0.1);
     margin-bottom: 1.35rem;
+    padding: 1.15rem 1.35rem;
+}
+
+.issues-hero::after {
+    content: '';
+    position: absolute;
+    top: -44px;
+    right: -34px;
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: #eaf1fb;
+    border: 1px solid #d5e2f3;
+}
+
+.issues-hero > * {
+    position: relative;
+    z-index: 1;
 }
 
 .issues-eyebrow {
@@ -15,24 +40,24 @@
     font-size: 0.75rem;
     font-weight: 800;
     letter-spacing: 0.11em;
-    color: #0f766e;
+    color: #2F4F86;
     text-transform: uppercase;
     margin-bottom: 0.45rem;
 }
 
 .issues-hero h1 {
     margin: 0;
-    font-size: clamp(2rem, 4vw, 3.4rem);
-    line-height: 1.05;
+    font-size: 22px;
+    line-height: 1.25;
     color: #0b1f4b;
 }
 
 .issues-hero p {
-    margin: 0.75rem 0 0;
+    margin: 0.55rem 0 0;
     max-width: 780px;
     color: #4b5565;
-    font-size: 1.05rem;
-    line-height: 1.6;
+    font-size: 0.9rem;
+    line-height: 1.55;
 }
 
 .student-issues__alert {
@@ -40,19 +65,19 @@
     padding: 0.8rem 1rem;
     margin-bottom: 0.85rem;
     font-size: 0.92rem;
-    font-weight: 600;
+    font-weight: 800;
 }
 
 .student-issues__alert.error {
-    background: #ffe4e6;
-    color: #9f1239;
-    border: 1px solid #fecdd3;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
 }
 
 .student-issues__alert.success {
     background: #dcfce7;
     color: #166534;
-    border: 1px solid #86efac;
+    border: 1px solid #bbf7d0;
 }
 
 .issues-layout {
@@ -81,24 +106,17 @@
 .request-head {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
+    gap: 0;
     margin-bottom: 0.35rem;
 }
 
 .request-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    background: #98ece6;
-    color: #0f766e;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: none;
 }
 
 .request-head h3 {
     margin: 0;
-    font-size: 1.7rem;
+    font-size: 16px;
     color: #101f48;
 }
 
@@ -136,14 +154,14 @@
 .issue-request-card input:focus,
 .issue-request-card select:focus,
 .issue-request-card textarea:focus {
-    border-color: #2b6cb0;
+    border-color: #2F4F86;
     box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.16);
 }
 
 .issue-request-card button {
     margin-top: 0.5rem;
     border: none;
-    background: linear-gradient(120deg, #082f6d 0%, #0b3f92 100%);
+    background: linear-gradient(120deg, #2F4F86 0%, #2F4F86 100%);
     color: #ffffff;
     border-radius: 10px;
     padding: 0.86rem 1rem;
@@ -159,10 +177,10 @@
 }
 
 .escalation-card {
-    background: #6d3300;
-    color: #ffedd5;
+    background: #eaf1fb;
+    color: #2F4F86;
     border-radius: 14px;
-    border: 1px solid #8a4503;
+    border: 1px solid #2F4F86;
     padding: 0.85rem 1rem;
     display: flex;
     gap: 0.65rem;
@@ -172,7 +190,7 @@
 .escalation-card strong {
     display: block;
     margin-bottom: 0.22rem;
-    color: #ffb74d;
+    color: #2F4F86;
 }
 
 .escalation-card p {
@@ -182,15 +200,40 @@
 }
 
 .recent-header {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid #dbe6f5;
+    border-left: 4px solid #2F4F86;
+    border-radius: 14px;
+    box-shadow: 0 12px 26px rgba(47, 79, 134, 0.08);
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     gap: 1rem;
+    padding: 0.95rem 1rem;
+}
+
+.recent-header::after {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -34px;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: #eaf1fb;
+    border: 1px solid #d5e2f3;
+}
+
+.recent-header > * {
+    position: relative;
+    z-index: 1;
 }
 
 .recent-header h3 {
     margin: 0;
-    font-size: 2rem;
+    font-size: 16px;
     color: #0d1d47;
 }
 
@@ -202,7 +245,7 @@
 .view-all-btn {
     border: none;
     background: transparent;
-    color: #0f766e;
+    color: #2F4F86;
     font-weight: 800;
     font-size: 1.05rem;
     cursor: pointer;
@@ -277,13 +320,14 @@
 }
 
 .ticket-status--open {
-    color: #1d4f91;
-    background: #dbeafe;
+    color: #ffffff;
+    background: #2F4F86;
 }
 
 .ticket-status--in-review {
-    color: #0f766e;
-    background: #ccfbf1;
+    color: #2F4F86;
+    background: #eaf1fb;
+    border: 1px solid #cbd8eb;
 }
 
 .ticket-status--resolved {
@@ -312,7 +356,7 @@
 
 .analytics-head h3 {
     margin: 0;
-    font-size: 2rem;
+    font-size: 16px;
     color: #0d1d47;
 }
 
@@ -342,11 +386,11 @@
 }
 
 .analytics-stat .value.pending {
-    color: #0f766e;
+    color: #2F4F86;
 }
 
 .analytics-stat .value.resolved {
-    color: #0f417a;
+    color: #2F4F86;
 }
 
 .analytics-stat span {
@@ -382,7 +426,7 @@
 .resolution-track span {
     display: block;
     height: 100%;
-    background: linear-gradient(90deg, #0f766e 0%, #22c1b5 100%);
+    background: linear-gradient(90deg, #2F4F86 0%, #2F4F86 100%);
 }
 
 @media (max-width: 1180px) {
@@ -404,7 +448,7 @@
     .issues-hero h1,
     .recent-header h3,
     .analytics-head h3 {
-        font-size: 1.6rem;
+        font-size: 18px;
     }
 
     .ticket-card {

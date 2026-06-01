@@ -78,6 +78,18 @@ public class SupportTicketController {
         }
     }
 
+    @PostMapping("/{ticketId}/close")
+    public ResponseEntity<?> close(@PathVariable Long ticketId) {
+        try {
+            SupportTicket ticket = supportTicketService.close(ticketId);
+            return ResponseEntity.ok(toResponse(ticket));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     private SupportTicketResponse toResponse(SupportTicket ticket) {
         SupportTicketResponse response = new SupportTicketResponse();
         response.setId(ticket.getId());
