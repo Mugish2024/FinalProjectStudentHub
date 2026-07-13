@@ -2,7 +2,9 @@ package aucasa.com.rw.service;
 
 import aucasa.com.rw.domain.LabourApplication;
 import aucasa.com.rw.domain.LabourBackfillApproval;
+import aucasa.com.rw.domain.LabourCreditDeclaration;
 import aucasa.com.rw.domain.LabourDailyLog;
+import aucasa.com.rw.domain.LabourTimetableSlot;
 import aucasa.com.rw.domain.StudentProfile;
 import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.domain.enums.LabourApplicationStatus;
@@ -13,6 +15,7 @@ import aucasa.com.rw.dto.labour.LabourDailyLogReviewRequest;
 import aucasa.com.rw.dto.labour.LabourMonthlyPerformanceItem;
 import aucasa.com.rw.repository.LabourApplicationRepository;
 import aucasa.com.rw.repository.LabourBackfillApprovalRepository;
+import aucasa.com.rw.repository.LabourCreditDeclarationRepository;
 import aucasa.com.rw.repository.LabourDailyLogRepository;
 import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
@@ -38,6 +41,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -64,6 +68,7 @@ public class LabourDailyLogService {
     private final LabourDailyLogRepository repository;
     private final LabourApplicationRepository applicationRepository;
     private final LabourBackfillApprovalRepository backfillApprovalRepository;
+    private final LabourCreditDeclarationRepository creditDeclarationRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final UserAccountRepository userAccountRepository;
     private final String reportLogoPath;
@@ -72,6 +77,7 @@ public class LabourDailyLogService {
             LabourDailyLogRepository repository,
             LabourApplicationRepository applicationRepository,
             LabourBackfillApprovalRepository backfillApprovalRepository,
+            LabourCreditDeclarationRepository creditDeclarationRepository,
             StudentProfileRepository studentProfileRepository,
             UserAccountRepository userAccountRepository,
             @Value("${app.finance.report-paper-path:}") String reportLogoPath
@@ -79,6 +85,7 @@ public class LabourDailyLogService {
         this.repository = repository;
         this.applicationRepository = applicationRepository;
         this.backfillApprovalRepository = backfillApprovalRepository;
+        this.creditDeclarationRepository = creditDeclarationRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.userAccountRepository = userAccountRepository;
         this.reportLogoPath = reportLogoPath;
@@ -98,6 +105,15 @@ public class LabourDailyLogService {
         LabourApplication application = applicationRepository
                 .findFirstByStudentIdAndStatusOrderBySubmittedAtDesc(student.getId(), LabourApplicationStatus.APPROVED)
                 .orElseThrow(() -> new IllegalArgumentException("No approved labour application found."));
+
+        LabourCreditDeclaration creditDeclaration = application.getTerm() != null
+                ? creditDeclarationRepository.findByStudentIdAndTermId(student.getId(), application.getTerm().getId()).orElse(null)
+                : null;
+        if (creditDeclaration == null) {
+            throw new IllegalArgumentException(
+                    "Please submit your semester credit load and class timetable before logging labour hours."
+            );
+        }
 
         LocalDate requestedDate = LocalDate.parse(request.getLogDate().trim());
         LocalDate today = LocalDate.now();
@@ -146,6 +162,10 @@ public class LabourDailyLogService {
         log.setLogDate(requestedDate);
         LocalTime workStart = parseTime(request.getWorkStartTime(), "workStartTime");
         LocalTime workEnd = parseTime(request.getWorkEndTime(), "workEndTime");
+        if (requestedDate.isEqual(today) && workEnd.isAfter(LocalTime.now())) {
+            throw new IllegalArgumentException("Work end time cannot be later than the current time. You cannot log hours that have not happened yet.");
+        }
+        checkTimetableConflict(creditDeclaration, requestedDate.getDayOfWeek(), workStart, workEnd);
         BigDecimal computedHours = computeHours(workStart, workEnd);
         log.setWorkStartTime(workStart);
         log.setWorkEndTime(workEnd);
@@ -785,6 +805,20 @@ public class LabourDailyLogService {
             return LocalTime.parse(value.trim());
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid " + fieldName + " format. Use HH:mm.");
+        }
+    }
+
+    private void checkTimetableConflict(LabourCreditDeclaration declaration, DayOfWeek dayOfWeek, LocalTime start, LocalTime end) {
+        for (LabourTimetableSlot slot : declaration.getTimetable()) {
+            if (slot.getDayOfWeek() == dayOfWeek
+                    && start.isBefore(slot.getEndTime())
+                    && slot.getStartTime().isBefore(end)) {
+                String course = isBlank(slot.getCourseLabel()) ? "your declared class" : slot.getCourseLabel();
+                throw new IllegalArgumentException(
+                        "Your logged time " + start + "-" + end + " overlaps with " + course + " ("
+                                + slot.getStartTime() + "-" + slot.getEndTime() + "). Please log labour hours outside class time."
+                );
+            }
         }
     }
 

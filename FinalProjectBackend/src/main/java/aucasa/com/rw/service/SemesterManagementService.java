@@ -21,7 +21,9 @@ import aucasa.com.rw.repository.FinanceExpenseRepository;
 import aucasa.com.rw.repository.FinanceFundRequestRepository;
 import aucasa.com.rw.repository.LabourApplicationRepository;
 import aucasa.com.rw.repository.LabourBackfillApprovalRepository;
+import aucasa.com.rw.repository.LabourCreditDeclarationRepository;
 import aucasa.com.rw.repository.LabourDailyLogRepository;
+import aucasa.com.rw.repository.LabourTimetableSlotRepository;
 import aucasa.com.rw.repository.PaymentRepository;
 import aucasa.com.rw.repository.PaymentTransactionRepository;
 import aucasa.com.rw.repository.RegistrationRecordRepository;
@@ -47,6 +49,8 @@ public class SemesterManagementService {
     private final LabourDailyLogRepository labourDailyLogRepository;
     private final LabourApplicationRepository labourApplicationRepository;
     private final LabourBackfillApprovalRepository labourBackfillApprovalRepository;
+    private final LabourCreditDeclarationRepository labourCreditDeclarationRepository;
+    private final LabourTimetableSlotRepository labourTimetableSlotRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final AttendanceSessionRepository attendanceSessionRepository;
     private final VoteRepository voteRepository;
@@ -71,6 +75,8 @@ public class SemesterManagementService {
             LabourDailyLogRepository labourDailyLogRepository,
             LabourApplicationRepository labourApplicationRepository,
             LabourBackfillApprovalRepository labourBackfillApprovalRepository,
+            LabourCreditDeclarationRepository labourCreditDeclarationRepository,
+            LabourTimetableSlotRepository labourTimetableSlotRepository,
             AttendanceRecordRepository attendanceRecordRepository,
             AttendanceSessionRepository attendanceSessionRepository,
             VoteRepository voteRepository,
@@ -94,6 +100,8 @@ public class SemesterManagementService {
         this.labourDailyLogRepository = labourDailyLogRepository;
         this.labourApplicationRepository = labourApplicationRepository;
         this.labourBackfillApprovalRepository = labourBackfillApprovalRepository;
+        this.labourCreditDeclarationRepository = labourCreditDeclarationRepository;
+        this.labourTimetableSlotRepository = labourTimetableSlotRepository;
         this.attendanceRecordRepository = attendanceRecordRepository;
         this.attendanceSessionRepository = attendanceSessionRepository;
         this.voteRepository = voteRepository;
@@ -167,6 +175,7 @@ public class SemesterManagementService {
         counts.put("labourDailyLogs", labourDailyLogRepository.count());
         counts.put("labourApplications", labourApplicationRepository.count());
         counts.put("labourBackfillApprovals", labourBackfillApprovalRepository.count());
+        counts.put("labourCreditDeclarations", labourCreditDeclarationRepository.count());
         counts.put("attendanceRecords", attendanceRecordRepository.count());
         counts.put("attendanceSessions", attendanceSessionRepository.count());
         counts.put("votes", voteRepository.count());
@@ -193,6 +202,8 @@ public class SemesterManagementService {
         labourDailyLogRepository.deleteAllInBatch();
         labourApplicationRepository.deleteAllInBatch();
         labourBackfillApprovalRepository.deleteAllInBatch();
+        labourTimetableSlotRepository.deleteAllInBatch();
+        labourCreditDeclarationRepository.deleteAllInBatch();
 
         attendanceRecordRepository.deleteAllInBatch();
         attendanceSessionRepository.deleteAllInBatch();

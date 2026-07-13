@@ -67,6 +67,26 @@ type LogItem = {
     locationValidated?: boolean;
 };
 
+type TimetableSlot = {
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    courseLabel: string;
+};
+
+type CreditDeclaration = {
+    id: number;
+    totalCredits: number;
+    timetable: TimetableSlot[];
+    timetableProofPath?: string;
+};
+
+const DAYS_OF_WEEK = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+const jsDayToDayOfWeek = (jsDay: number) => DAYS_OF_WEEK[(jsDay + 6) % 7];
+
+const emptySlot = (): TimetableSlot => ({ dayOfWeek: 'MONDAY', startTime: '', endTime: '', courseLabel: '' });
+
 interface StudentLabourProps {
     studentNumber: string;
     fullName?: string;
@@ -109,6 +129,17 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
     const [logError, setLogError] = useState('');
     const [logs, setLogs] = useState<LogItem[]>([]);
     const [reminders, setReminders] = useState<string[]>([]);
+
+    const [creditDeclaration, setCreditDeclaration] = useState<CreditDeclaration | null>(null);
+    const [declarationLoaded, setDeclarationLoaded] = useState(false);
+    const [declTotalCredits, setDeclTotalCredits] = useState('');
+    const [declSlots, setDeclSlots] = useState<TimetableSlot[]>([emptySlot()]);
+    const [timetableProofFile, setTimetableProofFile] = useState<File | null>(null);
+    const [declarationError, setDeclarationError] = useState('');
+    const [declarationMessage, setDeclarationMessage] = useState('');
+    const [declarationPrompt, setDeclarationPrompt] = useState('');
+    const [isSubmittingDeclaration, setIsSubmittingDeclaration] = useState(false);
+    const [isEditingDeclaration, setIsEditingDeclaration] = useState(false);
 
     const numericGpa = Number(gpa || 0);
 
@@ -154,11 +185,28 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
         setActivities(parsed);
     };
 
+    const fetchDeclaration = async () => {
+        if (!studentNumber) return;
+        setDeclarationLoaded(false);
+        try {
+            const response = await fetch(`${API_BASE}/api/labour-credit-declarations?studentNumber=${encodeURIComponent(studentNumber)}`);
+            if (response.status === 204) {
+                setCreditDeclaration(null);
+            } else {
+                const data = await response.json().catch(() => null);
+                setCreditDeclaration(response.ok ? data : null);
+            }
+        } finally {
+            setDeclarationLoaded(true);
+        }
+    };
+
     useEffect(() => {
         fetchApplications();
         fetchLogs();
         fetchActivities();
         fetchReminders();
+        fetchDeclaration();
     }, [studentNumber]);
 
     const isLateLogDate = logDate < new Date().toISOString().split('T')[0];
@@ -338,10 +386,99 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
         }
     };
 
+    const addDeclSlot = () => setDeclSlots((prev) => [...prev, emptySlot()]);
+    const removeDeclSlot = (index: number) => setDeclSlots((prev) => prev.filter((_, i) => i !== index));
+    const updateDeclSlot = (index: number, patch: Partial<TimetableSlot>) => {
+        setDeclSlots((prev) => prev.map((slot, i) => (i === index ? { ...slot, ...patch } : slot)));
+    };
+
+    const startEditingDeclaration = () => {
+        if (!creditDeclaration) return;
+        setDeclTotalCredits(String(creditDeclaration.totalCredits));
+        setDeclSlots(creditDeclaration.timetable.length > 0 ? creditDeclaration.timetable.map((slot) => ({ ...slot })) : [emptySlot()]);
+        setTimetableProofFile(null);
+        setDeclarationError('');
+        setDeclarationMessage('');
+        setIsEditingDeclaration(true);
+    };
+
+    const cancelEditingDeclaration = () => {
+        setIsEditingDeclaration(false);
+        setDeclarationError('');
+    };
+
+    const handleSubmitDeclaration = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setDeclarationError('');
+        setDeclarationMessage('');
+
+        if (!creditDeclaration && !timetableProofFile) {
+            setDeclarationError('Please upload a photo or file of your official class timetable as proof.');
+            return;
+        }
+
+        setIsSubmittingDeclaration(true);
+
+        try {
+            const timetable = declSlots.filter((slot) => slot.startTime && slot.endTime);
+            const formData = new FormData();
+            formData.append('studentNumber', studentNumber);
+            formData.append('totalCredits', declTotalCredits);
+            formData.append('timetable', JSON.stringify(timetable));
+            if (timetableProofFile) {
+                formData.append('timetableProofFile', timetableProofFile);
+            }
+
+            const response = await fetch(`${API_BASE}/api/labour-credit-declarations/submit`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to submit credit/timetable declaration.');
+            }
+            setDeclarationMessage('Semester credit load and timetable submitted.');
+            setDeclarationPrompt('');
+            setIsEditingDeclaration(false);
+            setTimetableProofFile(null);
+            await fetchDeclaration();
+        } catch (err) {
+            setDeclarationError(err instanceof Error ? err.message : 'Failed to submit credit/timetable declaration.');
+        } finally {
+            setIsSubmittingDeclaration(false);
+        }
+    };
+
+    const timetableConflictWarning = useMemo(() => {
+        if (!creditDeclaration || !logDate || !workStartTime || !workEndTime) return '';
+        const dayOfWeek = jsDayToDayOfWeek(new Date(`${logDate}T00:00:00`).getDay());
+        const conflict = creditDeclaration.timetable.find(
+            (slot) => slot.dayOfWeek === dayOfWeek && workStartTime < slot.endTime && slot.startTime < workEndTime
+        );
+        if (!conflict) return '';
+        return `Warning: this overlaps with your declared class ${conflict.courseLabel || ''} (${conflict.startTime}-${conflict.endTime}) on ${dayOfWeek}.`;
+    }, [creditDeclaration, logDate, workStartTime, workEndTime]);
+
+    const futureTimeError = useMemo(() => {
+        if (!logDate || (!workStartTime && !workEndTime)) return '';
+        const today = new Date().toISOString().split('T')[0];
+        if (logDate !== today) return '';
+        const nowHHMM = new Date().toTimeString().slice(0, 5);
+        if ((workStartTime && workStartTime > nowHHMM) || (workEndTime && workEndTime > nowHHMM)) {
+            return "You can't log work hours that haven't happened yet. Choose a time up to now.";
+        }
+        return '';
+    }, [logDate, workStartTime, workEndTime]);
+
     const handleSubmitLog = async (e: React.FormEvent) => {
         e.preventDefault();
         setLogError('');
         setLogMessage('');
+
+        if (futureTimeError) {
+            setLogError(futureTimeError);
+            return;
+        }
 
         try {
             const coords = await getCurrentLocation();
@@ -374,8 +511,14 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
             await fetchLogs();
             await fetchReminders();
         } catch (err) {
+            const message = err instanceof Error ? err.message : 'Daily log submission failed.';
             setLogMessage('');
-            setLogError(err instanceof Error ? err.message : 'Daily log submission failed.');
+            if (message.toLowerCase().includes('credit load and class timetable')) {
+                setCreditDeclaration(null);
+                setDeclarationPrompt('Please declare your credits and class timetable below before you can log labour hours.');
+            } else {
+                setLogError(message);
+            }
         }
     };
 
@@ -565,10 +708,140 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
 
             {activeTab === 'daily-log' && (
                 <div className="daily-log-layout">
+                    {declarationLoaded && (!creditDeclaration || isEditingDeclaration) && (
+                        <div className="panel wide">
+                            <h3>{creditDeclaration ? 'Edit Your Semester Credits & Timetable' : 'Declare Your Semester Credits & Timetable'}</h3>
+                            <p className="muted">
+                                Before you can log labour hours, tell us how many credits you're taking this semester
+                                and your class timetable. Once submitted, the system will reject any daily log that
+                                overlaps with your declared class times, so submit it accurately. Made a mistake? You
+                                can come back and edit this at any time.
+                            </p>
+                            {declarationPrompt && <div className="alert warn">{declarationPrompt}</div>}
+                            {declarationError && <div className="alert error">{declarationError}</div>}
+                            {declarationMessage && <div className="alert success">{declarationMessage}</div>}
+                            <form className="log-form" onSubmit={handleSubmitDeclaration}>
+                                <label>Total Credits This Semester</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={30}
+                                    value={declTotalCredits}
+                                    onChange={(e) => setDeclTotalCredits(e.target.value)}
+                                    placeholder="e.g. 15"
+                                    required
+                                />
+                                <label>Class Timetable</label>
+                                {declSlots.map((slot, idx) => (
+                                    <div className="log-grid" key={idx}>
+                                        <div>
+                                            <label>Day</label>
+                                            <select
+                                                value={slot.dayOfWeek}
+                                                onChange={(e) => updateDeclSlot(idx, { dayOfWeek: e.target.value })}
+                                            >
+                                                {DAYS_OF_WEEK.map((day) => (
+                                                    <option key={day} value={day}>{day}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label>Start Time</label>
+                                            <input
+                                                type="time"
+                                                value={slot.startTime}
+                                                onChange={(e) => updateDeclSlot(idx, { startTime: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label>End Time</label>
+                                            <input
+                                                type="time"
+                                                value={slot.endTime}
+                                                onChange={(e) => updateDeclSlot(idx, { endTime: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label>Course</label>
+                                            <input
+                                                value={slot.courseLabel}
+                                                onChange={(e) => updateDeclSlot(idx, { courseLabel: e.target.value })}
+                                                placeholder="e.g. MATH 101"
+                                            />
+                                        </div>
+                                        {declSlots.length > 1 && (
+                                            <button type="button" onClick={() => removeDeclSlot(idx)}>Remove</button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button type="button" onClick={addDeclSlot}>+ Add Class Slot</button>
+
+                                <label>Upload Your Official Timetable (photo or PDF) as Proof</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.png,.jpg,.jpeg"
+                                    onChange={(e) => setTimetableProofFile(e.target.files?.[0] ?? null)}
+                                />
+                                {creditDeclaration?.timetableProofPath && !timetableProofFile && (
+                                    <p className="muted">
+                                        Current proof on file:{' '}
+                                        <a href={`${API_BASE}${creditDeclaration.timetableProofPath}`} target="_blank" rel="noopener noreferrer">
+                                            view
+                                        </a>
+                                        . Choose a new file above only if you want to replace it.
+                                    </p>
+                                )}
+
+                                <button type="submit" disabled={isSubmittingDeclaration || !declTotalCredits}>
+                                    {creditDeclaration ? 'Save Changes' : 'Submit Declaration'}
+                                </button>
+                                {creditDeclaration && (
+                                    <button type="button" onClick={cancelEditingDeclaration}>Cancel</button>
+                                )}
+                            </form>
+                        </div>
+                    )}
+
+                    {creditDeclaration && !isEditingDeclaration && (
+                        <div className="panel wide">
+                            <div className="section-row">
+                                <h3>My Semester Credits &amp; Timetable</h3>
+                                <button type="button" onClick={startEditingDeclaration}>Edit</button>
+                            </div>
+                            <p className="muted">Total credits: {creditDeclaration.totalCredits}</p>
+                            {creditDeclaration.timetableProofPath && (
+                                <p className="muted">
+                                    Timetable proof:{' '}
+                                    <a href={`${API_BASE}${creditDeclaration.timetableProofPath}`} target="_blank" rel="noopener noreferrer">
+                                        view uploaded file
+                                    </a>
+                                </p>
+                            )}
+                            {creditDeclaration.timetable.length === 0 && <p className="muted">No class timetable entries declared.</p>}
+                            {creditDeclaration.timetable.length > 0 && (
+                                <div className="recent-applications">
+                                    {creditDeclaration.timetable.map((slot, idx) => (
+                                        <div key={idx} className="application-row">
+                                            <span>{slot.dayOfWeek}</span>
+                                            <span>{slot.startTime} - {slot.endTime}</span>
+                                            <span>{slot.courseLabel || 'Class'}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {creditDeclaration && !isEditingDeclaration && (
                     <div className="panel wide">
                         <h3>Record Daily Entry</h3>
+                        <p className="muted">
+                            This semester: {creditDeclaration.totalCredits} credits, {creditDeclaration.timetable.length} scheduled class slot(s).
+                        </p>
                         {logError && <div className="alert error">{logError}</div>}
                         {logMessage && <div className="alert success">{logMessage}</div>}
+                        {timetableConflictWarning && <div className="alert warn">{timetableConflictWarning}</div>}
+                        {futureTimeError && <div className="alert warn">{futureTimeError}</div>}
                         {reminders.length > 0 && (
                             <div className="reminders-box">
                                 {reminders.map((item, idx) => (
@@ -581,15 +854,32 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
                             <div className="log-grid">
                                 <div>
                                     <label>Log Date</label>
-                                    <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} />
+                                    <input
+                                        type="date"
+                                        value={logDate}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        onChange={(e) => setLogDate(e.target.value)}
+                                    />
                                 </div>
                                 <div>
                                     <label>Work Start Time</label>
-                                    <input type="time" value={workStartTime} onChange={(e) => setWorkStartTime(e.target.value)} required />
+                                    <input
+                                        type="time"
+                                        value={workStartTime}
+                                        max={logDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                                        onChange={(e) => setWorkStartTime(e.target.value)}
+                                        required
+                                    />
                                 </div>
                                 <div>
                                     <label>Work End Time</label>
-                                    <input type="time" value={workEndTime} onChange={(e) => setWorkEndTime(e.target.value)} required />
+                                    <input
+                                        type="time"
+                                        value={workEndTime}
+                                        max={logDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                                        onChange={(e) => setWorkEndTime(e.target.value)}
+                                        required
+                                    />
                                 </div>
                             </div>
                             <label>Calculated Hours</label>
@@ -614,11 +904,12 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
                                     />
                                 </>
                             )}
-                            <button type="submit" disabled={!computedHours}>
+                            <button type="submit" disabled={!computedHours || !!timetableConflictWarning || !!futureTimeError}>
                                 Record Daily Entry
                             </button>
                         </form>
                     </div>
+                    )}
 
                     <div className="panel wide">
                         <h3>Recent Logs</h3>
