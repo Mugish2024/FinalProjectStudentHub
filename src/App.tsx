@@ -19,6 +19,7 @@ import DeanStudentList from './pages/DeanStudentList';
 import DeanCandidateReview from './pages/DeanCandidateReview';
 import FinancePaymentReview from './pages/FinancePaymentReview';
 import Login from './pages/Login';
+import PasswordReset from './pages/PasswordReset';
 import GuildInbox from './pages/GuildInbox';
 import GuildDashboard from './pages/GuildDashboard';
 import AucasaPlan from './pages/AucasaPlan';
@@ -96,6 +97,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(Boolean(initialProfile));
   const [userRole, setUserRole] = useState<UserRole>(initialProfile?.role ?? null);
   const [profile, setProfile] = useState<AuthProfile | null>(initialProfile);
+  const [passwordResetToken, setPasswordResetToken] = useState('');
 
   const isDeanRole = (role: UserRole) => role === 'staff' || role === 'dean';
   const isAdminRole = (role: UserRole) => role === 'admin';
@@ -146,6 +148,14 @@ function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const resetToken = params.get('resetToken') ?? '';
+    if (resetToken) {
+      setPasswordResetToken(resetToken);
+      setActivePage('reset-password');
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
     const qrToken = params.get('attendanceQr') ?? '';
     const session = params.get('attendanceSession');
     if (!qrToken) return;
@@ -168,7 +178,7 @@ function App() {
   }, [isLoggedIn]);
 
   const navigateWithAuth = (page: string) => {
-    if (!isLoggedIn && (page !== 'landing' && page !== 'about' && page !== 'services' && page !== 'contact' && page !== 'signup' && page !== 'login')) {
+    if (!isLoggedIn && (page !== 'landing' && page !== 'about' && page !== 'services' && page !== 'contact' && page !== 'signup' && page !== 'login' && page !== 'forgot-password' && page !== 'reset-password')) {
       setActivePage('login');
       return;
     }
@@ -379,6 +389,14 @@ function App() {
     return <Signup onBack={() => setActivePage('landing')} onLogin={() => setActivePage('login')} />;
   }
 
+  if (activePage === 'forgot-password' || activePage === 'reset-password') {
+    return <PasswordReset
+      token={activePage === 'reset-password' ? passwordResetToken : ''}
+      onBack={() => setActivePage('login')}
+      onLogin={() => setActivePage('login')}
+    />;
+  }
+
   if (activePage === 'login') {
     return <Login
       onLogin={(loginProfile) => {
@@ -398,6 +416,8 @@ function App() {
       }}
       onBack={() => setActivePage('landing')}
       onSignUp={() => setActivePage('signup')}
+      onForgotPassword={() => setActivePage('forgot-password')}
+      attendanceNotice={Boolean(selectedAttendanceQrToken)}
     />;
   }
 

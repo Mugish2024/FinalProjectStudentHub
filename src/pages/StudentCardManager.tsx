@@ -24,6 +24,8 @@ type CardApplication = {
     receiptUploadedAt?: string;
     financeReceiptStatus?: 'NOT_REQUIRED' | 'WAITING_UPLOAD' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
     financeReceiptMessage?: string;
+    photoReviewStatus?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+    photoReviewMessage?: string;
 };
 
 type StudentCardManagerProps = {
@@ -123,6 +125,18 @@ const StudentCardManager = ({ managerUserId }: StudentCardManagerProps) => {
         if (!needsReceiptReview(application)) return 'This is a first card request, so no finance receipt is needed.';
         if (application.financeReceiptUploaded) return 'Open the uploaded receipt, then approve it if it is valid or reject it if it is fake.';
         return 'The student must upload the finance office receipt before this replacement card can be printed.';
+    };
+
+    const photoStatusLabel = (application: CardApplication) => {
+        if (application.photoReviewStatus === 'APPROVED') return 'Approved';
+        if (application.photoReviewStatus === 'REJECTED') return 'Rejected';
+        return 'Needs review';
+    };
+
+    const photoStatusMessage = (application: CardApplication) => {
+        if (application.photoReviewMessage) return application.photoReviewMessage;
+        if (application.photoReviewStatus === 'REJECTED') return 'The student must upload a new proper passport photo.';
+        return 'Check that the passport photo is clear and proper before printing.';
     };
 
     const printedDetails = (application: CardApplication) => {
@@ -409,7 +423,7 @@ const StudentCardManager = ({ managerUserId }: StudentCardManagerProps) => {
 
     const reviewReceipt = async (application: CardApplication, approved: boolean) => {
         if (approved && !viewedReceiptIds.has(application.id)) {
-            setError('Open and review the uploaded receipt before approving or rejecting it.');
+            setError('Open and review the uploaded receipt before approving it.');
             return;
         }
         if (!application.financeReceiptUploaded && approved) {
@@ -440,6 +454,37 @@ const StudentCardManager = ({ managerUserId }: StudentCardManagerProps) => {
             await loadApplications();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to review finance receipt.');
+        } finally {
+            setBusyId(null);
+        }
+    };
+
+    const rejectPhoto = async (application: CardApplication) => {
+        const message = window.prompt(
+            'Why are you rejecting this passport photo?',
+            'Passport photo is not proper. Please upload a clear passport photo with a plain background.'
+        );
+        if (message === null) return;
+        setBusyId(application.id);
+        setError('');
+        setSuccess('');
+        try {
+            const response = await fetch(`${API_BASE}/api/student-cards/${application.id}/photo/review`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    approved: false,
+                    message: message.trim() || 'Passport photo was rejected. Please upload a clear, proper passport photo.',
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to reject passport photo.');
+            }
+            setSuccess('Passport photo rejected. Student can upload a new photo.');
+            await loadApplications();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to reject passport photo.');
         } finally {
             setBusyId(null);
         }
@@ -506,6 +551,30 @@ const StudentCardManager = ({ managerUserId }: StudentCardManagerProps) => {
                                     <p>{application.faculty || 'Faculty not set'} - {application.department || 'Department not set'}</p>
                                     <small>Applied {application.appliedAt ? new Date(application.appliedAt).toLocaleDateString() : 'recently'}</small>
                                     {isPrinted && <small className="card-request-printed-details">{printedDetails(application)}</small>}
+                                    <div className={`receipt-review-strip photo-${(application.photoReviewStatus || 'pending-review').toLowerCase().replaceAll('_', '-')}`}>
+                                        <strong>Passport photo: {photoStatusLabel(application)}</strong>
+                                        <span>{photoStatusMessage(application)}</span>
+                                        {!isPrinted && (
+                                            <div className="receipt-review-inline-actions">
+                                                {application.photoReviewStatus === 'REJECTED' ? (
+                                                    <span className="receipt-rejected-state">
+                                                        <XCircle size={15} />
+                                                        Photo Rejected
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="reject-receipt"
+                                                        onClick={() => void rejectPhoto(application)}
+                                                        disabled={busyId === application.id}
+                                                    >
+                                                        <XCircle size={15} />
+                                                        Reject Photo
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                     <div className={`receipt-review-strip ${(application.financeReceiptStatus || 'not-required').toLowerCase().replaceAll('_', '-')}`}>
                                         <strong>Finance receipt: {receiptStatusLabel(application)}</strong>
                                         <span>{receiptStatusMessage(application)}</span>
@@ -515,6 +584,7 @@ const StudentCardManager = ({ managerUserId }: StudentCardManagerProps) => {
                                                     type="button"
                                                     className="view-receipt"
                                                     onClick={() => void handleViewReceipt(application)}
+                                                    disabled={!application.financeReceiptUploaded}
                                                     title={!application.financeReceiptUploaded ? 'The student has not uploaded a receipt yet.' : undefined}
                                                 >
                                                     <FileText size={15} />
@@ -532,16 +602,23 @@ const StudentCardManager = ({ managerUserId }: StudentCardManagerProps) => {
                                                         Approve
                                                     </button>
                                                 )}
-                                                <button
-                                                    type="button"
-                                                    className="reject-receipt"
-                                                    onClick={() => void reviewReceipt(application, false)}
-                                                    disabled={busyId === application.id || application.financeReceiptStatus === 'REJECTED' || Boolean(application.financeReceiptUploaded && !receiptViewed)}
-                                                    title={application.financeReceiptUploaded && !receiptViewed ? 'View the uploaded receipt first.' : undefined}
-                                                >
-                                                    <XCircle size={15} />
-                                                    Reject
-                                                </button>
+                                                {application.financeReceiptStatus === 'REJECTED' ? (
+                                                    <span className="receipt-rejected-state">
+                                                        <XCircle size={15} />
+                                                        Rejected
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="reject-receipt"
+                                                        onClick={() => void reviewReceipt(application, false)}
+                                                        disabled={busyId === application.id || Boolean(application.financeReceiptUploaded && !receiptViewed)}
+                                                        title={application.financeReceiptUploaded && !receiptViewed ? 'View the uploaded receipt first.' : undefined}
+                                                    >
+                                                        <XCircle size={15} />
+                                                        Reject
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -555,8 +632,12 @@ const StudentCardManager = ({ managerUserId }: StudentCardManagerProps) => {
                                                 type="button"
                                                 className="mark-printed"
                                                 onClick={() => void handleMarkPrinted(application)}
-                                                disabled={busyId === application.id || Boolean(needsReceiptReview(application) && application.financeReceiptStatus !== 'APPROVED')}
-                                                title={needsReceiptReview(application) && application.financeReceiptStatus !== 'APPROVED' ? 'Approve the finance receipt first.' : undefined}
+                                                disabled={busyId === application.id || application.photoReviewStatus === 'REJECTED' || Boolean(needsReceiptReview(application) && application.financeReceiptStatus !== 'APPROVED')}
+                                                title={application.photoReviewStatus === 'REJECTED'
+                                                    ? 'Student must upload a new passport photo first.'
+                                                    : needsReceiptReview(application) && application.financeReceiptStatus !== 'APPROVED'
+                                                        ? 'Approve the finance receipt first.'
+                                                        : undefined}
                                             >
                                                 <CheckCircle2 size={15} />
                                                 Mark Printed

@@ -20,6 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
         "https://127.0.0.1:5173",
         "http://10.*.*.*:5173",
         "https://10.*.*.*:5173",
+        "http://192.168.*.*:5173",
+        "https://192.168.*.*:5173",
         "https://*.loca.lt",
         "https://*.trycloudflare.com"
 })

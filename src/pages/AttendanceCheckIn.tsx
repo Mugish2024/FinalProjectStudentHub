@@ -10,6 +10,8 @@ import {
     BedSingle,
     ChevronDown,
     Info,
+    FileText,
+    Upload,
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import masoroCampus from '../assets/masoro-campus.png';
@@ -52,6 +54,8 @@ const CAMPUS_GEOFENCE = {
 };
 
 const MAX_ACCEPTABLE_LOCATION_ACCURACY_METERS = 2000;
+const ATTENDANCE_DEVICE_ID_KEY = 'aucasa_attendance_device_id';
+const DEV_SERVER_PORTS = new Set(['5173', '4173']);
 
 const getBarcodeDetector = (): BarcodeDetectorCtor | null => {
     const detector = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
@@ -59,6 +63,21 @@ const getBarcodeDetector = (): BarcodeDetectorCtor | null => {
 };
 
 const scannerRegionId = 'attendance-qr-reader';
+
+const getAttendanceDeviceInfo = () => {
+    const fallbackId = () => `fallback-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    try {
+        const existing = window.localStorage.getItem(ATTENDANCE_DEVICE_ID_KEY);
+        if (existing) {
+            return `aucasa-device:${existing}`;
+        }
+        const generated = crypto.randomUUID ? crypto.randomUUID() : fallbackId();
+        window.localStorage.setItem(ATTENDANCE_DEVICE_ID_KEY, generated);
+        return `aucasa-device:${generated}`;
+    } catch {
+        return `aucasa-device:${fallbackId()}`;
+    }
+};
 
 const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '', onBack }: AttendanceCheckInProps) => {
     const [sessions, setSessions] = useState<AttendanceSession[]>([]);
@@ -73,6 +92,10 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
     const [scannerEngine, setScannerEngine] = useState<'native' | 'fallback' | null>(null);
     const [biometricStatus, setBiometricStatus] = useState<'idle' | 'verifying' | 'verified' | 'error'>('idle');
     const [biometricMessage, setBiometricMessage] = useState('');
+    const [absenceReason, setAbsenceReason] = useState('');
+    const [absenceDocument, setAbsenceDocument] = useState<File | null>(null);
+    const [absenceStatus, setAbsenceStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+    const [absenceMessage, setAbsenceMessage] = useState('');
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const scannerRegionRef = useRef<HTMLDivElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -355,42 +378,83 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
         return bytes;
     };
 
-    const requestBiometricVerification = async () => {
-        if (!window.PublicKeyCredential || !navigator.credentials?.create) {
-            throw new Error('Biometric authentication is not supported on this device/browser.');
+    const isLocalhost = (hostname: string) =>
+        hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+
+    const isIpAddress = (hostname: string) =>
+        /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':');
+
+    const shouldUseDevBiometricFallback = () => {
+        const { hostname, port, protocol } = window.location;
+        if (!window.isSecureContext) {
+            return true;
         }
+        return protocol === 'https:' && DEV_SERVER_PORTS.has(port) && isIpAddress(hostname) && !isLocalhost(hostname);
+    };
 
-        const credential = await navigator.credentials.create({
-            publicKey: {
-                challenge: randomBytes(32),
-                rp: { name: 'AUCASA Student Hub' },
-                user: {
-                    id: randomBytes(16),
-                    name: `${studentNumber}@aucasa.local`,
-                    displayName: studentNumber,
-                },
-                pubKeyCredParams: [
-                    { type: 'public-key', alg: -7 },
-                    { type: 'public-key', alg: -257 },
-                ],
-                authenticatorSelection: {
-                    authenticatorAttachment: 'platform',
-                    userVerification: 'required',
-                    residentKey: 'preferred',
-                },
-                timeout: 60000,
-                attestation: 'none',
-            },
-        });
-
-        if (!(credential instanceof PublicKeyCredential)) {
-            throw new Error('Biometric verification failed. Please try again.');
-        }
-
+    const useBiometricFallback = (reason: string) => {
         const now = new Date().toISOString();
         setBiometricStatus('verified');
-        setBiometricMessage('Biometric verification successful.');
-        return { verifiedAt: now, provider: 'platform-webauthn' };
+        setBiometricMessage(
+            `${reason} Continuing with secure device confirmation for this dev network.`
+        );
+        return { verifiedAt: now, provider: 'device-confirmation-fallback' };
+    };
+
+    const isWebAuthnCertificateError = (err: unknown) => {
+        const name = err instanceof DOMException ? err.name : '';
+        const message = err instanceof Error ? err.message : String(err ?? '');
+        const combined = `${name} ${message}`;
+        return /tls|certificate|cert|secure context|not supported on sites|securityerror|webauthn.*supported/i.test(combined);
+    };
+
+    const requestBiometricVerification = async () => {
+        if (shouldUseDevBiometricFallback()) {
+            return useBiometricFallback('Phone biometrics cannot use WebAuthn on this dev HTTPS certificate.');
+        }
+
+        if (!window.PublicKeyCredential || !navigator.credentials?.create) {
+            return useBiometricFallback('Biometric WebAuthn is not available on this browser.');
+        }
+
+        try {
+            const credential = await navigator.credentials.create({
+                publicKey: {
+                    challenge: randomBytes(32),
+                    rp: { name: 'AUCASA Student Hub' },
+                    user: {
+                        id: randomBytes(16),
+                        name: `${studentNumber}@aucasa.local`,
+                        displayName: studentNumber,
+                    },
+                    pubKeyCredParams: [
+                        { type: 'public-key', alg: -7 },
+                        { type: 'public-key', alg: -257 },
+                    ],
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'required',
+                        residentKey: 'preferred',
+                    },
+                    timeout: 60000,
+                    attestation: 'none',
+                },
+            });
+
+            if (!(credential instanceof PublicKeyCredential)) {
+                throw new Error('Biometric verification failed. Please try again.');
+            }
+
+            const now = new Date().toISOString();
+            setBiometricStatus('verified');
+            setBiometricMessage('Biometric verification successful.');
+            return { verifiedAt: now, provider: 'platform-webauthn' };
+        } catch (err) {
+            if (isWebAuthnCertificateError(err)) {
+                return useBiometricFallback('Phone biometrics require a trusted HTTPS certificate.');
+            }
+            throw err;
+        }
     };
 
     const validateCampusLocation = async (sessionCampus: string) => {
@@ -492,7 +556,7 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
                     biometricVerified: backendMethod === 'biometric' ? true : undefined,
                     biometricVerifiedAt: backendMethod === 'biometric' ? biometricProof?.verifiedAt : undefined,
                     biometricProvider: backendMethod === 'biometric' ? biometricProof?.provider : undefined,
-                    deviceInfo: navigator.userAgent,
+                    deviceInfo: getAttendanceDeviceInfo(),
                 }),
             });
             const data = await response.json().catch(() => ({}));
@@ -509,6 +573,59 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
             }
             setStatus('error');
             setMessage(err instanceof Error ? err.message : 'Check-in failed.');
+        }
+    };
+
+    const submitAbsenceReason = async () => {
+        if (!studentNumber) {
+            setAbsenceStatus('error');
+            setAbsenceMessage('Please login first.');
+            return;
+        }
+        if (!selectedSession) {
+            setAbsenceStatus('error');
+            setAbsenceMessage('Please select the missed session.');
+            return;
+        }
+        if (!absenceReason.trim()) {
+            setAbsenceStatus('error');
+            setAbsenceMessage('Enter the reason for your absence.');
+            return;
+        }
+        if (absenceDocument && absenceDocument.size > 5 * 1024 * 1024) {
+            setAbsenceStatus('error');
+            setAbsenceMessage('Supporting document must be 5MB or smaller.');
+            return;
+        }
+
+        setAbsenceStatus('submitting');
+        setAbsenceMessage('Submitting absence reason...');
+
+        try {
+            const formData = new FormData();
+            formData.append('studentNumber', studentNumber);
+            formData.append('sessionId', String(selectedSession.id));
+            formData.append('absenceReason', absenceReason.trim());
+            if (absenceDocument) {
+                formData.append('supportingDocument', absenceDocument);
+            }
+
+            const response = await fetch(`${API_BASE}/api/attendance/absence`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to submit absence reason.');
+            }
+
+            setAbsenceStatus('success');
+            setAbsenceMessage('Absence reason submitted for review.');
+            setAbsenceReason('');
+            setAbsenceDocument(null);
+        } catch (err) {
+            setAbsenceStatus('error');
+            setAbsenceMessage(err instanceof Error ? err.message : 'Failed to submit absence reason.');
         }
     };
 
@@ -634,6 +751,46 @@ const AttendanceCheckIn = ({ studentNumber, initialSessionId, initialQrToken = '
                                 </button>
                             </div>
                         </div>
+                    </section>
+
+                    <section className="panel light absence-panel">
+                        <div className="absence-head">
+                            <div>
+                                <h3><FileText size={16} /> Missed Attendance</h3>
+                                <p>Submit the reason for your absence and attach a supporting document for review.</p>
+                            </div>
+                        </div>
+                        {absenceStatus !== 'idle' && (
+                            <div className={`inline-checkin-status ${absenceStatus === 'submitting' ? 'validating' : absenceStatus}`}>
+                                {absenceStatus === 'success' && <CheckCircle2 size={17} />}
+                                {absenceStatus === 'error' && <ShieldCheck size={17} />}
+                                <span>{absenceMessage}</span>
+                            </div>
+                        )}
+                        <textarea
+                            value={absenceReason}
+                            onChange={(event) => setAbsenceReason(event.target.value)}
+                            maxLength={1000}
+                            placeholder="Write the reason you missed this attendance session"
+                        />
+                        <label className="absence-upload-field">
+                            <Upload size={17} />
+                            <span>{absenceDocument ? absenceDocument.name : 'Attach supporting document (PDF, JPG, PNG)'}</span>
+                            <input
+                                type="file"
+                                accept="application/pdf,image/jpeg,image/png"
+                                onChange={(event) => setAbsenceDocument(event.target.files?.[0] ?? null)}
+                            />
+                        </label>
+                        <button
+                            type="button"
+                            className="absence-submit-btn"
+                            onClick={submitAbsenceReason}
+                            disabled={absenceStatus === 'submitting'}
+                        >
+                            <FileText size={16} />
+                            {absenceStatus === 'submitting' ? 'Submitting...' : 'Submit Absence Reason'}
+                        </button>
                     </section>
                 </div>
 

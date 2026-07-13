@@ -2,6 +2,7 @@ package aucasa.com.rw.dto.attendance;
 
 public class AttendanceRecordAdminResponse {
     private Long id;
+    private Long sessionId;
     private String studentName;
     private String studentNumber;
     private String sessionTitle;
@@ -13,9 +14,13 @@ public class AttendanceRecordAdminResponse {
     private String wifiSsid;
     private String ipAddress;
     private String deviceInfo;
+    private String absenceReason;
+    private String absenceDocumentName;
+    private Boolean hasAbsenceDocument;
 
     public AttendanceRecordAdminResponse(
             Long id,
+            Long sessionId,
             String studentName,
             String studentNumber,
             String sessionTitle,
@@ -26,9 +31,13 @@ public class AttendanceRecordAdminResponse {
             String verificationStatus,
             String wifiSsid,
             String ipAddress,
-            String deviceInfo
+            String deviceInfo,
+            String absenceReason,
+            String absenceDocumentName,
+            Boolean hasAbsenceDocument
     ) {
         this.id = id;
+        this.sessionId = sessionId;
         this.studentName = studentName;
         this.studentNumber = studentNumber;
         this.sessionTitle = sessionTitle;
@@ -40,10 +49,17 @@ public class AttendanceRecordAdminResponse {
         this.wifiSsid = wifiSsid;
         this.ipAddress = ipAddress;
         this.deviceInfo = deviceInfo;
+        this.absenceReason = absenceReason;
+        this.absenceDocumentName = absenceDocumentName;
+        this.hasAbsenceDocument = hasAbsenceDocument;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public Long getSessionId() {
+        return sessionId;
     }
 
     public String getStudentName() {
@@ -88,5 +104,17 @@ public class AttendanceRecordAdminResponse {
 
     public String getDeviceInfo() {
         return deviceInfo;
+    }
+
+    public String getAbsenceReason() {
+        return absenceReason;
+    }
+
+    public String getAbsenceDocumentName() {
+        return absenceDocumentName;
+    }
+
+    public Boolean getHasAbsenceDocument() {
+        return hasAbsenceDocument;
     }
 }

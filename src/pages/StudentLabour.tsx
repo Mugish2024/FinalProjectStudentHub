@@ -27,6 +27,34 @@ type LabourActivityItem = {
     active: boolean;
 };
 
+const replaceAssistantWithSupporting = (text: string) =>
+    text.replace(/\bassistant\b/gi, (match) => {
+        if (match === match.toUpperCase()) return 'SUPPORTING';
+        return match[0] === match[0].toUpperCase() ? 'Supporting' : 'supporting';
+    });
+
+const isRegistrarActivity = (activity: LabourActivityItem) => {
+    const text = `${activity.title} ${activity.description || ''}`.toLowerCase();
+    return text.includes('registrar') || text.includes('registration office');
+};
+
+const isLibraryActivity = (activity: LabourActivityItem) => {
+    const text = `${activity.title} ${activity.description || ''}`.toLowerCase();
+    return text.includes('library') || text.includes('librarian');
+};
+
+const formatRoleTitle = (activity: LabourActivityItem) => {
+    if (isRegistrarActivity(activity)) return 'Supporting registrar';
+    if (isLibraryActivity(activity)) return 'Supporting library';
+    return replaceAssistantWithSupporting(activity.title);
+};
+
+const formatRoleDescription = (activity: LabourActivityItem) => {
+    if (isRegistrarActivity(activity)) return 'Registrar office';
+    if (isLibraryActivity(activity)) return 'Library';
+    return activity.description ? replaceAssistantWithSupporting(activity.description) : 'Dean approved campus labour activity.';
+};
+
 type LogItem = {
     id: number;
     studentName: string;
@@ -187,7 +215,7 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
         const reasons = getEligibilityReasons(activity);
         if (reasons.length > 0) {
             setEligibilityPopupTitle('Not Eligible for This Role');
-            setEligibilityPopupMessage(`You are not eligible to apply for "${activity.title}" because ${reasons.join(', ')}.`);
+            setEligibilityPopupMessage(`You are not eligible to apply for "${formatRoleTitle(activity)}" because ${reasons.join(', ')}.`);
             setEligibilityPopupOpen(true);
             return;
         }
@@ -422,7 +450,7 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
                             <div className="section-row">
                                 <h2>Available Labour Activities</h2>
                                 <div className="filters">
-                                    <button className="filter-btn active">Dean Created Activities</button>
+                                    <button className="filter-btn active">Director of Student Services Created Activities</button>
                                 </div>
                             </div>
 
@@ -442,8 +470,8 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
                                                 <BriefcaseBusiness size={20} />
                                             </div>
                                             <div className="job-head">
-                                                <h3>{activity.title}</h3>
-                                                <p>{activity.description || 'Dean approved campus labour activity.'}</p>
+                                                <h3>{formatRoleTitle(activity)}</h3>
+                                                <p>{formatRoleDescription(activity)}</p>
                                             </div>
                                         </div>
                                         <div className="job-tags">
@@ -489,7 +517,7 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
 
                                 {selectedActivity && (
                                     <div className="selected-role-card">
-                                        <strong>{selectedActivity.title}</strong>
+                                        <strong>{formatRoleTitle(selectedActivity)}</strong>
                                         <span>{selectedActivity.department}</span>
                                         <button type="button" onClick={() => setApplicationModalOpen(true)}>Continue Application</button>
                                     </div>
@@ -683,7 +711,7 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
                     <div className="labour-application-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="labour-application-modal-head">
                             <div>
-                                <span>Application for {selectedActivity.title}</span>
+                                <span>Application for {formatRoleTitle(selectedActivity)}</span>
                                 <h3>Student Labour Application</h3>
                             </div>
                             <button type="button" onClick={() => setApplicationModalOpen(false)} aria-label="Close application">
@@ -734,9 +762,9 @@ const StudentLabour: React.FC<StudentLabourProps> = ({ studentNumber, fullName =
                                     {applicationStep === 1 && (
                                         <div className="accordion-step-body">
                                             <div className="selected-role-summary">
-                                                <strong>{selectedActivity.title}</strong>
+                                                <strong>{formatRoleTitle(selectedActivity)}</strong>
                                                 <span>{selectedActivity.department} / Sem {selectedActivity.minSemester}+ / GPA {selectedActivity.minGpa}+</span>
-                                                <p>{selectedActivity.description || 'Dean approved campus labour activity.'}</p>
+                                                <p>{formatRoleDescription(selectedActivity)}</p>
                                             </div>
                                             <div className="step-grid one-column">
                                                 <label>

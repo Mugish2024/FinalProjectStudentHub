@@ -57,11 +57,11 @@ const Signup: React.FC<SignupProps> = ({ onBack, onLogin }) => {
     };
 
     return (
-        <div className="login-container">
-            <button className="back-to-landing" onClick={onBack} style={{ position: 'fixed', top: '2rem', left: '2rem', background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem 1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 600, color: '#64748b', cursor: 'pointer' }}>
+        <div className="login-container signup-container">
+            <button className="back-to-landing" onClick={onBack}>
                 <ArrowLeft size={16} /> Back to Home
             </button>
-            <div className="login-card">
+            <div className="login-card signup-card">
                 <div className="login-brand">
                     <img src={aucaLogo} alt="AUCA Logo" className="login-logo" />
                     <h2>Create Student Account</h2>

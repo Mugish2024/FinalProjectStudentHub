@@ -25,9 +25,11 @@ interface LoginProps {
     onLogin: (profile: LoginProfile) => void;
     onBack: () => void;
     onSignUp: () => void;
+    onForgotPassword: () => void;
+    attendanceNotice?: boolean;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp, onForgotPassword, attendanceNotice = false }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -66,22 +68,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
 
     return (
         <div className="login-container">
-            <button className="back-to-landing" onClick={onBack} style={{
-                position: 'fixed',
-                top: '2rem',
-                left: '2rem',
-                background: 'white',
-                border: '1px solid #e2e8f0',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                color: '#64748b',
-                cursor: 'pointer'
-            }}>
+            <button className="back-to-landing" onClick={onBack}>
                 <ArrowLeft size={16} /> Back to Home
             </button>
 
@@ -92,13 +79,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
                         alt="AUCA Logo"
                         className="login-logo"
                     />
-                    <h2>Student Portal Login</h2>
-                    <p>Enter your institutional credentials</p>
+                    <h2>{attendanceNotice ? 'Attendance Check-In' : 'Student Portal Login'}</h2>
+                    <p>{attendanceNotice ? 'Attendance QR detected. Sign in to confirm your presence.' : 'Enter your institutional credentials'}</p>
                 </div>
 
                 <form className="login-form" onSubmit={handleSubmit}>
+                    {attendanceNotice && (
+                        <div className="attendance-login-notice">
+                            <strong>QR scan received</strong>
+                            <span>After signing in, the system will open the attendance validation screen automatically.</span>
+                        </div>
+                    )}
                     {error && (
-                        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                        <div className="login-error-message">
                             {error}
                         </div>
                     )}
@@ -147,10 +140,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onSignUp }) => {
                         <button
                             type="button"
                             className="forgot-password-link"
-                            onClick={() => {
-                                setError('');
-                                setInfo('Forgot your password? Please contact ICT or Student Support to reset your account password.');
-                            }}
+                            onClick={onForgotPassword}
                         >
                             Forgot password?
                         </button>

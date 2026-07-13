@@ -43,6 +43,15 @@ public class AttendanceRecord extends BaseEntity {
     @Column(length = 500)
     private String notes;
 
+    @Column(length = 1000)
+    private String absenceReason;
+
+    @Column(length = 500)
+    private String absenceDocumentPath;
+
+    @Column(length = 255)
+    private String absenceDocumentName;
+
     @Column(length = 120)
     private String wifiSsid;
 
@@ -116,6 +125,30 @@ public class AttendanceRecord extends BaseEntity {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getAbsenceReason() {
+        return absenceReason;
+    }
+
+    public void setAbsenceReason(String absenceReason) {
+        this.absenceReason = absenceReason;
+    }
+
+    public String getAbsenceDocumentPath() {
+        return absenceDocumentPath;
+    }
+
+    public void setAbsenceDocumentPath(String absenceDocumentPath) {
+        this.absenceDocumentPath = absenceDocumentPath;
+    }
+
+    public String getAbsenceDocumentName() {
+        return absenceDocumentName;
+    }
+
+    public void setAbsenceDocumentName(String absenceDocumentName) {
+        this.absenceDocumentName = absenceDocumentName;
     }
 
     public String getWifiSsid() {

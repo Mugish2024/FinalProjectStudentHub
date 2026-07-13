@@ -21,6 +21,9 @@ type AttendanceRecord = {
     status: 'Present' | 'Absent';
     verificationStatus?: string;
     wifiSsid?: string | null;
+    absenceReason?: string | null;
+    absenceDocumentName?: string | null;
+    hasAbsenceDocument?: boolean;
 };
 
 type AttendanceSession = {
@@ -109,6 +112,9 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
             status: record.status === 'PRESENT' ? 'Present' : 'Absent',
             verificationStatus: record.verificationStatus ?? 'PENDING',
             wifiSsid: record.wifiSsid ?? '',
+            absenceReason: record.absenceReason ?? '',
+            absenceDocumentName: record.absenceDocumentName ?? '',
+            hasAbsenceDocument: Boolean(record.hasAbsenceDocument),
         }));
         setRecords(mapped);
     };
@@ -314,6 +320,7 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
                                 <th>Session Name</th>
                                 <th>Location</th>
                                 <th>Status</th>
+                                <th>Reason</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -327,11 +334,12 @@ const Attendance = ({ studentNumber, onOpenCheckIn }: AttendanceProps) => {
                                             {record.status}
                                         </span>
                                     </td>
+                                    <td>{record.absenceReason || '-'}</td>
                                 </tr>
                             ))}
                             {records.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="no-data">No attendance records yet.</td>
+                                    <td colSpan={5} className="no-data">No attendance records yet.</td>
                                 </tr>
                             )}
                         </tbody>

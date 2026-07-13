@@ -1,46 +1,89 @@
 package aucasa.com.rw.service;
 
+import aucasa.com.rw.domain.PasswordResetToken;
 import aucasa.com.rw.domain.StudentProfile;
 import aucasa.com.rw.domain.UserAccount;
 import aucasa.com.rw.domain.enums.DisciplineStatus;
 import aucasa.com.rw.dto.auth.AccountSetupRequest;
+import aucasa.com.rw.dto.auth.ForgotPasswordRequest;
 import aucasa.com.rw.dto.auth.LoginRequest;
 import aucasa.com.rw.dto.auth.LoginResponse;
+import aucasa.com.rw.dto.auth.ResetPasswordRequest;
 import aucasa.com.rw.dto.student.StudentRegistrationRequest;
 import aucasa.com.rw.domain.enums.RoleType;
+import aucasa.com.rw.repository.PasswordResetTokenRepository;
 import aucasa.com.rw.repository.StudentProfileRepository;
 import aucasa.com.rw.repository.UserAccountRepository;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.Locale;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final int RESET_TOKEN_BYTES = 32;
+    private static final int RESET_TOKEN_EXPIRY_MINUTES = 60;
+
     private final UserAccountRepository userAccountRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final StudentProfileService studentProfileService;
     private final ImsStudentGatewayService imsStudentGatewayService;
     private final PasswordPolicyService passwordPolicyService;
     private final LoginAttemptService loginAttemptService;
+    private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    private final String frontendBaseUrl;
+    private final String mailFrom;
+    private final String smtpHost;
+    private final String smtpUsername;
+    private final String smtpPassword;
 
     public AuthService(
             UserAccountRepository userAccountRepository,
+            PasswordResetTokenRepository passwordResetTokenRepository,
             StudentProfileRepository studentProfileRepository,
             PasswordEncoder passwordEncoder,
             StudentProfileService studentProfileService,
             ImsStudentGatewayService imsStudentGatewayService,
             PasswordPolicyService passwordPolicyService,
-            LoginAttemptService loginAttemptService
+            LoginAttemptService loginAttemptService,
+            ObjectProvider<JavaMailSender> mailSenderProvider,
+            @Value("${app.frontend-base-url:http://localhost:5173}") String frontendBaseUrl,
+            @Value("${app.mail.from:no-reply@aucasa.local}") String mailFrom,
+            @Value("${spring.mail.host:}") String smtpHost,
+            @Value("${spring.mail.username:}") String smtpUsername,
+            @Value("${spring.mail.password:}") String smtpPassword
     ) {
         this.userAccountRepository = userAccountRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.studentProfileService = studentProfileService;
         this.imsStudentGatewayService = imsStudentGatewayService;
         this.passwordPolicyService = passwordPolicyService;
         this.loginAttemptService = loginAttemptService;
+        this.mailSenderProvider = mailSenderProvider;
+        this.frontendBaseUrl = stripTrailingSlash(frontendBaseUrl);
+        this.mailFrom = mailFrom;
+        this.smtpHost = smtpHost;
+        this.smtpUsername = smtpUsername;
+        this.smtpPassword = smtpPassword;
     }
 
     @Transactional
@@ -136,8 +179,115 @@ public class AuthService {
         );
     }
 
+    @Transactional
+    public void requestPasswordReset(ForgotPasswordRequest request) {
+        if (request == null || isBlank(request.getEmail())) {
+            throw new IllegalArgumentException("Email is required.");
+        }
+
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        Optional<UserAccount> userOpt = userAccountRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            log.info("Password reset requested for unknown email: {}", email);
+            return;
+        }
+
+        UserAccount user = userOpt.get();
+        passwordResetTokenRepository.deleteByUserAccountAndUsedAtIsNull(user);
+
+        String token = generateResetToken();
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setUserAccount(user);
+        resetToken.setTokenHash(hashToken(token));
+        resetToken.setExpiresAt(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRY_MINUTES));
+        passwordResetTokenRepository.save(resetToken);
+
+        sendPasswordResetEmail(user, buildResetLink(token));
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (request == null || isBlank(request.getToken()) || isBlank(request.getPassword())) {
+            throw new IllegalArgumentException("Reset token and password are required.");
+        }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(hashToken(request.getToken().trim()))
+                .orElseThrow(() -> new IllegalArgumentException("This reset link is invalid or expired."));
+        if (resetToken.getUsedAt() != null || resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("This reset link is invalid or expired.");
+        }
+
+        passwordPolicyService.validate(request.getPassword());
+        UserAccount user = resetToken.getUserAccount();
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        userAccountRepository.save(user);
+
+        resetToken.setUsedAt(LocalDateTime.now());
+        passwordResetTokenRepository.save(resetToken);
+        loginAttemptService.recordSuccess(user.getEmail());
+        loginAttemptService.recordSuccess(user.getUsername());
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String generateResetToken() {
+        byte[] bytes = new byte[RESET_TOKEN_BYTES];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(hash.length * 2);
+            for (byte value : hash) {
+                builder.append(String.format("%02x", value));
+            }
+            return builder.toString();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Unable to process reset token.", ex);
+        }
+    }
+
+    private String buildResetLink(String token) {
+        return frontendBaseUrl + "?resetToken=" + token;
+    }
+
+    private String stripTrailingSlash(String value) {
+        if (value == null || value.isBlank()) {
+            return "http://localhost:5173";
+        }
+        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+    }
+
+    private void sendPasswordResetEmail(UserAccount user, String resetLink) {
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+        if (mailSender == null || isBlank(smtpHost) || isBlank(smtpUsername) || isBlank(smtpPassword)) {
+            log.warn("SMTP is not configured. Password reset link for {}: {}", user.getEmail(), resetLink);
+            return;
+        }
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(mailFrom);
+        message.setTo(user.getEmail());
+        message.setSubject("AUCASA password reset");
+        message.setText("""
+                Hello %s,
+
+                Use this link to reset your AUCASA Student Hub password:
+                %s
+
+                This link expires in %d minutes. If you did not request it, ignore this email.
+                """.formatted(user.getFirstName(), resetLink, RESET_TOKEN_EXPIRY_MINUTES));
+        try {
+            mailSender.send(message);
+            log.info("Password reset email sent to {} using SMTP account {}.", user.getEmail(), smtpUsername);
+        } catch (MailException ex) {
+            log.warn("Could not send password reset email to {}. Reset link: {}", user.getEmail(), resetLink, ex);
+        }
     }
 
     private String normalizeUsername(String input) {

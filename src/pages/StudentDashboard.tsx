@@ -66,6 +66,30 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         status?: string;
         amount?: number;
     };
+    type AttendanceSessionItem = {
+        id: number;
+        title?: string;
+        startsAt?: string;
+        endsAt?: string;
+        active?: boolean;
+        cancelled?: boolean;
+    };
+    type AttendanceRecordItem = {
+        id: number;
+        sessionId?: number | null;
+        status?: string;
+    };
+    type ElectionItem = {
+        id: number;
+        title?: string;
+        status?: string;
+        nominationStart?: string;
+        nominationEnd?: string;
+        campaignStart?: string;
+        campaignEnd?: string;
+        votingStart?: string;
+        votingEnd?: string;
+    };
     type StudentCardApplication = {
         id: number;
         status: 'PENDING' | 'PRINTED';
@@ -77,10 +101,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         financeReceiptStatus?: 'NOT_REQUIRED' | 'WAITING_UPLOAD' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
         financeReceiptMessage?: string;
         financeReceiptReviewedAt?: string;
+        photoReviewStatus?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+        photoReviewMessage?: string;
+        photoReviewedAt?: string;
     };
     type ActionReminder = {
         id: string;
-        type: 'attendance' | 'vote';
+        type: 'attendance' | 'vote' | 'election';
         title: string;
         message: string;
         actionLabel: string;
@@ -92,6 +119,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [passportPhotoConfirmed, setPassportPhotoConfirmed] = useState(false);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [financeReceipt, setFinanceReceipt] = useState<File | null>(null);
+    const [replacementCardPhoto, setReplacementCardPhoto] = useState<File | null>(null);
     const [cardError, setCardError] = useState('');
     const [cardSuccess, setCardSuccess] = useState('');
     const [cardPhotoNote, setCardPhotoNote] = useState('');
@@ -107,6 +135,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
     const [studentPayments, setStudentPayments] = useState<StudentPaymentRecord[]>([]);
     const [actionReminders, setActionReminders] = useState<ActionReminder[]>([]);
+    const [attendanceSessions, setAttendanceSessions] = useState<AttendanceSessionItem[]>([]);
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecordItem[]>([]);
     const studentCardVideoRef = useRef<HTMLVideoElement | null>(null);
     const studentCardCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const studentCardCameraStreamRef = useRef<MediaStream | null>(null);
@@ -127,6 +157,35 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     );
 
     const studentFinanceStanding = studentBalanceOwed > 0 ? 'In debt' : 'Clear';
+
+    const openedAttendanceSessions = useMemo(() => {
+        const now = Date.now();
+        return attendanceSessions.filter((session) => {
+            if (session.cancelled) return false;
+            if (session.active) return true;
+            if (!session.startsAt) return false;
+            const start = parseRwandaDate(session.startsAt);
+            return Number.isFinite(start.getTime()) && start.getTime() <= now;
+        });
+    }, [attendanceSessions]);
+
+    const attendedSessionIds = useMemo(() => {
+        return new Set(
+            attendanceRecords
+                .filter((record) => String(record.status ?? '').toUpperCase() === 'PRESENT' && record.sessionId)
+                .map((record) => Number(record.sessionId))
+        );
+    }, [attendanceRecords]);
+
+    const attendedOpenedSessionCount = useMemo(
+        () => openedAttendanceSessions.filter((session) => attendedSessionIds.has(session.id)).length,
+        [openedAttendanceSessions, attendedSessionIds]
+    );
+
+    const attendanceRate = useMemo(() => {
+        if (openedAttendanceSessions.length === 0) return 0;
+        return Number(((attendedOpenedSessionCount / openedAttendanceSessions.length) * 100).toFixed(1));
+    }, [attendedOpenedSessionCount, openedAttendanceSessions.length]);
 
     const stopStudentCardCamera = () => {
         studentCardCameraStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -352,13 +411,92 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         };
     }, [API_BASE, studentId]);
 
+    useEffect(() => {
+        let cancelled = false;
+        const loadAttendanceProgress = async () => {
+            try {
+                const [sessionsResponse, recordsResponse] = await Promise.all([
+                    fetch(`${API_BASE}/api/attendance/sessions?active=false`),
+                    studentNumber
+                        ? fetch(`${API_BASE}/api/attendance/records?studentNumber=${encodeURIComponent(studentNumber)}`)
+                        : Promise.resolve(null),
+                ]);
+
+                const sessionsData = await sessionsResponse.json().catch(() => []);
+                const recordsData = recordsResponse ? await recordsResponse.json().catch(() => []) : [];
+
+                if (!cancelled) {
+                    setAttendanceSessions(sessionsResponse.ok && Array.isArray(sessionsData) ? sessionsData : []);
+                    setAttendanceRecords(recordsResponse?.ok && Array.isArray(recordsData) ? recordsData : []);
+                }
+            } catch {
+                if (!cancelled) {
+                    setAttendanceSessions([]);
+                    setAttendanceRecords([]);
+                }
+            }
+        };
+
+        void loadAttendanceProgress();
+        const timer = window.setInterval(loadAttendanceProgress, 30000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+        };
+    }, [API_BASE, studentNumber]);
+
     const formatDateTimeRange = (start?: string, end?: string) => {
-        const startDate = start ? new Date(start) : null;
-        const endDate = end ? new Date(end) : null;
+        const startDate = start ? parseRwandaDate(start) : null;
+        const endDate = end ? parseRwandaDate(end) : null;
         if (!startDate || !endDate || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
             return '';
         }
         return `${startDate.toLocaleString()} - ${endDate.toLocaleString()}`;
+    };
+
+    const buildElectionReminder = (election: ElectionItem, hasVoted = false): ActionReminder | null => {
+        const phase = String(election.status ?? '').toUpperCase();
+        const title = election.title ?? 'Student election';
+
+        if (phase === 'NOMINATION' || phase === 'DRAFT') {
+            const range = formatDateTimeRange(election.nominationStart, election.nominationEnd);
+            return {
+                id: `election-${election.id}-${phase.toLowerCase()}`,
+                type: 'election',
+                title: phase === 'DRAFT' ? 'Election preparation is active' : 'Nomination phase is open',
+                message: `${title}${range ? ` nomination runs from ${range}` : ' nomination is active'}. Eligible students can apply for leadership positions.`,
+                actionLabel: 'View Election',
+                page: 'elections',
+            };
+        }
+
+        if (phase === 'CAMPAIGN') {
+            const range = formatDateTimeRange(election.campaignStart, election.campaignEnd);
+            return {
+                id: `election-${election.id}-campaign`,
+                type: 'election',
+                title: 'Campaign phase is active',
+                message: `${title}${range ? ` campaign runs from ${range}` : ' campaign is active'}. Review approved candidates and their campaign messages.`,
+                actionLabel: 'View Campaigns',
+                page: 'elections',
+            };
+        }
+
+        if (phase === 'VOTING') {
+            const range = formatDateTimeRange(election.votingStart, election.votingEnd);
+            return {
+                id: `vote-${election.id}`,
+                type: hasVoted ? 'election' : 'vote',
+                title: hasVoted ? 'Voting phase is active' : 'Voting is open',
+                message: hasVoted
+                    ? `${title}${range ? ` voting runs from ${range}` : ' voting is active'}. Your vote has been recorded.`
+                    : `${title} is open${range ? ` from ${range}` : ''}. Please vote now.`,
+                actionLabel: hasVoted ? 'View Candidates' : 'Vote Now',
+                page: 'elections',
+            };
+        }
+
+        return null;
     };
 
     useEffect(() => {
@@ -393,27 +531,22 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
             try {
                 const electionResponse = await fetch(`${API_BASE}/api/elections/active`);
-                const electionData = await electionResponse.json().catch(() => null);
+                const electionData = await electionResponse.json().catch(() => null) as ElectionItem | null;
                 const now = new Date();
-                const start = electionData?.votingStart ? new Date(electionData.votingStart) : null;
-                const end = electionData?.votingEnd ? new Date(electionData.votingEnd) : null;
+                const start = electionData?.votingStart ? parseRwandaDate(electionData.votingStart) : null;
+                const end = electionData?.votingEnd ? parseRwandaDate(electionData.votingEnd) : null;
                 const votingWindowOpen = (!start || now >= start) && (!end || now <= end);
-                if (electionResponse.ok && electionData?.id && electionData.status === 'VOTING' && votingWindowOpen && studentNumber) {
-                    const statusResponse = await fetch(
-                        `${API_BASE}/api/elections/votes/status?electionId=${electionData.id}&studentNumber=${encodeURIComponent(studentNumber)}`
-                    );
-                    const statusData = await statusResponse.json().catch(() => ({}));
-                    if (!statusResponse.ok || !statusData.voted) {
-                        const range = formatDateTimeRange(electionData.votingStart, electionData.votingEnd);
-                        reminders.push({
-                            id: `vote-${electionData.id}`,
-                            type: 'vote',
-                            title: 'Voting is open',
-                            message: `${electionData.title ?? 'Student election'} is open${range ? ` from ${range}` : ''}. Please vote now.`,
-                            actionLabel: 'Vote Now',
-                            page: 'elections',
-                        });
+                if (electionResponse.ok && electionData?.id) {
+                    let hasVoted = false;
+                    if (electionData.status === 'VOTING' && votingWindowOpen && studentNumber) {
+                        const statusResponse = await fetch(
+                            `${API_BASE}/api/elections/votes/status?electionId=${electionData.id}&studentNumber=${encodeURIComponent(studentNumber)}`
+                        );
+                        const statusData = await statusResponse.json().catch(() => ({}));
+                        hasVoted = statusResponse.ok && Boolean(statusData.voted);
                     }
+                    const electionReminder = buildElectionReminder(electionData, hasVoted);
+                    if (electionReminder) reminders.push(electionReminder);
                 }
             } catch {
                 // Leave reminder empty if the service is temporarily unavailable.
@@ -571,6 +704,42 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         }
     };
 
+    const uploadReplacementCardPhoto = async () => {
+        setCardError('');
+        setCardSuccess('');
+        if (!cardApplication) {
+            setCardError('Apply for a student card first.');
+            return;
+        }
+        if (!replacementCardPhoto) {
+            setCardError('Please choose a new passport photo first.');
+            return;
+        }
+
+        setIsValidatingCardPhoto(true);
+        try {
+            await validateStudentCardPhoto(replacementCardPhoto);
+            const form = new FormData();
+            form.append('studentNumber', studentNumber);
+            form.append('photo', replacementCardPhoto);
+            const response = await fetch(`${API_BASE}/api/student-cards/${cardApplication.id}/photo`, {
+                method: 'POST',
+                body: form,
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to upload replacement photo.');
+            }
+            setCardApplication(data as StudentCardApplication);
+            setReplacementCardPhoto(null);
+            setCardSuccess('New passport photo uploaded successfully. The card office will review it.');
+        } catch (error) {
+            setCardError(error instanceof Error ? error.message : 'Failed to upload replacement photo.');
+        } finally {
+            setIsValidatingCardPhoto(false);
+        }
+    };
+
     void financeClearance;
 
     return (
@@ -629,8 +798,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 </article>
                 <article className="sd-stat-card sd-stat-card--teal">
                     <span>Attendance Rate</span>
-                    <strong>94.5%</strong>
-                    <small>This semester</small>
+                    <strong>{attendanceRate}%</strong>
+                    <small>{attendedOpenedSessionCount}/{openedAttendanceSessions.length} opened sessions</small>
                 </article>
                 <article className="sd-stat-card sd-stat-card--gold">
                     <span>Finance Standing</span>
@@ -754,7 +923,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <button className="service-tile" onClick={() => handleNavigate('attendance')}>
                         <div className="tile-icon cyan"><UserCheck size={18} /></div>
                         <h3>Attendance</h3>
-                        <p>94.5% overall attendance across enrolled courses this term.</p>
+                        <p>{attendanceRate}% attendance across opened general assembly sessions this term.</p>
                     </button>
                     <button className="service-tile" onClick={() => handleNavigate('discipline')}>
                         <div className="tile-icon lavender"><ClipboardList size={18} /></div>
@@ -970,8 +1139,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                                     <span>{formatShortDate(cardApplication.appliedAt)}</span>
                                                 </td>
                                                 <td className={`student-card-progress-cell ${cardApplication.status === 'PENDING' ? 'student-card-progress-cell--active' : 'student-card-progress-cell--done'}`}>
-                                                    <strong>{cardApplication.status === 'PENDING' ? 'In review' : 'Completed'}</strong>
-                                                    <span>{cardApplication.status === 'PENDING' ? 'Card office is checking your request.' : 'Card office finished printing.'}</span>
+                                                    <strong>{cardApplication.photoReviewStatus === 'REJECTED' ? 'Photo rejected' : cardApplication.status === 'PENDING' ? 'In review' : 'Completed'}</strong>
+                                                    <span>{cardApplication.photoReviewStatus === 'REJECTED' ? 'Upload a new passport photo.' : cardApplication.status === 'PENDING' ? 'Card office is checking your request.' : 'Card office finished printing.'}</span>
                                                 </td>
                                                 <td className={`student-card-progress-cell ${cardApplication.status === 'PRINTED' ? 'student-card-progress-cell--active' : ''}`}>
                                                     <strong className={cardApplication.status === 'PRINTED' ? 'printed' : ''}>
@@ -1007,6 +1176,34 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                                         </tbody>
                                     </table>
                                 </div>
+                                {cardApplication.photoReviewStatus === 'REJECTED' && (
+                                    <div className="student-card-reupload-panel">
+                                        <div className="student-card-status student-card-status--rejected">
+                                            {cardApplication.photoReviewMessage || 'Your passport photo was rejected. Please upload a clear, proper passport photo.'}
+                                        </div>
+                                        <label className="student-card-upload">
+                                            <Upload size={16} />
+                                            <span>{replacementCardPhoto ? replacementCardPhoto.name : 'Upload new passport photo'}</span>
+                                            <input
+                                                type="file"
+                                                accept="image/jpeg,image/png"
+                                                onChange={(event) => {
+                                                    setReplacementCardPhoto(event.target.files?.[0] ?? null);
+                                                    setCardError('');
+                                                    setCardSuccess('');
+                                                }}
+                                            />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            className="student-card-generate"
+                                            onClick={() => void uploadReplacementCardPhoto()}
+                                            disabled={isValidatingCardPhoto}
+                                        >
+                                            {isValidatingCardPhoto ? 'Checking...' : 'Upload New Photo'}
+                                        </button>
+                                    </div>
+                                )}
                                 {cardApplication.replacementRequest && cardApplication.financeReceiptStatus === 'REJECTED' && (
                                     <div className="student-card-status student-card-status--rejected">
                                         {cardApplication.financeReceiptMessage || 'The uploaded finance receipt was rejected because it appears to be fake. Please upload a valid receipt from the finance office.'}
@@ -1086,6 +1283,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         </div>
     );
+};
+
+const parseRwandaDate = (value: string) => {
+    if (!value) return new Date(Number.NaN);
+    if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) {
+        return new Date(value);
+    }
+    return new Date(`${value}+02:00`);
 };
 
 export default StudentDashboard;

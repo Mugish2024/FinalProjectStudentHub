@@ -279,3 +279,76 @@ textarea:focus-visible {
   border-color: #fecaca !important;
   color: #991b1b !important;
 }
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+table {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  h1 {
+    font-size: 1.35rem;
+    line-height: 1.18;
+  }
+
+  h2 {
+    font-size: 1.08rem;
+    line-height: 1.22;
+  }
+
+  h3 {
+    font-size: 0.98rem;
+    line-height: 1.25;
+  }
+
+  p,
+  li,
+  label,
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 0.88rem;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  button {
+    min-height: 40px;
+    white-space: normal;
+  }
+
+  .panel,
+  .card,
+  [class*='-card'],
+  [class*='-panel'],
+  [class*='-tile'] {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 380px) {
+  html {
+    font-size: 14px;
+  }
+}

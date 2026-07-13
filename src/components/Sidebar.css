@@ -41,6 +41,13 @@
     width: 100%;
 }
 
+.brand-lockup {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
 .auca-logo-img {
     width: 30px;
     height: 30px;
@@ -51,10 +58,15 @@
     transition: width 0.2s ease, height 0.2s ease;
 }
 
+.university-mark {
+    display: none;
+}
+
 .logo-text {
-    font-size: 1.12rem;
+    font-size: 0.74rem;
     font-weight: 900;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.8px;
+    line-height: 1;
     color: white;
     margin: 0;
     text-transform: uppercase;
@@ -76,18 +88,55 @@
 
 .sidebar.expanded .sidebar-header {
     justify-content: space-between;
-    padding: 0 1rem;
+    height: 82px;
+    padding: 0.55rem 0.85rem;
 }
 
 .sidebar.expanded .logo-container {
-    justify-content: flex-start;
-    gap: 0.7rem;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.28rem;
     min-width: 0;
 }
 
 .sidebar.expanded .auca-logo-img {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
+}
+
+.sidebar.expanded .brand-lockup {
+    gap: 0.48rem;
+    max-width: 160px;
+}
+
+.sidebar.expanded .university-mark {
+    display: grid;
+    line-height: 1.08;
+    min-width: 0;
+}
+
+.sidebar.expanded .university-mark strong {
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar.expanded .university-mark span {
+    color: rgba(239, 248, 255, 0.78);
+    font-size: 0.66rem;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar.expanded .logo-text {
+    font-size: 0.68rem;
+    width: auto;
 }
 
 .sidebar-pin-btn {
@@ -422,15 +471,18 @@
 
 @media (max-width: 1024px) {
     .sidebar {
-        width: min(280px, 86vw);
+        height: 100dvh;
+        max-height: 100dvh;
+        width: min(246px, 78vw);
         flex-basis: auto;
         position: fixed;
         transform: translateX(-100%);
+        overflow: hidden;
     }
 
     .sidebar:hover,
     .sidebar:focus-within {
-        width: min(280px, 86vw);
+        width: min(246px, 78vw);
     }
 
     .logo-text,
@@ -444,19 +496,62 @@
 
     .sidebar-header {
         justify-content: flex-start;
-        padding: 0 1rem;
+        padding: 0.42rem 0.75rem;
         height: 72px;
+        flex: 0 0 auto;
+        order: 0;
     }
 
     .logo-container {
+        align-items: center;
+        flex-direction: column;
         justify-content: flex-start;
-        gap: 0.7rem;
+        gap: 0.22rem;
         min-width: 0;
     }
 
     .auca-logo-img {
-        width: 38px;
-        height: 38px;
+        width: 30px;
+        height: 30px;
+    }
+
+    .logo-text {
+        font-size: 0.64rem;
+        line-height: 1;
+    }
+
+    .brand-lockup {
+        gap: 0.44rem;
+        justify-content: flex-start;
+        max-width: 168px;
+    }
+
+    .university-mark {
+        display: grid;
+        line-height: 1.08;
+        min-width: 0;
+    }
+
+    .university-mark strong {
+        color: #ffffff;
+        font-size: 0.76rem;
+        font-weight: 900;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .university-mark span {
+        color: rgba(239, 248, 255, 0.78);
+        font-size: 0.64rem;
+        font-weight: 650;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sidebar-pin-btn {
+        display: none;
     }
 
     .logo-text,
@@ -467,34 +562,79 @@
 
     .nav-section-label {
         height: auto;
-        padding: 1rem 1rem 0.45rem;
+        padding: 0.65rem 0.8rem 0.32rem;
+        font-size: 0.64rem;
+    }
+
+    .sidebar-nav {
+        min-height: 0;
+        order: 2;
+        padding: 0.35rem 0 0.45rem;
     }
 
     .nav-item {
         justify-content: flex-start;
-        gap: 0.8rem;
-        padding: 0.82rem 1rem;
+        gap: 0.62rem;
+        min-height: 40px;
+        padding: 0.58rem 0.8rem;
+        font-size: 0.84rem;
+    }
+
+    .nav-item svg {
+        height: 17px;
+        width: 17px;
     }
 
     .sidebar-footer {
-        padding: 0.85rem;
+        flex: 0 0 auto;
+        gap: 0.45rem;
+        margin-top: 0;
+        order: 1;
+        padding: 0.55rem 0.65rem calc(0.65rem + env(safe-area-inset-bottom));
+        z-index: 2;
     }
 
     .sidebar-footer-btn {
         display: grid;
         grid-template-columns: 18px 1fr;
         justify-content: stretch;
-        gap: 0.55rem;
-        padding: 0.58rem 0.65rem;
+        gap: 0.45rem;
+        min-height: 36px;
+        padding: 0.48rem 0.55rem;
+        border-radius: 10px;
+    }
+
+    .sidebar-footer-btn span {
+        font-size: 0.78rem;
     }
 
     .sidebar-footer-btn small {
         display: block;
+        font-size: 0.62rem;
+    }
+
+    .sidebar-footer-btn--static {
+        display: none;
     }
 
     .sidebar-footer-btn.logout {
         display: flex;
+        min-height: 42px;
         gap: 0.45rem;
+        background: #ffffff;
+        border-color: rgba(255, 255, 255, 0.72);
+        color: #1d3764;
+        font-weight: 900;
+    }
+
+    .sidebar-footer-btn.logout svg {
+        height: 17px;
+        width: 17px;
+    }
+
+    .sidebar-footer-btn.logout span {
+        font-size: 0.86rem;
+        font-weight: 900;
     }
 
     .sidebar.open {
@@ -511,5 +651,96 @@
         background: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(4px);
         z-index: 95;
+    }
+}
+
+@media (max-width: 420px) {
+    .sidebar {
+        width: min(222px, 74vw);
+    }
+
+    .sidebar:hover,
+    .sidebar:focus-within {
+        width: min(222px, 74vw);
+    }
+
+    .sidebar-header {
+        height: 66px;
+        padding: 0 0.65rem;
+    }
+
+    .auca-logo-img {
+        height: 28px;
+        width: 28px;
+    }
+
+    .logo-container {
+        gap: 0.2rem;
+    }
+
+    .logo-text {
+        font-size: 0.6rem;
+    }
+
+    .brand-lockup {
+        max-width: 146px;
+    }
+
+    .university-mark strong {
+        font-size: 0.68rem;
+    }
+
+    .university-mark span {
+        font-size: 0.58rem;
+    }
+
+    .nav-section-label {
+        padding: 0.5rem 0.68rem 0.25rem;
+    }
+
+    .nav-item {
+        min-height: 36px;
+        padding: 0.48rem 0.68rem;
+        font-size: 0.78rem;
+    }
+
+    .sidebar-footer {
+        padding: 0.45rem 0.55rem calc(0.55rem + env(safe-area-inset-bottom));
+    }
+
+    .sidebar-footer-btn--static {
+        min-height: 34px;
+    }
+
+    .sidebar-footer-btn--static small {
+        display: none;
+    }
+
+    .sidebar-footer-btn.logout {
+        min-height: 40px;
+    }
+}
+
+@media (max-height: 680px) and (max-width: 1024px) {
+    .sidebar-header {
+        height: 48px;
+    }
+
+    .nav-section-label {
+        padding-top: 0.4rem;
+    }
+
+    .nav-item {
+        min-height: 34px;
+        padding-bottom: 0.42rem;
+        padding-top: 0.42rem;
+    }
+
+    .sidebar-footer-btn--static {
+        display: none;
+    }
+
+    .sidebar-footer-btn.logout {
+        min-height: 40px;
     }
 }

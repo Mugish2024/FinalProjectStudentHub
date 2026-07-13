@@ -190,7 +190,8 @@
     width: 34px;
 }
 
-.sd-action-reminder-item.vote .sd-action-reminder-icon {
+.sd-action-reminder-item.vote .sd-action-reminder-icon,
+.sd-action-reminder-item.election .sd-action-reminder-icon {
     background: #eef5ff;
     color: #2f4f86;
 }
@@ -202,7 +203,8 @@
     margin: 0;
 }
 
-.sd-action-reminder-item.vote h2 {
+.sd-action-reminder-item.vote h2,
+.sd-action-reminder-item.election h2 {
     color: #173562;
 }
 
@@ -214,7 +216,8 @@
     margin: 0.12rem 0 0;
 }
 
-.sd-action-reminder-item.vote p {
+.sd-action-reminder-item.vote p,
+.sd-action-reminder-item.election p {
     color: #526982;
 }
 
@@ -231,7 +234,8 @@
     white-space: nowrap;
 }
 
-.sd-action-reminder-item.vote button {
+.sd-action-reminder-item.vote button,
+.sd-action-reminder-item.election button {
     background: #2f4f86;
     border-color: #2f4f86;
 }
@@ -1896,6 +1900,7 @@ button.student-card-upload {
 @media (max-width: 860px) {
     .student-dashboard.sd-page {
         width: min(1180px, calc(100% - 2rem));
+        padding: 0.85rem 0;
     }
 
     .editorial-body {
@@ -1912,9 +1917,42 @@ button.student-card-upload {
         min-width: 0;
         width: 100%;
     }
+
+    .sd-page-bar {
+        grid-template-columns: 1fr;
+        padding: 0.78rem 0.85rem;
+    }
+
+    .sd-header-right {
+        align-items: stretch;
+        flex-wrap: wrap;
+    }
+
+    .sd-stat-cards {
+        gap: 0.6rem;
+    }
+
+    .sd-stat-card {
+        min-height: 92px;
+        padding: 0.72rem 0.8rem;
+    }
+
+    .sd-stat-card strong {
+        font-size: 1.25rem;
+        overflow-wrap: anywhere;
+    }
+
+    .sd-panel {
+        padding: 0.78rem 0.85rem;
+    }
 }
 
 @media (max-width: 520px) {
+    .student-dashboard.sd-page,
+    .student-dashboard.sd-page + .dashboard-footer {
+        width: calc(100% - 1rem);
+    }
+
     .student-card-photo-actions {
         grid-template-columns: 1fr;
     }
@@ -1943,6 +1981,80 @@ button.student-card-upload {
 
     .course-status {
         width: fit-content;
+    }
+
+    .sd-page-bar h1 {
+        font-size: 1rem;
+    }
+
+    .sd-page-bar p,
+    .sd-panel-head p {
+        font-size: 0.72rem;
+    }
+
+    .sd-page-intro span,
+    .sd-stat-card span,
+    .sd-info-grid > div span {
+        font-size: 0.62rem;
+    }
+
+    .sd-header-right {
+        gap: 0.45rem;
+    }
+
+    .sd-semester-badge,
+    .sd-reg-chip {
+        width: 100%;
+    }
+
+    .sd-stat-card {
+        border-radius: 10px;
+        min-height: 82px;
+        padding: 0.65rem 0.72rem;
+    }
+
+    .sd-stat-card::after {
+        height: 42px;
+        width: 42px;
+    }
+
+    .sd-stat-card strong {
+        font-size: 1.12rem;
+    }
+
+    .sd-stat-card strong em {
+        font-size: 0.76rem;
+    }
+
+    .sd-stat-card small,
+    .sd-info-grid > div strong,
+    .sd-panel .action-btn,
+    .student-card-status {
+        font-size: 0.74rem;
+    }
+
+    .sd-info-grid--four,
+    .sd-chart-summary,
+    .sd-panel .service-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .sd-panel-head {
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+
+    .sd-action-reminder-item {
+        gap: 0.5rem;
+        padding: 0.52rem;
+    }
+
+    .sd-action-reminder-item h2 {
+        font-size: 0.82rem;
+    }
+
+    .sd-action-reminder-item p {
+        font-size: 0.72rem;
     }
 }
 

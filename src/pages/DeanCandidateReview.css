@@ -183,6 +183,11 @@
     box-shadow: 0 8px 18px rgba(47, 79, 134, 0.08);
 }
 
+.hero-controls button.phase-next {
+    grid-column: 1 / -1;
+    min-height: 46px;
+}
+
 .hero-controls button.success {
     background: #eefaf8;
     border-color: #bfe5df;
@@ -207,6 +212,28 @@
     border-color: #86efac;
     color: #047857;
     box-shadow: 0 10px 22px rgba(4, 120, 87, 0.12);
+}
+
+.phase-complete-note {
+    background: #f8fafc;
+    border: 1px solid #dbe4f0;
+    border-radius: 8px;
+    color: #526982;
+    display: grid;
+    gap: 0.12rem;
+    grid-column: 1 / -1;
+    min-height: 46px;
+    padding: 0.48rem 0.65rem;
+}
+
+.phase-complete-note strong {
+    color: #173562;
+    font-size: 0.82rem;
+}
+
+.phase-complete-note span {
+    font-size: 0.72rem;
+    font-weight: 700;
 }
 
 .create-voting-btn:disabled,

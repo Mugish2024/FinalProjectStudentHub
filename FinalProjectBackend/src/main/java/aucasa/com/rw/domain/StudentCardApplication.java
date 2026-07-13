@@ -50,6 +50,15 @@ public class StudentCardApplication extends BaseEntity {
     @Column
     private LocalDateTime financeReceiptReviewedAt;
 
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'PENDING_REVIEW'")
+    private String photoReviewStatus = "PENDING_REVIEW";
+
+    @Column(length = 300)
+    private String photoReviewMessage;
+
+    @Column
+    private LocalDateTime photoReviewedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "printed_by_user_id")
     private UserAccount printedBy;
@@ -140,6 +149,30 @@ public class StudentCardApplication extends BaseEntity {
 
     public void setFinanceReceiptReviewedAt(LocalDateTime financeReceiptReviewedAt) {
         this.financeReceiptReviewedAt = financeReceiptReviewedAt;
+    }
+
+    public String getPhotoReviewStatus() {
+        return photoReviewStatus;
+    }
+
+    public void setPhotoReviewStatus(String photoReviewStatus) {
+        this.photoReviewStatus = photoReviewStatus;
+    }
+
+    public String getPhotoReviewMessage() {
+        return photoReviewMessage;
+    }
+
+    public void setPhotoReviewMessage(String photoReviewMessage) {
+        this.photoReviewMessage = photoReviewMessage;
+    }
+
+    public LocalDateTime getPhotoReviewedAt() {
+        return photoReviewedAt;
+    }
+
+    public void setPhotoReviewedAt(LocalDateTime photoReviewedAt) {
+        this.photoReviewedAt = photoReviewedAt;
     }
 
     public UserAccount getPrintedBy() {

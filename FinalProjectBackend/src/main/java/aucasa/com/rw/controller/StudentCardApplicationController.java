@@ -80,12 +80,40 @@ public class StudentCardApplicationController {
         }
     }
 
+    @PostMapping("/{id}/photo")
+    public ResponseEntity<?> replacePhoto(
+            @PathVariable Long id,
+            @RequestParam String studentNumber,
+            @RequestParam MultipartFile photo
+    ) {
+        try {
+            StudentCardApplicationResponse response = service.replacePhoto(id, studentNumber, photo);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @PostMapping("/{id}/finance-receipt/review")
     public ResponseEntity<?> reviewFinanceReceipt(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
             boolean approved = Boolean.TRUE.equals(body.get("approved"));
             String message = body.get("message") != null ? String.valueOf(body.get("message")) : "";
             StudentCardApplicationResponse response = service.reviewFinanceReceipt(id, approved, message);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/photo/review")
+    public ResponseEntity<?> reviewPhoto(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        try {
+            boolean approved = Boolean.TRUE.equals(body.get("approved"));
+            String message = body.get("message") != null ? String.valueOf(body.get("message")) : "";
+            StudentCardApplicationResponse response = service.reviewPhoto(id, approved, message);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));

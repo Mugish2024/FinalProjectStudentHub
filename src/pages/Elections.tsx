@@ -97,8 +97,8 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
     const [voteTrends, setVoteTrends] = useState<VoteTrendItem[]>([]);
     const [voteTrendError, setVoteTrendError] = useState('');
 
-    const currentElectionStatus = activeElection?.status ?? 'NOMINATION';
-    const isNominationPhase = currentElectionStatus === 'NOMINATION' || currentElectionStatus === 'DRAFT';
+    const currentElectionStatus = activeElection?.status ?? '';
+    const isNominationPhase = Boolean(activeElection) && (currentElectionStatus === 'NOMINATION' || currentElectionStatus === 'DRAFT');
     const isApprovedCandidatePhase = ['CAMPAIGN', 'VOTING', 'CLOSED', 'ARCHIVED'].includes(currentElectionStatus);
     const isAdventistRequired = useMemo(() => ADVENTIST_REQUIRED.has(position), [position]);
     const eligibilityForSelectedPosition = useMemo(() => {
@@ -209,23 +209,12 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
             return response.ok && Array.isArray(data) ? (data as Candidate[]) : [];
         };
 
-        const byElection = activeElection?.id
-            ? await fetchApproved(`?electionId=${activeElection.id}`)
-            : [];
-        if (byElection.length > 0) {
-            setApprovedCandidates(byElection);
+        if (activeElection?.id) {
+            setApprovedCandidates(await fetchApproved(`?electionId=${activeElection.id}`));
             return;
         }
 
-        const byStatus = activeElection?.status
-            ? await fetchApproved(`?electionStatus=${activeElection.status}`)
-            : [];
-        if (byStatus.length > 0) {
-            setApprovedCandidates(byStatus);
-            return;
-        }
-
-        setApprovedCandidates(await fetchApproved(''));
+        setApprovedCandidates([]);
     };
 
     const loadVoteTrends = async (electionId: number) => {
@@ -261,6 +250,10 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
 
         const election = data as ElectionInfo;
         setActiveElection(election);
+        if (['CAMPAIGN', 'VOTING', 'CLOSED', 'ARCHIVED'].includes(election.status)) {
+            setActiveSection('candidates');
+            setCanAccessApply(false);
+        }
 
         const now = new Date();
         const start = election.votingStart ? new Date(election.votingStart) : null;
@@ -282,6 +275,10 @@ const Elections: React.FC<ElectionsProps> = ({ studentNumber: loggedInStudentNum
 
     useEffect(() => {
         void loadActiveElection();
+        const timer = window.setInterval(() => {
+            void loadActiveElection();
+        }, 15000);
+        return () => window.clearInterval(timer);
     }, []);
 
     useEffect(() => {

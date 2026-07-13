@@ -32,30 +32,47 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class AttendanceService {
+    private static final String MASORO_GENERAL_ASSEMBLY_TITLE = "Masoro General Assembly";
+    private static final String GISHUSHU_GENERAL_ASSEMBLY_TITLE = "Gishushu General Assembly";
+    private static final long GENERAL_ASSEMBLY_DURATION_HOURS = 2;
+    private static final ZoneId RWANDA_ZONE = ZoneId.of("Africa/Kigali");
+
     private final AttendanceSessionRepository sessionRepository;
     private final AttendanceRecordRepository recordRepository;
     private final StudentProfileRepository studentProfileRepository;
@@ -70,6 +87,7 @@ public class AttendanceService {
     private final String qrSecret;
     private final long qrTtlMinutes;
     private final String qrFrontendBaseUrl;
+    private final Path absenceUploadDir;
 
     public AttendanceService(
             AttendanceSessionRepository sessionRepository,
@@ -85,7 +103,8 @@ public class AttendanceService {
             @Value("${app.attendance.biometric-max-age-seconds:120}") long biometricMaxAgeSeconds,
             @Value("${app.attendance.qr-secret:aucasa-attendance-secret}") String qrSecret,
             @Value("${app.attendance.qr-ttl-minutes:20}") long qrTtlMinutes,
-            @Value("${app.attendance.qr-frontend-base-url:https://localhost:5173}") String qrFrontendBaseUrl
+            @Value("${app.attendance.qr-frontend-base-url:https://localhost:5173}") String qrFrontendBaseUrl,
+            @Value("${app.storage.attendance-absence-upload-dir:}") String absenceUploadDir
     ) {
         this.sessionRepository = sessionRepository;
         this.recordRepository = recordRepository;
@@ -104,6 +123,7 @@ public class AttendanceService {
         this.qrSecret = qrSecret;
         this.qrTtlMinutes = qrTtlMinutes;
         this.qrFrontendBaseUrl = qrFrontendBaseUrl;
+        this.absenceUploadDir = resolveUploadDir(absenceUploadDir);
     }
 
     @Transactional
@@ -112,14 +132,7 @@ public class AttendanceService {
         autoCloseExpiredSessions();
         List<AttendanceSession> sessions = activeOnly ? sessionRepository.findByActiveTrue() : sessionRepository.findAll();
         return sessions.stream()
-                .map(session -> new AttendanceSessionResponse(
-                        session.getId(),
-                        session.getTitle(),
-                        session.getCampus() != null ? session.getCampus().getName() : "",
-                        session.getStartsAt(),
-                        session.getEndsAt(),
-                        Boolean.TRUE.equals(session.getActive())
-                ))
+                .map(this::toSessionResponse)
                 .toList();
     }
 
@@ -135,22 +148,123 @@ public class AttendanceService {
                 .orElseThrow(() -> new IllegalArgumentException("Session not found."));
         session.setActive(active);
         if (active) {
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = nowInRwanda();
             LocalDateTime start = requestedStart != null ? requestedStart : now;
             LocalDateTime end = requestedEnd != null ? requestedEnd : now.plusHours(1);
             validateOpenRange(start, end, now, "Attendance");
             session.setStartsAt(start);
             session.setEndsAt(end);
+            session.setCancelled(false);
+        } else {
+            session.setCancelled(true);
         }
         session = sessionRepository.save(session);
-        return new AttendanceSessionResponse(
-                session.getId(),
-                session.getTitle(),
-                session.getCampus() != null ? session.getCampus().getName() : "",
-                session.getStartsAt(),
-                session.getEndsAt(),
-                Boolean.TRUE.equals(session.getActive())
+        return toSessionResponse(session);
+    }
+
+    @Transactional
+    public AttendanceSessionResponse createSpecialSession(String title, String campusCode, LocalDateTime startsAt, Integer durationMinutes) {
+        if (startsAt == null) {
+            throw new IllegalArgumentException("Start date and time are required.");
+        }
+        int minutes = durationMinutes != null ? durationMinutes : 60;
+        if (minutes < 15) {
+            throw new IllegalArgumentException("Attendance duration must be at least 15 minutes.");
+        }
+        if (minutes > 720) {
+            throw new IllegalArgumentException("Attendance duration cannot exceed 12 hours.");
+        }
+
+        LocalDateTime endsAt = startsAt.plusMinutes(minutes);
+        List<AttendanceSessionResponse> created = createSpecialSessions(
+                title,
+                campusCode,
+                List.of(new SpecialSessionSlot(startsAt.toLocalDate(), startsAt.toLocalTime(), endsAt.toLocalTime()))
         );
+        return created.get(0);
+    }
+
+    @Transactional
+    public List<AttendanceSessionResponse> createSpecialSessions(String title, String campusCode, List<SpecialSessionSlot> slots) {
+        ensureCampusSessionsIfMissing();
+        String normalizedTitle = validateSpecialTitle(title);
+        if (slots == null || slots.isEmpty()) {
+            throw new IllegalArgumentException("At least one attendance time slot is required.");
+        }
+        if (slots.size() > 30) {
+            throw new IllegalArgumentException("Special attendance cannot create more than 30 sessions at once.");
+        }
+
+        LocalDateTime now = nowInRwanda();
+        AcademicTerm term = resolveActiveTerm();
+        List<Campus> campuses = resolveCampuses(campusCode);
+        List<AttendanceSessionResponse> responses = new ArrayList<>();
+        String specialGroupKey = UUID.randomUUID().toString();
+        for (SpecialSessionSlot slot : slots) {
+            if (slot == null || slot.date() == null || slot.startsAt() == null || slot.endsAt() == null) {
+                throw new IllegalArgumentException("Every special attendance slot needs date, start time, and end time.");
+            }
+            LocalDateTime start = LocalDateTime.of(slot.date(), slot.startsAt());
+            LocalDateTime end = LocalDateTime.of(slot.date(), slot.endsAt());
+            validateOpenRange(start, end, now, "Special attendance");
+            String sessionTitle = buildSpecialSessionTitle(normalizedTitle, start, end);
+            for (Campus campus : campuses) {
+                AttendanceSession session = buildCampusSession(sessionTitle, campus, term, start, end, false);
+                session.setActive(!now.isBefore(start) && now.isBefore(end));
+                session.setSpecialGroupKey(specialGroupKey);
+                responses.add(toSessionResponse(sessionRepository.save(session)));
+            }
+        }
+        return responses;
+    }
+
+    @Transactional
+    public int deleteSpecialSessionGroup(Long sessionId) {
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found."));
+        if (Boolean.TRUE.equals(session.getDefaultWeekly())) {
+            throw new IllegalArgumentException("Default weekly attendance sessions cannot be deleted.");
+        }
+        String groupKey = safeTrim(session.getSpecialGroupKey());
+        List<AttendanceSession> sessionsToDelete = isBlank(groupKey)
+                ? findLegacySpecialSessionGroup(session)
+                : sessionRepository.findBySpecialGroupKey(groupKey);
+        if (sessionsToDelete.isEmpty()) {
+            sessionsToDelete = List.of(session);
+        }
+        List<Long> sessionIds = sessionsToDelete.stream()
+                .map(AttendanceSession::getId)
+                .filter(id -> id != null)
+                .toList();
+        if (!sessionIds.isEmpty()) {
+            recordRepository.deleteAll(recordRepository.findBySessionIdIn(sessionIds));
+        }
+        sessionRepository.deleteAll(sessionsToDelete);
+        return sessionsToDelete.size();
+    }
+
+    private List<AttendanceSession> findLegacySpecialSessionGroup(AttendanceSession session) {
+        String baseTitle = specialBaseTitle(session.getTitle());
+        if (isBlank(baseTitle)) {
+            return List.of(session);
+        }
+        return sessionRepository.findAll().stream()
+                .filter(candidate -> !Boolean.TRUE.equals(candidate.getDefaultWeekly()))
+                .filter(candidate -> isBlank(candidate.getSpecialGroupKey()))
+                .filter(candidate -> {
+                    String title = safeTrim(candidate.getTitle());
+                    return baseTitle.equals(specialBaseTitle(title));
+                })
+                .toList();
+    }
+
+    private String specialBaseTitle(String title) {
+        String value = safeTrim(title);
+        if (isBlank(value)) {
+            return "";
+        }
+        int separator = value.indexOf(" - ");
+        return separator > 0 ? value.substring(0, separator) : value;
     }
 
     private void validateOpenRange(LocalDateTime start, LocalDateTime end, LocalDateTime now, String label) {
@@ -195,12 +309,21 @@ public class AttendanceService {
             throw new IllegalArgumentException("Session is not active.");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = nowInRwanda();
         if (now.isBefore(session.getStartsAt()) || now.isAfter(session.getEndsAt())) {
             throw new IllegalArgumentException("Session is not currently open for check-in.");
         }
 
         AttendanceMethod method = parseMethod(request.getMethod());
+        Optional<AttendanceRecord> existingRecord = recordRepository.findByStudentIdAndSessionId(student.getId(), session.getId());
+        if (existingRecord.isPresent() && existingRecord.get().getStatus() == AttendanceStatus.PRESENT) {
+            AttendanceRecord record = existingRecord.get();
+            if (record.getMethod() != null && record.getMethod() != method) {
+                throw new IllegalArgumentException("Attendance is already confirmed for this session using " + record.getMethod().name() + ".");
+            }
+            return toRecordResponse(record);
+        }
+
         String wifiSsid = method == AttendanceMethod.WIFI ? safeTrim(request.getWifiSsid()) : null;
         if (method == AttendanceMethod.WIFI && isBlank(wifiSsid)) {
             throw new IllegalArgumentException("wifiSsid is required for Wi-Fi check-in.");
@@ -226,7 +349,7 @@ public class AttendanceService {
         }
 
         String normalizedDeviceInfo = safeTrim(request.getDeviceInfo());
-        if (!isBlank(normalizedDeviceInfo)) {
+        if (isReliableDeviceIdentifier(normalizedDeviceInfo)) {
             Optional<AttendanceRecord> existingByDevice = recordRepository.findBySessionIdAndDeviceInfo(
                     session.getId(),
                     normalizedDeviceInfo
@@ -241,7 +364,7 @@ public class AttendanceService {
             }
         }
 
-        AttendanceRecord record = recordRepository.findByStudentIdAndSessionId(student.getId(), session.getId())
+        AttendanceRecord record = existingRecord
                 .orElseGet(AttendanceRecord::new);
         record.setStudent(student);
         record.setSession(session);
@@ -252,9 +375,78 @@ public class AttendanceService {
         record.setWifiSsid(wifiSsid);
         record.setDeviceInfo(normalizedDeviceInfo);
         record.setIpAddress(safeTrim(clientIp));
+        record.setAbsenceReason(null);
+        record.setAbsenceDocumentPath(null);
+        record.setAbsenceDocumentName(null);
 
         record = recordRepository.save(record);
         return toRecordResponse(record);
+    }
+
+    @Transactional
+    public AttendanceRecordResponse submitAbsence(String studentNumber, Long sessionId, String absenceReason, MultipartFile supportingDocument) {
+        autoCloseExpiredSessions();
+        if (isBlank(studentNumber) || sessionId == null || isBlank(absenceReason)) {
+            throw new IllegalArgumentException("studentNumber, sessionId, and absence reason are required.");
+        }
+
+        String normalizedReason = safeTrim(absenceReason);
+        if (normalizedReason.length() > 1000) {
+            throw new IllegalArgumentException("Absence reason cannot exceed 1000 characters.");
+        }
+
+        StudentProfile student = studentProfileRepository.findByStudentNumber(studentNumber.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Student not found."));
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found."));
+
+        Optional<AttendanceRecord> existingRecord = recordRepository.findByStudentIdAndSessionId(student.getId(), session.getId());
+        if (existingRecord.isPresent() && existingRecord.get().getStatus() == AttendanceStatus.PRESENT) {
+            throw new IllegalArgumentException("Attendance is already confirmed for this session.");
+        }
+
+        AttendanceRecord record = existingRecord.orElseGet(AttendanceRecord::new);
+        record.setStudent(student);
+        record.setSession(session);
+        record.setCheckInAt(null);
+        record.setMethod(null);
+        record.setStatus(AttendanceStatus.ABSENT);
+        record.setVerificationStatus(AttendanceVerificationStatus.PENDING);
+        record.setAbsenceReason(normalizedReason);
+        record.setNotes(normalizedReason);
+        record.setWifiSsid(null);
+        record.setDeviceInfo(null);
+        record.setIpAddress(null);
+        if (supportingDocument != null && !supportingDocument.isEmpty()) {
+            validateAbsenceDocument(supportingDocument);
+            record.setAbsenceDocumentPath(storeAbsenceDocument(supportingDocument));
+            record.setAbsenceDocumentName(safeOriginalFilename(supportingDocument));
+        }
+
+        record = recordRepository.save(record);
+        return toRecordResponse(record);
+    }
+
+    @Transactional(readOnly = true)
+    public Resource loadAbsenceDocument(Long recordId) {
+        AttendanceRecord record = recordRepository.findById(recordId)
+                .orElseThrow(() -> new IllegalArgumentException("Record not found."));
+        if (isBlank(record.getAbsenceDocumentPath())) {
+            throw new IllegalArgumentException("Absence supporting document is not available.");
+        }
+        try {
+            Path path = Paths.get(record.getAbsenceDocumentPath()).toAbsolutePath().normalize();
+            if (!path.startsWith(absenceUploadDir)) {
+                throw new IllegalArgumentException("Invalid file path.");
+            }
+            Resource resource = new UrlResource(path.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                throw new IllegalArgumentException("Absence supporting document is not available.");
+            }
+            return resource;
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Absence supporting document is not available.");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -279,7 +471,7 @@ public class AttendanceService {
             throw new IllegalArgumentException("Session is not active.");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = nowInRwanda();
         LocalDateTime expiresAt = now.plusMinutes(Math.max(1, qrTtlMinutes));
         String campus = session.getCampus() != null ? safeTrim(session.getCampus().getName()) : null;
         String token = signQrToken(session.getId(), campus, expiresAt);
@@ -354,7 +546,7 @@ public class AttendanceService {
         AttendanceVerificationStatus status = parseVerificationDecision(request.getDecision());
         record.setVerificationStatus(status);
         record.setVerificationNotes(safeTrim(request.getNotes()));
-        record.setVerifiedAt(LocalDateTime.now());
+        record.setVerifiedAt(nowInRwanda());
 
         if (request.getReviewerUserId() != null) {
             UserAccount reviewer = userAccountRepository.findById(request.getReviewerUserId())
@@ -397,7 +589,7 @@ public class AttendanceService {
 
             String sessionMeta = "Session: " + safeValue(session.getTitle())
                     + " | Campus: " + (session.getCampus() != null ? safeValue(session.getCampus().getName()) : "N/A")
-                    + " | Date: " + LocalDateTime.now().toLocalDate();
+                    + " | Date: " + nowInRwanda().toLocalDate();
             Paragraph meta = new Paragraph(sessionMeta, bodyFont);
             meta.setSpacingAfter(6f);
             document.add(meta);
@@ -456,13 +648,17 @@ public class AttendanceService {
 
         return new AttendanceRecordResponse(
                 record.getId(),
+                record.getSession() != null ? record.getSession().getId() : null,
                 date,
                 location,
                 time,
                 method,
                 status,
                 record.getVerificationStatus() != null ? record.getVerificationStatus().name() : AttendanceVerificationStatus.PENDING.name(),
-                record.getWifiSsid()
+                record.getWifiSsid(),
+                record.getAbsenceReason(),
+                record.getAbsenceDocumentName(),
+                !isBlank(record.getAbsenceDocumentPath())
         );
     }
 
@@ -481,6 +677,7 @@ public class AttendanceService {
 
         return new AttendanceRecordAdminResponse(
                 record.getId(),
+                record.getSession() != null ? record.getSession().getId() : null,
                 studentName,
                 studentNumber,
                 sessionTitle,
@@ -491,7 +688,10 @@ public class AttendanceService {
                 record.getVerificationStatus() != null ? record.getVerificationStatus().name() : AttendanceVerificationStatus.PENDING.name(),
                 record.getWifiSsid(),
                 record.getIpAddress(),
-                record.getDeviceInfo()
+                record.getDeviceInfo(),
+                record.getAbsenceReason(),
+                record.getAbsenceDocumentName(),
+                !isBlank(record.getAbsenceDocumentPath())
         );
     }
 
@@ -511,6 +711,45 @@ public class AttendanceService {
         }
     }
 
+    private void validateAbsenceDocument(MultipartFile document) {
+        String contentType = document.getContentType() != null ? document.getContentType().toLowerCase(Locale.ROOT) : "";
+        boolean valid = contentType.equals("application/pdf") || contentType.equals("image/jpeg") || contentType.equals("image/png");
+        if (!valid) {
+            throw new IllegalArgumentException("Supporting document must be PDF, JPG, or PNG.");
+        }
+        if (document.getSize() > 5L * 1024L * 1024L) {
+            throw new IllegalArgumentException("Supporting document must be 5MB or smaller.");
+        }
+    }
+
+    private String storeAbsenceDocument(MultipartFile document) {
+        try {
+            Files.createDirectories(absenceUploadDir);
+            String filename = "attendance-absence-" + System.currentTimeMillis() + "-" + safeOriginalFilename(document);
+            Path destination = absenceUploadDir.resolve(filename).normalize();
+            if (!destination.startsWith(absenceUploadDir)) {
+                throw new IllegalArgumentException("Invalid file path.");
+            }
+            Files.copy(document.getInputStream(), destination);
+            return destination.toString().replace("\\", "/");
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Failed to store supporting document. Check server write permissions.");
+        }
+    }
+
+    private String safeOriginalFilename(MultipartFile file) {
+        String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "supporting-document";
+        return original.replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+
+    private Path resolveUploadDir(String configured) {
+        if (configured != null && !configured.isBlank()) {
+            return Paths.get(configured).toAbsolutePath().normalize();
+        }
+        String home = System.getProperty("user.home");
+        return Paths.get(home, "FinalProjectStudentHubUploads", "attendance-absences").toAbsolutePath().normalize();
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
@@ -521,6 +760,10 @@ public class AttendanceService {
 
     private String safeValue(String value) {
         return value == null ? "-" : value;
+    }
+
+    private boolean isReliableDeviceIdentifier(String value) {
+        return value != null && value.startsWith("aucasa-device:");
     }
 
     private void addHeaderCell(PdfPTable table, String text) {
@@ -565,7 +808,7 @@ public class AttendanceService {
         }
 
         LocalDateTime verifiedAt = parseDateTime(request.getBiometricVerifiedAt().trim());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = nowInRwanda();
         if (verifiedAt.isAfter(now.plusSeconds(10))) {
             throw new IllegalArgumentException("Invalid biometric verification time.");
         }
@@ -614,7 +857,7 @@ public class AttendanceService {
     }
 
     private String signQrToken(Long sessionId, String campusName, LocalDateTime expiresAt) {
-        long exp = expiresAt.atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
+        long exp = expiresAt.atZone(RWANDA_ZONE).toEpochSecond();
         String payload = sessionId + ":" + exp + ":" + normalizeCampus(campusName);
         String sig = hmacSha256Base64Url(payload, qrSecret);
         return sessionId + "." + exp + "." + sig;
@@ -642,7 +885,7 @@ public class AttendanceService {
             throw new IllegalArgumentException("QR token does not match selected session.");
         }
 
-        long nowEpoch = LocalDateTime.now().atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
+        long nowEpoch = nowInRwanda().atZone(RWANDA_ZONE).toEpochSecond();
         if (nowEpoch > exp) {
             throw new IllegalArgumentException("QR token has expired.");
         }
@@ -716,7 +959,7 @@ public class AttendanceService {
 
     private LocalDateTime parseDateTime(String value) {
         try {
-            return OffsetDateTime.parse(value).atZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+            return OffsetDateTime.parse(value).atZoneSameInstant(RWANDA_ZONE).toLocalDateTime();
         } catch (Exception ignored) {
             try {
                 return LocalDateTime.parse(value);
@@ -726,45 +969,59 @@ public class AttendanceService {
         }
     }
 
+    private LocalDateTime nowInRwanda() {
+        return LocalDateTime.now(RWANDA_ZONE);
+    }
+
     @Transactional
     protected void autoCloseExpiredSessions() {
-        LocalDateTime now = LocalDateTime.now();
-        List<AttendanceSession> activeSessions = sessionRepository.findByActiveTrue();
-        for (AttendanceSession session : activeSessions) {
-            if (session.getEndsAt() != null && session.getEndsAt().isBefore(now)) {
-                session.setActive(false);
+        LocalDateTime now = nowInRwanda();
+        List<AttendanceSession> sessions = sessionRepository.findAll();
+        if (sessions == null || sessions.isEmpty()) {
+            return;
+        }
+        boolean changed = false;
+        for (AttendanceSession session : sessions) {
+            if (Boolean.TRUE.equals(session.getCancelled()) || session.getStartsAt() == null || session.getEndsAt() == null) {
+                continue;
+            }
+            boolean shouldBeActive = !now.isBefore(session.getStartsAt()) && now.isBefore(session.getEndsAt());
+            if (session.getEndsAt().isBefore(now) || session.getEndsAt().isEqual(now)) {
+                shouldBeActive = false;
+            }
+            if (!Boolean.valueOf(shouldBeActive).equals(session.getActive())) {
+                session.setActive(shouldBeActive);
+                changed = true;
             }
         }
-        if (!activeSessions.isEmpty()) {
+        if (changed) {
+            sessionRepository.saveAll(sessions);
+        }
+    }
+
+    private void closeExpiredActiveSessions() {
+        LocalDateTime now = nowInRwanda();
+        List<AttendanceSession> activeSessions = sessionRepository.findByActiveTrue();
+        boolean changed = false;
+        for (AttendanceSession session : activeSessions) {
+            if (session.getEndsAt() != null && !session.getEndsAt().isAfter(now)) {
+                session.setActive(false);
+                changed = true;
+            }
+        }
+        if (changed) {
             sessionRepository.saveAll(activeSessions);
         }
     }
 
     private void ensureCampusSessionsIfMissing() {
-        if (sessionRepository.count() > 0) {
-            return;
-        }
+        AcademicTerm term = resolveActiveTerm();
+        Campus masoro = resolveCampus("MAS");
+        Campus gishushu = resolveCampus("GIS");
 
-        AcademicTerm term = academicTermRepository.findByActiveTrue()
-                .orElseGet(() -> {
-                    AcademicTerm t = new AcademicTerm();
-                    t.setName("Current Semester");
-                    t.setAcademicYear(String.valueOf(LocalDate.now().getYear()));
-                    t.setSemesterNumber(1);
-                    t.setStartDate(LocalDate.now());
-                    t.setEndDate(LocalDate.now().plusMonths(4));
-                    t.setActive(true);
-                    return academicTermRepository.save(t);
-                });
-
-        Campus masoro = campusRepository.findByCode("MAS")
-                .orElseGet(() -> createCampus("MAS", "Masoro Campus"));
-        Campus gishushu = campusRepository.findByCode("GIS")
-                .orElseGet(() -> createCampus("GIS", "Gishushu Campus"));
-
-        LocalDateTime now = LocalDateTime.now();
-        sessionRepository.save(buildCampusSession("Masoro Attendance Session", masoro, term, now));
-        sessionRepository.save(buildCampusSession("Gishushu Attendance Session", gishushu, term, now));
+        LocalDateTime now = nowInRwanda();
+        ensureWeeklyGeneralAssembly(MASORO_GENERAL_ASSEMBLY_TITLE, masoro, term, now, DayOfWeek.TUESDAY, LocalTime.of(10, 0));
+        ensureWeeklyGeneralAssembly(GISHUSHU_GENERAL_ASSEMBLY_TITLE, gishushu, term, now, DayOfWeek.WEDNESDAY, LocalTime.of(17, 0));
     }
 
     private Campus createCampus(String code, String name) {
@@ -774,15 +1031,142 @@ public class AttendanceService {
         return campusRepository.save(campus);
     }
 
-    private AttendanceSession buildCampusSession(String title, Campus campus, AcademicTerm term, LocalDateTime now) {
+    private AcademicTerm resolveActiveTerm() {
+        return academicTermRepository.findByActiveTrue()
+                .orElseGet(() -> {
+                    AcademicTerm t = new AcademicTerm();
+                    t.setName("Current Semester");
+                    t.setAcademicYear(String.valueOf(LocalDate.now(RWANDA_ZONE).getYear()));
+                    t.setSemesterNumber(1);
+                    t.setStartDate(LocalDate.now(RWANDA_ZONE));
+                    t.setEndDate(LocalDate.now(RWANDA_ZONE).plusMonths(4));
+                    t.setActive(true);
+                    return academicTermRepository.save(t);
+                });
+    }
+
+    private Campus resolveCampus(String campusCode) {
+        String normalized = safeTrim(campusCode);
+        if (isBlank(normalized)) {
+            throw new IllegalArgumentException("Campus is required.");
+        }
+        String upperCode = normalized.toUpperCase(Locale.ROOT);
+        if (upperCode.startsWith("MAS") || normalized.toLowerCase(Locale.ROOT).contains("masoro")) {
+            return campusRepository.findByCode("MAS")
+                    .orElseGet(() -> createCampus("MAS", "Masoro Campus"));
+        }
+        if (upperCode.startsWith("GIS") || normalized.toLowerCase(Locale.ROOT).contains("gishushu")) {
+            return campusRepository.findByCode("GIS")
+                    .orElseGet(() -> createCampus("GIS", "Gishushu Campus"));
+        }
+        throw new IllegalArgumentException("Unsupported campus. Choose Masoro or Gishushu.");
+    }
+
+    private List<Campus> resolveCampuses(String campusCode) {
+        String normalized = safeTrim(campusCode);
+        if (isBlank(normalized)) {
+            throw new IllegalArgumentException("Campus is required.");
+        }
+        if ("ALL".equalsIgnoreCase(normalized) || normalized.toLowerCase(Locale.ROOT).contains("all")) {
+            return List.of(resolveCampus("GIS"), resolveCampus("MAS"));
+        }
+        return List.of(resolveCampus(normalized));
+    }
+
+    private String validateSpecialTitle(String title) {
+        String normalizedTitle = safeTrim(title);
+        if (isBlank(normalizedTitle)) {
+            throw new IllegalArgumentException("Attendance title is required.");
+        }
+        if (normalizedTitle.length() > 140) {
+            throw new IllegalArgumentException("Attendance title cannot exceed 140 characters.");
+        }
+        return normalizedTitle;
+    }
+
+    private String buildSpecialSessionTitle(String baseTitle, LocalDateTime start, LocalDateTime end) {
+        String suffix = start.format(DateTimeFormatter.ofPattern("EEE MMM dd HH:mm", Locale.ENGLISH))
+                + "-"
+                + end.format(DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH));
+        String title = baseTitle + " - " + suffix;
+        return title.length() <= 180 ? title : title.substring(0, 180);
+    }
+
+    private AttendanceSessionResponse toSessionResponse(AttendanceSession session) {
+        return new AttendanceSessionResponse(
+                session.getId(),
+                session.getTitle(),
+                session.getCampus() != null ? session.getCampus().getName() : "",
+                session.getStartsAt(),
+                session.getEndsAt(),
+                Boolean.TRUE.equals(session.getActive()),
+                Boolean.TRUE.equals(session.getCancelled()),
+                Boolean.TRUE.equals(session.getDefaultWeekly()),
+                session.getSpecialGroupKey()
+        );
+    }
+
+    private void ensureWeeklyGeneralAssembly(
+            String title,
+            Campus campus,
+            AcademicTerm term,
+            LocalDateTime now,
+            DayOfWeek dayOfWeek,
+            LocalTime startsAt
+    ) {
+        LocalDate sessionDate = now.toLocalDate().with(TemporalAdjusters.previousOrSame(dayOfWeek));
+        LocalDateTime sessionStart = LocalDateTime.of(sessionDate, startsAt);
+        LocalDateTime sessionEnd = sessionStart.plusHours(GENERAL_ASSEMBLY_DURATION_HOURS);
+
+        if (now.isAfter(sessionEnd)) {
+            LocalDate nextDate = now.toLocalDate().with(TemporalAdjusters.next(dayOfWeek));
+            sessionStart = LocalDateTime.of(nextDate, startsAt);
+            sessionEnd = sessionStart.plusHours(GENERAL_ASSEMBLY_DURATION_HOURS);
+        }
+
+        LocalDateTime dayStart = sessionStart.toLocalDate().atStartOfDay();
+        LocalDateTime dayEnd = dayStart.plusDays(1);
+        LocalDateTime scheduledStart = sessionStart;
+        LocalDateTime scheduledEnd = sessionEnd;
+        AttendanceSession session = sessionRepository.findByTitleAndStartsAtBetween(title, dayStart, dayEnd)
+                .stream()
+                .findFirst()
+                .orElseGet(() -> buildCampusSession(title, campus, term, scheduledStart, scheduledEnd, true));
+
+        session.setTitle(title);
+        session.setCampus(campus);
+        session.setTerm(term);
+        session.setDefaultWeekly(true);
+
+        if (Boolean.TRUE.equals(session.getActive()) && !Boolean.TRUE.equals(session.getCancelled())) {
+            sessionRepository.save(session);
+            return;
+        }
+
+        session.setStartsAt(sessionStart);
+        session.setEndsAt(sessionEnd);
+        if (Boolean.TRUE.equals(session.getCancelled())) {
+            session.setActive(false);
+        } else {
+            session.setActive(!now.isBefore(sessionStart) && now.isBefore(sessionEnd));
+        }
+        sessionRepository.save(session);
+    }
+
+    private AttendanceSession buildCampusSession(String title, Campus campus, AcademicTerm term, LocalDateTime start, LocalDateTime end, boolean defaultWeekly) {
         AttendanceSession session = new AttendanceSession();
         session.setTitle(title);
         session.setCampus(campus);
         session.setTerm(term);
-        session.setStartsAt(now);
-        session.setEndsAt(now.plusHours(1));
+        session.setStartsAt(start);
+        session.setEndsAt(end);
         session.setActive(false);
+        session.setCancelled(false);
+        session.setDefaultWeekly(defaultWeekly);
         return session;
+    }
+
+    public record SpecialSessionSlot(LocalDate date, LocalTime startsAt, LocalTime endsAt) {
     }
 
     private record GeoFence(double lat, double lng, double radiusMeters) {

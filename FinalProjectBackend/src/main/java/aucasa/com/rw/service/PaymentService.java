@@ -65,6 +65,11 @@ import org.springframework.web.client.RestTemplate;
 public class PaymentService {
     private static final BigDecimal MANDATORY_FEE_AMOUNT = new BigDecimal("3000.00");
     private static final String CURRENCY = "RWF";
+    private static final EnumSet<PaymentStatus> SETTLED_STATUSES = EnumSet.of(
+            PaymentStatus.COMPLETED,
+            PaymentStatus.VERIFIED,
+            PaymentStatus.PAID
+    );
 
     private final PaymentRepository repository;
     private final StudentProfileRepository studentProfileRepository;
@@ -164,6 +169,7 @@ public class PaymentService {
 
         Payment payment = repository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        assertPaymentOpenForNewPayment(payment);
 
         payment.setMethod(method);
 
@@ -203,6 +209,7 @@ public class PaymentService {
 
         Payment payment = repository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        assertPaymentOpenForNewPayment(payment);
 
         payment.setMethod(PaymentMethod.MOBILE_MONEY);
 
@@ -251,6 +258,9 @@ public class PaymentService {
 
         Payment payment = repository.findByReceiptNumber(receiptNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found for receiptNumber: " + receiptNumber));
+        if (isPaymentSettled(payment)) {
+            return payment;
+        }
 
         payment.setExternalReference(providerReference);
         if (success) {
@@ -269,6 +279,9 @@ public class PaymentService {
         }
         Payment payment = repository.findByExternalReference(providerReference)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found for provider reference: " + providerReference));
+        if (isPaymentSettled(payment)) {
+            return payment;
+        }
         if (success) {
             payment.setStatus(PaymentStatus.COMPLETED);
             payment.setPaidAt(LocalDateTime.now());
@@ -364,6 +377,7 @@ public class PaymentService {
 
         Payment payment = repository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        assertPaymentOpenForNewPayment(payment);
 
         payment.setReceiptIssuedAt(paidDate.atStartOfDay());
         payment.setReceiptValidUntil(validUntil.atStartOfDay());
@@ -414,6 +428,7 @@ public class PaymentService {
 
         Payment payment = repository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+        assertPaymentOpenForNewPayment(payment);
 
         Optional<Payment> existing = repository.findByExternalReference(transactionId);
         if (existing.isPresent() && !existing.get().getId().equals(paymentId)) {
@@ -910,6 +925,16 @@ public class PaymentService {
 
     private boolean isSimulationPayment(Payment payment) {
         return payment != null && isSimulationReference(payment.getExternalReference());
+    }
+
+    private boolean isPaymentSettled(Payment payment) {
+        return payment != null && payment.getStatus() != null && SETTLED_STATUSES.contains(payment.getStatus());
+    }
+
+    private void assertPaymentOpenForNewPayment(Payment payment) {
+        if (isPaymentSettled(payment)) {
+            throw new IllegalArgumentException("This student has a 0 RWF balance for this payment. New payments are blocked.");
+        }
     }
 
     private String generateSimulationReceiptFile(Payment payment) {

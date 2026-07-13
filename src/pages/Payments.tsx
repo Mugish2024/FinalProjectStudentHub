@@ -152,6 +152,7 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     const balanceMessage = balanceOwed > 0
         ? `You owe ${formatRwf(balanceOwed)} RWF. Please clear this balance.`
         : 'Your balance is 0 RWF. You are fully paid.';
+    const isBalanceClear = balanceOwed <= 0;
 
     const ensureObligation = async (): Promise<PaymentRecord> => {
         const response = await fetch(`${API_BASE}/api/payments/obligations/student`, {
@@ -244,6 +245,10 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     };
 
     const handleStartMobileMoneyPayment = async () => {
+        if (isBalanceClear) {
+            setError('Your balance is 0 RWF. New payments are blocked.');
+            return;
+        }
         if (!mobilePhone.trim()) {
             setError('Phone number is required to start mobile payment.');
             return;
@@ -356,6 +361,10 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     };
 
     const openReceiptValidationModal = () => {
+        if (isBalanceClear) {
+            setError('Your balance is 0 RWF. New receipt payments are blocked.');
+            return;
+        }
         setError('');
         setInfo('');
         setShowVerifyModal(true);
@@ -368,6 +377,10 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
     };
 
     const handleUploadReceipt = async () => {
+        if (isBalanceClear) {
+            setError('Your balance is 0 RWF. New receipt payments are blocked.');
+            return;
+        }
         if (!receiptFile) {
             setError('Please select a receipt image first.');
             return;
@@ -546,19 +559,20 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                                 <button
                                     className="primary-btn action-btn-wide"
                                     onClick={() => setShowMobilePromptModal(true)}
-                                    disabled={isStartingPayment}
+                                    disabled={isStartingPayment || isBalanceClear}
                                 >
-                                    {isStartingPayment ? 'Sending Prompt...' : 'Pay Now'}
+                                    {isBalanceClear ? 'Balance Clear' : isStartingPayment ? 'Sending Prompt...' : 'Pay Now'}
                                 </button>
                                 <button
                                     className="primary-btn action-btn-wide"
                                     onClick={() => window.open(urubutoInitiateUrl || URUBUTO_PAY_URL, '_blank', 'noopener,noreferrer')}
+                                    disabled={isBalanceClear}
                                 >
                                     Continue with Urubuto <ArrowUpRight size={16} />
                                 </button>
                             </div>
                             <div className="payment-action-row secondary-actions">
-                                <button className="ghost-action-btn ocr-action-btn" onClick={openReceiptValidationModal}>
+                                <button className="ghost-action-btn ocr-action-btn" onClick={openReceiptValidationModal} disabled={isBalanceClear}>
                                     <ScanText size={16} />
                                     Validate Receipt with OCR
                                 </button>
@@ -762,34 +776,18 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
             )}
 
             {showMobilePromptModal && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(15, 23, 42, 0.48)',
-                    zIndex: 1200,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '1rem',
-                }}>
-                    <div style={{
-                        width: 'min(460px, 96vw)',
-                        background: '#fff',
-                        borderRadius: 14,
-                        border: '1px solid #dbe5f5',
-                        padding: '1rem',
-                    }}>
-                        <h3 style={{ margin: 0, color: '#12335f' }}>Start Mobile Payment Prompt</h3>
-                        <p style={{ margin: '0.45rem 0 0.8rem', color: '#5d6f8b', fontSize: '0.9rem' }}>
+                <div className="payment-modal-backdrop">
+                    <div className="payment-modal-card mobile-payment-modal">
+                        <h3>Start Mobile Payment Prompt</h3>
+                        <p>
                             Enter your phone number to receive a payment prompt.
                         </p>
-                        <div style={{ display: 'grid', gap: '0.55rem' }}>
+                        <div className="mobile-payment-form">
                             <input
                                 type="text"
                                 placeholder="Mobile number (e.g. 078xxxxxxx)"
                                 value={mobilePhone}
                                 onChange={(e) => setMobilePhone(e.target.value)}
-                                style={{ padding: '0.65rem 0.75rem', border: '1px solid #d4deef', borderRadius: 10 }}
                             />
                             <button
                                 className="primary-btn"
@@ -797,14 +795,13 @@ const Payments: React.FC<PaymentsProps> = ({ studentId, studentNumber }) => {
                                     await handleStartMobileMoneyPayment();
                                     setShowMobilePromptModal(false);
                                 }}
-                                disabled={isStartingPayment}
+                                disabled={isStartingPayment || isBalanceClear}
                             >
-                                {isStartingPayment ? 'Sending Prompt...' : 'Send Prompt'}
+                                {isBalanceClear ? 'Balance Clear' : isStartingPayment ? 'Sending Prompt...' : 'Send Prompt'}
                             </button>
                             <button
-                                className="primary-btn"
+                                className="primary-btn secondary-modal-btn"
                                 onClick={() => setShowMobilePromptModal(false)}
-                                style={{ background: '#64748b' }}
                             >
                                 Close
                             </button>

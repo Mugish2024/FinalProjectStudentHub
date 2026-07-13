@@ -7,14 +7,20 @@ import aucasa.com.rw.dto.attendance.AttendanceRecordResponse;
 import aucasa.com.rw.dto.attendance.AttendanceSessionResponse;
 import aucasa.com.rw.dto.attendance.AttendanceVerificationRequest;
 import aucasa.com.rw.service.AttendanceService;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/attendance")
@@ -26,8 +32,12 @@ public class AttendanceRecordController {
     }
 
     @GetMapping("/sessions")
-    public List<AttendanceSessionResponse> getSessions(@RequestParam(defaultValue = "true") boolean active) {
-        return service.listSessions(active);
+    public ResponseEntity<?> getSessions(@RequestParam(defaultValue = "true") boolean active) {
+        try {
+            return ResponseEntity.ok(service.listSessions(active));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @PatchMapping("/sessions/{id}/active")
@@ -93,6 +103,48 @@ public class AttendanceRecordController {
         }
     }
 
+    @PostMapping("/sessions/special")
+    public ResponseEntity<?> createSpecialSession(@RequestBody Map<String, Object> body) {
+        try {
+            String title = asString(body != null ? body.get("title") : null);
+            String campus = asString(body != null ? body.get("campus") : null);
+            Object slotsPayload = body != null ? body.get("slots") : null;
+            if (slotsPayload instanceof List<?> slots && !slots.isEmpty()) {
+                List<AttendanceService.SpecialSessionSlot> parsedSlots = new ArrayList<>();
+                for (Object item : slots) {
+                    if (!(item instanceof Map<?, ?> slot)) {
+                        throw new IllegalArgumentException("Invalid special attendance slot.");
+                    }
+                    LocalDate date = parseDate(asString(slot.get("date")));
+                    LocalTime startsAt = parseTime(asString(slot.get("startsAt")));
+                    LocalTime endsAt = parseTime(asString(slot.get("endsAt")));
+                    parsedSlots.add(new AttendanceService.SpecialSessionSlot(date, startsAt, endsAt));
+                }
+                return ResponseEntity.ok(service.createSpecialSessions(title, campus, parsedSlots));
+            }
+
+            LocalDateTime start = parseDateTime(asString(body != null ? body.get("startsAt") : null));
+            Integer durationMinutes = parseInteger(asString(body != null ? body.get("durationMinutes") : null));
+            return ResponseEntity.ok(service.createSpecialSession(title, campus, start, durationMinutes));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/sessions/{id}/special")
+    public ResponseEntity<?> deleteSpecialSessionGroup(@PathVariable Long id) {
+        try {
+            int deleted = service.deleteSpecialSessionGroup(id);
+            return ResponseEntity.ok(Map.of("deleted", deleted));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @GetMapping("/sessions/{id}/student-status")
     public ResponseEntity<?> getStudentSessionStatus(@PathVariable Long id, @RequestParam String studentNumber) {
         try {
@@ -151,6 +203,39 @@ public class AttendanceRecordController {
         }
     }
 
+    @PostMapping("/absence")
+    public ResponseEntity<?> submitAbsence(
+            @RequestParam String studentNumber,
+            @RequestParam Long sessionId,
+            @RequestParam String absenceReason,
+            @RequestParam(required = false) MultipartFile supportingDocument
+    ) {
+        try {
+            AttendanceRecordResponse result = service.submitAbsence(studentNumber, sessionId, absenceReason, supportingDocument);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/records/{id}/absence-document")
+    public ResponseEntity<?> absenceDocument(@PathVariable Long id) {
+        try {
+            Resource resource = service.loadAbsenceDocument(id);
+            return ResponseEntity.ok()
+                    .contentType(mediaTypeFor(resource))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                            .filename(resource.getFilename() != null ? resource.getFilename() : "absence-document")
+                            .build()
+                            .toString())
+                    .body(resource);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @PostMapping("/records/{id}/verify")
     public ResponseEntity<?> verifyRecord(@PathVariable Long id, @RequestBody AttendanceVerificationRequest request) {
         try {
@@ -180,5 +265,57 @@ public class AttendanceRecordController {
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid date format.");
         }
+    }
+
+    private LocalDate parseDate(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Slot date is required.");
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid slot date.");
+        }
+    }
+
+    private LocalTime parseTime(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Slot start and end times are required.");
+        }
+        try {
+            return LocalTime.parse(value.trim());
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid slot time.");
+        }
+    }
+
+    private Integer parseInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid duration.");
+        }
+    }
+
+    private String asString(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private MediaType mediaTypeFor(Resource resource) {
+        String filename = resource.getFilename();
+        String lower = filename != null ? filename.toLowerCase() : "";
+        if (lower.endsWith(".pdf")) {
+            return MediaType.APPLICATION_PDF;
+        }
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+            return MediaType.IMAGE_JPEG;
+        }
+        if (lower.endsWith(".png")) {
+            return MediaType.IMAGE_PNG;
+        }
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

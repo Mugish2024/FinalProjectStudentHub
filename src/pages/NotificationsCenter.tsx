@@ -14,11 +14,13 @@ type NoticeItem = {
     message: string;
     time: string;
     type: 'payment' | 'finance' | 'attendance' | 'system';
+    sessionId?: number;
 };
 
 const NotificationsCenter = ({ userRole, studentId }: NotificationsCenterProps) => {
     const [items, setItems] = useState<NoticeItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionMessage, setActionMessage] = useState('');
 
     useEffect(() => {
         const load = async () => {
@@ -63,7 +65,7 @@ const NotificationsCenter = ({ userRole, studentId }: NotificationsCenterProps) 
                 // ignore
             }
 
-            if (userRole === 'staff' || userRole === 'dean' || userRole === 'guild_president') {
+            if (userRole === 'dean' || userRole === 'guild_president') {
                 try {
                     const res = await fetch(`${API_BASE}/api/attendance/sessions?active=true`);
                     const data = await res.json().catch(() => []);
@@ -75,6 +77,7 @@ const NotificationsCenter = ({ userRole, studentId }: NotificationsCenterProps) 
                                 message: `${s.title ?? 'Session'} is currently active.`,
                                 time: s.startsAt ? new Date(s.startsAt).toLocaleString() : 'Now',
                                 type: 'attendance',
+                                sessionId: s.id,
                             });
                         });
                     }
@@ -98,6 +101,25 @@ const NotificationsCenter = ({ userRole, studentId }: NotificationsCenterProps) 
         };
         void load();
     }, [studentId, userRole]);
+
+    const handleCancelAttendance = async (sessionId: number) => {
+        setActionMessage('');
+        try {
+            const response = await fetch(`${API_BASE}/api/attendance/sessions/${sessionId}/active`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ active: false }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error ?? 'Failed to cancel attendance session.');
+            }
+            setItems((current) => current.filter((item) => item.sessionId !== sessionId));
+            setActionMessage('Attendance session cancelled for this occurrence.');
+        } catch (err) {
+            setActionMessage(err instanceof Error ? err.message : 'Failed to cancel attendance session.');
+        }
+    };
 
     const grouped = useMemo(() => {
         return {
@@ -123,6 +145,7 @@ const NotificationsCenter = ({ userRole, studentId }: NotificationsCenterProps) 
             </header>
 
             {loading && <div className="notifications-loading">Loading notifications...</div>}
+            {actionMessage && <div className="notifications-action-message">{actionMessage}</div>}
 
             {!loading && (
                 <section className="notifications-grid">
@@ -134,6 +157,11 @@ const NotificationsCenter = ({ userRole, studentId }: NotificationsCenterProps) 
                                     <strong>{item.title}</strong>
                                     <p>{item.message}</p>
                                     <span>{item.time}</span>
+                                    {item.type === 'attendance' && item.sessionId && (
+                                        <button type="button" onClick={() => void handleCancelAttendance(item.sessionId!)}>
+                                            Cancel session
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                             {grouped[bucket].length === 0 && <div className="notice-empty">No items.</div>}

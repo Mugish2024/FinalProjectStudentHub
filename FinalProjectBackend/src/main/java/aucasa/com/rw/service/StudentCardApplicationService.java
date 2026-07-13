@@ -84,6 +84,8 @@ public class StudentCardApplicationService {
         application.setPhotoPath(storePhoto(photo));
         application.setReplacementRequest(repository.existsByStudentStudentNumber(student.getStudentNumber()));
         application.setFinanceReceiptStatus(application.isReplacementRequest() ? "WAITING_UPLOAD" : "NOT_REQUIRED");
+        application.setPhotoReviewStatus("PENDING_REVIEW");
+        application.setPhotoReviewMessage("Passport photo uploaded. Card office is reviewing it.");
         application.setStatus(StudentCardApplicationStatus.PENDING);
         application.setAppliedAt(LocalDateTime.now());
 
@@ -97,6 +99,9 @@ public class StudentCardApplicationService {
         if (application.isReplacementRequest() && !"APPROVED".equals(application.getFinanceReceiptStatus())) {
             throw new IllegalArgumentException("Approve the finance receipt before marking a replacement card as printed.");
         }
+        if ("REJECTED".equalsIgnoreCase(application.getPhotoReviewStatus())) {
+            throw new IllegalArgumentException("The passport photo was rejected. The student must upload a new photo before printing.");
+        }
         application.setStatus(StudentCardApplicationStatus.PRINTED);
         application.setPrintedAt(LocalDateTime.now());
         if (managerUserId != null) {
@@ -104,6 +109,43 @@ public class StudentCardApplicationService {
                     .orElseThrow(() -> new IllegalArgumentException("Manager user not found."));
             application.setPrintedBy(manager);
         }
+        return toResponse(repository.save(application));
+    }
+
+    @Transactional
+    public StudentCardApplicationResponse replacePhoto(Long id, String studentNumber, MultipartFile photo) {
+        if (isBlank(studentNumber)) {
+            throw new IllegalArgumentException("studentNumber is required.");
+        }
+        validatePhoto(photo);
+        StudentCardApplication application = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Student card request not found."));
+        String owner = application.getStudent() != null ? application.getStudent().getStudentNumber() : "";
+        if (!studentNumber.trim().equalsIgnoreCase(owner)) {
+            throw new IllegalArgumentException("You can upload a photo only for your own student card request.");
+        }
+        if (application.getStatus() == StudentCardApplicationStatus.PRINTED) {
+            throw new IllegalArgumentException("This student card has already been printed.");
+        }
+        application.setPhotoPath(storePhoto(photo));
+        application.setPhotoReviewStatus("PENDING_REVIEW");
+        application.setPhotoReviewMessage("New passport photo uploaded. Card office is reviewing it.");
+        application.setPhotoReviewedAt(null);
+        return toResponse(repository.save(application));
+    }
+
+    @Transactional
+    public StudentCardApplicationResponse reviewPhoto(Long id, boolean approved, String message) {
+        StudentCardApplication application = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Student card request not found."));
+        if (application.getStatus() == StudentCardApplicationStatus.PRINTED) {
+            throw new IllegalArgumentException("This student card has already been printed.");
+        }
+        application.setPhotoReviewStatus(approved ? "APPROVED" : "REJECTED");
+        application.setPhotoReviewMessage(approved
+                ? "Passport photo approved. Your card can continue processing."
+                : (!isBlank(message) ? message.trim() : "Passport photo was rejected. Please upload a clear, proper passport photo."));
+        application.setPhotoReviewedAt(LocalDateTime.now());
         return toResponse(repository.save(application));
     }
 
@@ -198,6 +240,9 @@ public class StudentCardApplicationService {
                 receiptStatus(application),
                 application.getFinanceReceiptMessage(),
                 application.getFinanceReceiptReviewedAt(),
+                photoStatus(application),
+                application.getPhotoReviewMessage(),
+                application.getPhotoReviewedAt(),
                 printedByName
         );
     }
@@ -278,12 +323,22 @@ public class StudentCardApplicationService {
         if (!application.isReplacementRequest()) {
             return "NOT_REQUIRED";
         }
+        if (!isBlank(application.getFinanceReceiptStatus())
+                && "REJECTED".equalsIgnoreCase(application.getFinanceReceiptStatus())) {
+            return "REJECTED";
+        }
         if (isBlank(application.getFinanceReceiptPath())) {
             return "WAITING_UPLOAD";
         }
         return isBlank(application.getFinanceReceiptStatus())
                 ? "PENDING_REVIEW"
                 : application.getFinanceReceiptStatus();
+    }
+
+    private String photoStatus(StudentCardApplication application) {
+        return isBlank(application.getPhotoReviewStatus())
+                ? "PENDING_REVIEW"
+                : application.getPhotoReviewStatus();
     }
 
     private Path resolveUploadDir(String configured) {

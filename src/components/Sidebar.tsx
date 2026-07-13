@@ -138,15 +138,21 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <div className="sidebar-header">
           <div className="logo-container">
-            <img
-              src={aucaLogo}
-              alt="AUCA Logo"
-              className="auca-logo-img"
-              onError={(e) => {
-                e.currentTarget.src = "https://ui-avatars.com/api/?name=AUCA&background=01447B&color=fff";
-              }}
-            />
-            <h1 className="logo-text"> <span>AUCASA</span></h1>
+            <div className="brand-lockup">
+              <img
+                src={aucaLogo}
+                alt="AUCA Logo"
+                className="auca-logo-img"
+                onError={(e) => {
+                  e.currentTarget.src = "https://ui-avatars.com/api/?name=AUCA&background=01447B&color=fff";
+                }}
+              />
+              <div className="university-mark">
+                <strong>Adventist University</strong>
+                <span>Of Central Africa</span>
+              </div>
+            </div>
+            <h1 className="logo-text"><span>AUCASA</span></h1>
           </div>
           <button
             type="button"

@@ -633,6 +633,42 @@
     width: min(540px, 96vw);
 }
 
+.mobile-payment-modal {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    width: min(460px, 96vw);
+}
+
+.mobile-payment-modal h3 {
+    color: #12335f;
+    font-size: 1.05rem;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.mobile-payment-modal p {
+    color: #5d6f8b;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.mobile-payment-form {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.mobile-payment-form input {
+    border: 1px solid #d4deef;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+}
+
+.secondary-modal-btn {
+    background: #64748b;
+}
+
 .receipt-validation-modal {
     overflow: hidden;
 }
@@ -958,18 +994,18 @@
 
 @media (max-width: 860px) {
     .finance-page {
-        padding: 1.1rem;
+        padding: 0.85rem;
     }
 
     .finance-hero {
-        padding: 1.3rem;
+        padding: 1rem;
     }
 
     .finance-hero h1 {
-        font-size: 2rem;
+        font-size: 1.55rem;
     }
 
-    .method-cards,
+    .finance-page .method-cards,
     .code-strip,
     .finance-info-row,
     .info-grid,
@@ -977,8 +1013,114 @@
         grid-template-columns: 1fr;
     }
 
+    .balance-panel {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .balance-mini-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        min-width: 0;
+        width: 100%;
+    }
+
+    .balance-panel > div:first-child strong {
+        font-size: 1.55rem;
+    }
+
+    .finance-page .panel,
+    .finance-page .method-card {
+        border-radius: 10px;
+        padding: 0.72rem;
+    }
+
+    .panel-head h2 {
+        font-size: 1rem;
+    }
+
+    .payment-action-row {
+        grid-template-columns: 1fr;
+    }
+
     .tx-row {
         grid-template-columns: 1fr;
         gap: 0.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .finance-page {
+        padding: 0.6rem;
+    }
+
+    .finance-page-bar,
+    .finance-page .panel {
+        border-radius: 10px;
+    }
+
+    .balance-mini-grid,
+    .receipt-validation-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .balance-panel > div:first-child span,
+    .balance-mini-grid span,
+    .finance-page .method-link {
+        font-size: 0.64rem;
+    }
+
+    .balance-panel > div:first-child strong {
+        font-size: 1.35rem;
+    }
+
+    .balance-panel > div:first-child p,
+    .finance-page .method-card p,
+    .panel-head p {
+        font-size: 0.78rem;
+    }
+
+    .finance-page .method-card {
+        min-height: 0;
+    }
+
+    .finance-page .method-card h3 {
+        font-size: 0.98rem;
+    }
+
+    .payment-modal-backdrop {
+        align-items: flex-start;
+        padding: 0.65rem;
+    }
+
+    .payment-modal-card {
+        border-radius: 12px;
+        max-height: calc(100vh - 1.3rem);
+        overflow: auto;
+        width: 100%;
+    }
+
+    .receipt-validation-head {
+        gap: 0.55rem;
+        padding: 0.85rem 3rem 0.8rem 0.8rem;
+    }
+
+    .receipt-validation-icon {
+        height: 38px;
+        width: 38px;
+    }
+
+    .receipt-validation-head h3,
+    .mobile-payment-modal h3 {
+        font-size: 0.98rem;
+    }
+
+    .receipt-validation-head p,
+    .mobile-payment-modal p {
+        font-size: 0.78rem;
+    }
+
+    .receipt-validation-form,
+    .mobile-payment-modal {
+        padding: 0.8rem;
     }
 }

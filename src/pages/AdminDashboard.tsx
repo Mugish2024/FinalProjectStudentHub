@@ -130,6 +130,7 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         email: '',
         password: '',
     });
+    const [leadershipStudentSearch, setLeadershipStudentSearch] = useState('');
 
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -242,6 +243,17 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
         return filteredStudentRows.slice(start, start + studentTablePageSize);
     }, [filteredStudentRows, studentPage, studentTableTotalPages]);
     const selectedStudent = studentSummaries.find((student) => student.studentId === selectedStudentId) ?? null;
+    const leadershipStudentOptions = useMemo(() => {
+        const query = leadershipStudentSearch.trim().toLowerCase();
+        const selectedNumber = leadershipForm.studentNumber;
+        if (!query) return students;
+        return students.filter((item) => {
+            const studentNumber = item.studentNumber ?? '';
+            return studentNumber === selectedNumber
+                || studentNumber.toLowerCase().includes(query)
+                || item.fullName.toLowerCase().includes(query);
+        });
+    }, [leadershipForm.studentNumber, leadershipStudentSearch, students]);
 
     const resetStudentForm = () => {
         setStudentForm({
@@ -869,6 +881,15 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
                         <h3>Assign Elected Student Privilege</h3>
                     </div>
                     <form className="admin-form" onSubmit={handlePromoteStudent}>
+                        <label className="leadership-student-search">
+                            <Search size={16} />
+                            <input
+                                type="search"
+                                placeholder="Search student by ID"
+                                value={leadershipStudentSearch}
+                                onChange={(e) => setLeadershipStudentSearch(e.target.value)}
+                            />
+                        </label>
                         <select
                             value={leadershipForm.studentNumber}
                             onChange={(e) => {
@@ -883,12 +904,15 @@ const AdminDashboard = ({ fullName = 'System Admin', mode = 'overview' }: AdminD
                             required
                         >
                             <option value="">Select student</option>
-                            {students.map((item) => (
+                            {leadershipStudentOptions.map((item) => (
                                 <option key={item.id} value={item.studentNumber ?? ''}>
                                     {item.fullName} ({item.studentNumber ?? 'No ID'})
                                 </option>
                             ))}
                         </select>
+                        {leadershipStudentSearch.trim() && leadershipStudentOptions.length === 0 && (
+                            <small className="leadership-search-empty">No student found with that ID.</small>
+                        )}
                         <select
                             value={leadershipForm.role}
                             onChange={(e) => {

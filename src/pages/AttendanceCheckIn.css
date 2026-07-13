@@ -9,6 +9,11 @@
 .checkin-head {
     display: grid;
     gap: 0.35rem;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid rgba(203, 213, 225, 0.9);
+    border-radius: 14px;
+    box-shadow: 0 16px 34px rgba(23, 37, 84, 0.09);
+    padding: 1.1rem;
 }
 
 .head-kicker {
@@ -354,6 +359,84 @@
     height: 44px;
     width: 100%;
     font-weight: 800;
+}
+
+.absence-panel {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.absence-head h3 {
+    margin-bottom: 0.25rem;
+}
+
+.absence-head p {
+    margin: 0;
+    color: #526887;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.absence-panel textarea {
+    width: 100%;
+    min-height: 118px;
+    border: 1px solid #cbd8eb;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #0f172a;
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.45;
+    padding: 0.78rem;
+    resize: vertical;
+}
+
+.absence-panel textarea::placeholder {
+    color: #94a3b8;
+}
+
+.absence-upload-field {
+    align-items: center;
+    border: 1px dashed #9bb4d6;
+    border-radius: 10px;
+    color: #2F4F86;
+    cursor: pointer;
+    display: flex;
+    gap: 0.55rem;
+    min-height: 50px;
+    padding: 0.72rem 0.78rem;
+    background: #f8fbff;
+    font-weight: 800;
+}
+
+.absence-upload-field span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.absence-upload-field input {
+    display: none;
+}
+
+.absence-submit-btn {
+    align-items: center;
+    background: #123c69;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    display: inline-flex;
+    font-weight: 800;
+    gap: 0.45rem;
+    height: 48px;
+    justify-content: center;
+    width: 100%;
+}
+
+.absence-submit-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .campus-showcase {

@@ -60,6 +60,7 @@ public class ElectionService {
 
     public List<Election> findAll() { return repository.findAll(); }
     public Optional<Election> findById(Long id) { return repository.findById(id); }
+    @Transactional
     public Election create(Election entity) {
         LocalDateTime now = LocalDateTime.now();
         validateElectionProcessRange(entity.getNominationStart(), entity.getVotingEnd(), now);
@@ -67,6 +68,7 @@ public class ElectionService {
         if (!entity.getVotingStart().toLocalDate().equals(entity.getVotingEnd().toLocalDate())) {
             throw new IllegalArgumentException("Voting day must be on the final date of the election process.");
         }
+        clearPreviousElectionParticipation();
         entity.setEligibleVoters((int) resolveEligibleVoters());
         return repository.save(entity);
     }
@@ -154,6 +156,11 @@ public class ElectionService {
 
     private long resolveEligibleVoters() {
         return studentProfileRepository.count();
+    }
+
+    private void clearPreviousElectionParticipation() {
+        voteRepository.deleteAllInBatch();
+        candidateRepository.deleteAllInBatch();
     }
 
     @Transactional(readOnly = true)

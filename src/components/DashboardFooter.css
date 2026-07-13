@@ -33,6 +33,12 @@
     width: min(1180px, calc(100% - 2rem));
 }
 
+.content-wrapper > .discipline-container + .dashboard-footer {
+    margin: 1rem 0 0;
+    max-width: none;
+    width: 100%;
+}
+
 .content-wrapper > :is(
     .dean-labour-dashboard,
     .dean-labour-page,

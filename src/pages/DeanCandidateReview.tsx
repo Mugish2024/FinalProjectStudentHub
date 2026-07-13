@@ -30,6 +30,7 @@ type ElectionInfo = {
     id: number;
     title: string;
     status: 'DRAFT' | 'NOMINATION' | 'CAMPAIGN' | 'VOTING' | 'CLOSED' | 'ARCHIVED';
+    createdAt?: string;
     votingStart?: string;
     votingEnd?: string;
     eligibleVoters?: number;
@@ -100,9 +101,11 @@ const DeanCandidateReview = () => {
             setError('Failed to load elections.');
             return;
         }
-        const list = Array.isArray(data) ? data : [];
+        const list = Array.isArray(data)
+            ? [...data].sort((a: ElectionInfo, b: ElectionInfo) => getElectionSortTime(b) - getElectionSortTime(a))
+            : [];
         setElections(list);
-        if (!selectedElectionId && list.length > 0) {
+        if (list.length > 0 && (!selectedElectionId || !list.some((election) => election.id === selectedElectionId))) {
             setSelectedElectionId(list[0].id);
         }
     };
@@ -187,8 +190,8 @@ const DeanCandidateReview = () => {
         const status = selectedElection?.status ?? 'DRAFT';
         const progressMap: Record<ElectionInfo['status'], number> = {
             DRAFT: 10,
-            NOMINATION: 35,
-            CAMPAIGN: 60,
+            CAMPAIGN: 35,
+            NOMINATION: 60,
             VOTING: 85,
             CLOSED: 100,
             ARCHIVED: 100,
@@ -196,13 +199,49 @@ const DeanCandidateReview = () => {
         const completed = progressMap[status];
         const labelMap: Record<ElectionInfo['status'], string> = {
             DRAFT: 'Setup',
+            CAMPAIGN: 'Campaign started',
             NOMINATION: 'Students applying',
-            CAMPAIGN: 'Campaigning',
             VOTING: 'Voting open',
             CLOSED: 'Voting closed',
             ARCHIVED: 'Archived',
         };
         return { status, completed, label: labelMap[status] };
+    }, [selectedElection?.status]);
+    const nextPhaseAction = useMemo(() => {
+        const status = selectedElection?.status ?? 'DRAFT';
+        if (status === 'DRAFT') {
+            return {
+                kind: 'campaign' as const,
+                label: 'Start Campaign',
+                icon: <Megaphone size={15} />,
+                className: '',
+            };
+        }
+        if (status === 'CAMPAIGN') {
+            return {
+                kind: 'apply' as const,
+                label: 'Let Students Apply',
+                icon: <FolderCheck size={15} />,
+                className: '',
+            };
+        }
+        if (status === 'NOMINATION') {
+            return {
+                kind: 'open-voting' as const,
+                label: 'Open Voting',
+                icon: <Vote size={15} />,
+                className: 'success',
+            };
+        }
+        if (status === 'VOTING') {
+            return {
+                kind: 'close-voting' as const,
+                label: 'Close Voting',
+                icon: <Gavel size={15} />,
+                className: 'danger',
+            };
+        }
+        return null;
     }, [selectedElection?.status]);
 
     const turnoutCaption = turnoutMetrics.eligibleVoters > 0
@@ -309,6 +348,40 @@ const DeanCandidateReview = () => {
 
     const forceCloseVoting = async () => {
         await updateElectionStatus('CLOSED');
+    };
+
+    const confirmPhaseChange = async (
+        nextStatus: 'NOMINATION' | 'CAMPAIGN',
+        message: string
+    ) => {
+        const confirmed = window.confirm(message);
+        if (!confirmed) return;
+        await updateElectionStatus(nextStatus);
+    };
+
+    const handleNextPhaseAction = () => {
+        if (!nextPhaseAction) return;
+        if (nextPhaseAction.kind === 'campaign') {
+            void confirmPhaseChange(
+                'CAMPAIGN',
+                'Start the campaign phase for this election? After this, the Start Campaign button will be hidden.'
+            );
+            return;
+        }
+        if (nextPhaseAction.kind === 'apply') {
+            void confirmPhaseChange(
+                'NOMINATION',
+                'Let students apply now? After this, you cannot go back to Start Campaign from this control.'
+            );
+            return;
+        }
+        if (nextPhaseAction.kind === 'open-voting') {
+            prepareOpenVoting();
+            return;
+        }
+        if (nextPhaseAction.kind === 'close-voting') {
+            void handleCloseVotingClick();
+        }
     };
 
     const updateVoteProgressVisibility = async () => {
@@ -657,18 +730,21 @@ const DeanCandidateReview = () => {
                             </div>
                         </div>
                         <div className="hero-controls">
-                            <button type="button" onClick={() => updateElectionStatus('NOMINATION')} disabled={isUpdatingPhase}>
-                                <FolderCheck size={15} /> Let Students Apply
-                            </button>
-                            <button type="button" onClick={() => updateElectionStatus('CAMPAIGN')} disabled={isUpdatingPhase}>
-                                <Megaphone size={15} /> Start Campaign
-                            </button>
-                            <button type="button" className="success" onClick={prepareOpenVoting} disabled={isUpdatingPhase}>
-                                <Vote size={15} /> Open Voting
-                            </button>
-                            <button type="button" className="danger" onClick={handleCloseVotingClick} disabled={isUpdatingPhase}>
-                                <Gavel size={15} /> Close Voting
-                            </button>
+                            {nextPhaseAction ? (
+                                <button
+                                    type="button"
+                                    className={`phase-next ${nextPhaseAction.className}`}
+                                    onClick={handleNextPhaseAction}
+                                    disabled={isUpdatingPhase}
+                                >
+                                    {nextPhaseAction.icon} {nextPhaseAction.label}
+                                </button>
+                            ) : (
+                                <div className="phase-complete-note">
+                                    <strong>Phase complete</strong>
+                                    <span>No next phase action available.</span>
+                                </div>
+                            )}
                             <button
                                 type="button"
                                 className={selectedElection?.showVoteProgress ? 'visibility on' : 'visibility'}
@@ -871,7 +947,7 @@ const DeanCandidateReview = () => {
                                         <div style={{ width: `${phaseProgress.completed}%` }} />
                                     </div>
                                     <div className="phase-steps">
-                                        {['Setup', 'Apply', 'Campaign', 'Vote', 'Close'].map((label) => (
+                                        {['Setup', 'Campaign', 'Apply', 'Vote', 'Close'].map((label) => (
                                             <span key={label}>{label}</span>
                                         ))}
                                     </div>
@@ -1043,6 +1119,11 @@ const DeanCandidateReview = () => {
             </div>
         </div>
     );
+};
+
+const getElectionSortTime = (election: ElectionInfo) => {
+    const createdAt = election.createdAt ? new Date(election.createdAt).getTime() : Number.NaN;
+    return Number.isFinite(createdAt) ? createdAt : election.id;
 };
 
 export default DeanCandidateReview;

@@ -5,6 +5,7 @@
     color: #05070b;
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
+    overflow-x: hidden;
     padding-top: 92px;
 }
 
@@ -297,6 +298,7 @@
     gap: 0.35rem;
     padding: 12px 28px;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    white-space: nowrap;
 }
 
 .btn-apply {
@@ -830,7 +832,7 @@
 
 @media (max-width: 1050px) {
     .landing-exact {
-        padding-top: 168px;
+        padding-top: 164px;
     }
 
     .landing-exact-nav-inner {
@@ -849,12 +851,28 @@
         min-height: auto;
         height: auto;
         gap: 0.25rem;
-        padding: 2rem 1rem 0;
+        padding: 2.25rem 1rem 0;
     }
 
     .exact-copy {
         max-width: 680px;
+        margin: 0 auto;
+        text-align: center;
         transform: none;
+    }
+
+    .exact-badge {
+        align-self: center;
+    }
+
+    .exact-line {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .exact-copy p {
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .exact-visual {
@@ -877,8 +895,18 @@
 
     .editorial-inner {
         border-radius: 0;
+        margin: 0 auto;
         max-width: calc(100% - 2rem);
         padding: 0;
+    }
+
+    .editorial-head {
+        text-align: center;
+    }
+
+    .editorial-head h2 {
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .editorial-grid {
@@ -902,32 +930,131 @@
 
 @media (max-width: 700px) {
     .landing-exact {
-        padding-top: 186px;
+        padding-top: 82px;
     }
 
-    .exact-links,
-    .exact-cta-row {
-        flex-wrap: wrap;
-        justify-content: center;
+    .landing-exact-nav-inner {
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 82px;
+        padding: 0.6rem 1rem;
+    }
+
+    .exact-brand {
+        min-width: 0;
+    }
+
+    .brand-icon,
+    .brand-logo {
+        height: 46px;
+        width: 46px;
+    }
+
+    .brand-text-block {
+        min-width: 0;
     }
 
     .brand-text-block small {
-        font-size: 12px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        line-height: 1.25;
+        max-width: 190px;
     }
 
-    .brand-text-block strong {
-        font-size: 34px;
+    .exact-links {
+        display: none;
+    }
+
+    .exact-actions {
+        justify-self: end;
+    }
+
+    .btn-signin {
+        min-width: 0;
+        padding: 8px 14px;
+    }
+
+    .landing-exact-hero {
+        padding: 1.65rem 1rem 0;
     }
 
     .exact-copy h1 {
-        font-size: clamp(2.1rem, 10vw, 3rem);
+        font-size: clamp(2rem, 11vw, 3rem);
+        line-height: 1.04;
+    }
+
+    .exact-copy p {
+        font-size: 0.98rem;
+        line-height: 1.55;
+        margin-bottom: 1.35rem;
+    }
+
+    .exact-cta-row {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: 1fr;
+        justify-content: stretch;
+        width: 100%;
+    }
+
+    .btn-apply,
+    .btn-learn {
+        justify-content: center;
+        min-height: 48px;
+        padding: 12px 18px;
+        width: 100%;
+    }
+
+    .exact-visual {
+        height: 230px;
+        margin-top: 0.5rem;
+        overflow: hidden;
     }
 
     .network-visual {
-        height: 240px;
-        margin: -2rem -300px 0 auto;
-        opacity: 0.52;
-        width: 760px;
+        height: 230px;
+        margin: 0;
+        opacity: 0.44;
+        right: auto;
+        transform: translateX(30%);
+        width: 620px;
+    }
+
+    .signal-message {
+        display: none;
+    }
+
+    .landing-editorial {
+        padding: 1.2rem 0 2.6rem;
+    }
+
+    .editorial-inner {
+        max-width: calc(100% - 1.5rem);
+        padding-top: 1rem;
+    }
+
+    .editorial-card {
+        min-height: auto;
+        padding: 1.2rem;
+    }
+
+    .editorial-card:hover {
+        min-height: auto;
+        transform: none;
+    }
+
+    .editorial-card p,
+    .editorial-card ul,
+    .editorial-card:hover p,
+    .editorial-card:focus-within p,
+    .editorial-card:hover ul,
+    .editorial-card:focus-within ul {
+        max-height: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .editorial-card ul {
+        margin-top: 0.85rem;
     }
 
     .landing-footer {
@@ -940,5 +1067,75 @@
 
     .footer-bottom {
         flex-direction: column;
+    }
+}
+
+@media (max-width: 430px) {
+    .landing-exact {
+        padding-top: 76px;
+    }
+
+    .landing-exact-nav-inner {
+        min-height: 76px;
+        padding: 0.55rem 0.75rem;
+    }
+
+    .exact-brand {
+        gap: 8px;
+    }
+
+    .brand-icon,
+    .brand-logo {
+        height: 40px;
+        width: 40px;
+    }
+
+    .brand-text-block small {
+        font-size: 9px;
+        max-width: 150px;
+    }
+
+    .btn-signin {
+        font-size: 12px;
+        padding: 7px 11px;
+    }
+
+    .landing-exact-hero {
+        padding: 1.35rem 0.85rem 0;
+    }
+
+    .exact-badge {
+        margin-bottom: 0.9rem;
+    }
+
+    .exact-copy h1 {
+        font-size: clamp(1.76rem, 12vw, 2.35rem);
+    }
+
+    .exact-line {
+        margin-bottom: 1.1rem;
+        margin-top: 1.1rem;
+    }
+
+    .exact-copy p {
+        font-size: 0.93rem;
+    }
+
+    .exact-visual {
+        height: 180px;
+    }
+
+    .network-visual {
+        height: 180px;
+        transform: translateX(36%);
+        width: 520px;
+    }
+
+    .editorial-head h2 {
+        font-size: 1.28rem;
+    }
+
+    .footer-logo-row strong {
+        font-size: 1.25rem;
     }
 }

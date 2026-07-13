@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { UserCheck, FileText, Clock, Eye, Calendar, BadgeCheck, Download } from 'lucide-react';
+import { UserCheck, FileText, Clock, Eye, Calendar, BadgeCheck, Download, BriefcaseBusiness, MapPin, GraduationCap, Award, ShieldCheck } from 'lucide-react';
 import './DeanLabourManagement.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082';
@@ -85,6 +85,23 @@ const DeanLabourManagement: React.FC = () => {
     const totalDailyHours = useMemo(() => {
         return dailyLogs.reduce((sum, log) => sum + Number(log.hoursWorked || 0), 0);
     }, [dailyLogs]);
+
+    const publishedActivities = useMemo(() => {
+        return [...activities].sort((a, b) => {
+            if (a.active !== b.active) return a.active ? -1 : 1;
+            return a.title.localeCompare(b.title);
+        });
+    }, [activities]);
+
+    const activeActivityCount = useMemo(() => activities.filter((activity) => activity.active).length, [activities]);
+
+    const campusActivitySummary = useMemo(() => {
+        return activities.reduce<Record<string, number>>((summary, activity) => {
+            const campus = activity.department || 'Unassigned';
+            summary[campus] = (summary[campus] ?? 0) + 1;
+            return summary;
+        }, {});
+    }, [activities]);
 
     const selectedApplication = useMemo(() => {
         if (!selectedApplicationId) return applications[0] ?? null;
@@ -305,6 +322,65 @@ const DeanLabourManagement: React.FC = () => {
                 </aside>
             </section>
 
+            <section className="published-services-panel">
+                <div className="published-services-head">
+                    <div>
+                        <span>Dean Created Labour Services</span>
+                        <h2>Published Labour Positions</h2>
+                        <p>Students can discover and apply for these positions from their labour portal.</p>
+                    </div>
+                    <div className="published-services-summary">
+                        <strong>{activeActivityCount}</strong>
+                        <span>Active of {activities.length}</span>
+                    </div>
+                </div>
+
+                {Object.keys(campusActivitySummary).length > 0 && (
+                    <div className="campus-service-strip">
+                        {Object.entries(campusActivitySummary).map(([campus, count]) => (
+                            <span key={campus}>{campus}: {count}</span>
+                        ))}
+                    </div>
+                )}
+
+                {publishedActivities.length === 0 ? (
+                    <div className="services-empty-state">
+                        <BriefcaseBusiness size={22} />
+                        <div>
+                            <strong>No labour services published yet.</strong>
+                            <p>Use Create Labour Position to add the first service students will see.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="published-services-grid">
+                        {publishedActivities.map((activity) => (
+                            <article key={activity.id} className={`published-service-card ${activity.active ? '' : 'inactive'}`}>
+                                <div className="published-service-top">
+                                    <div className="published-service-icon">
+                                        <BriefcaseBusiness size={19} />
+                                    </div>
+                                    <div>
+                                        <h3>{activity.title}</h3>
+                                        <p>{activity.description || 'Dean approved campus labour activity.'}</p>
+                                    </div>
+                                    <span className={`service-status-chip ${activity.active ? 'active' : 'inactive'}`}>
+                                        {activity.active ? 'Visible' : 'Hidden'}
+                                    </span>
+                                </div>
+                                <div className="published-service-tags">
+                                    <span><MapPin size={13} /> {activity.department}</span>
+                                    <span><GraduationCap size={13} /> Sem {activity.minSemester}+</span>
+                                    <span><Award size={13} /> GPA {activity.minGpa}+</span>
+                                    {activity.requiresSatisfactoryDiscipline && (
+                                        <span><ShieldCheck size={13} /> Discipline clear</span>
+                                    )}
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </section>
+
             <section className="dean-controls-row">
                 <div className="toggle-group">
                     <button className={activeView === 'applications' ? 'active' : ''} onClick={() => setActiveView('applications')}>
@@ -372,7 +448,7 @@ const DeanLabourManagement: React.FC = () => {
                             <div className="field-group field-role">
                                 <label>Role Title</label>
                                 <input
-                                    placeholder="e.g. Library Assistant"
+                                    placeholder="e.g. Library Supporting"
                                     value={newActivity.title}
                                     onChange={(e) => setNewActivity((prev) => ({ ...prev, title: e.target.value }))}
                                     required

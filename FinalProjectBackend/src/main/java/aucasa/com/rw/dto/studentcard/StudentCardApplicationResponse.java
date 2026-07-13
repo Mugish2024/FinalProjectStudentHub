@@ -18,6 +18,9 @@ public class StudentCardApplicationResponse {
     private String financeReceiptStatus;
     private String financeReceiptMessage;
     private LocalDateTime financeReceiptReviewedAt;
+    private String photoReviewStatus;
+    private String photoReviewMessage;
+    private LocalDateTime photoReviewedAt;
     private String printedByName;
 
     public StudentCardApplicationResponse(
@@ -36,6 +39,9 @@ public class StudentCardApplicationResponse {
             String financeReceiptStatus,
             String financeReceiptMessage,
             LocalDateTime financeReceiptReviewedAt,
+            String photoReviewStatus,
+            String photoReviewMessage,
+            LocalDateTime photoReviewedAt,
             String printedByName
     ) {
         this.id = id;
@@ -53,6 +59,9 @@ public class StudentCardApplicationResponse {
         this.financeReceiptStatus = financeReceiptStatus;
         this.financeReceiptMessage = financeReceiptMessage;
         this.financeReceiptReviewedAt = financeReceiptReviewedAt;
+        this.photoReviewStatus = photoReviewStatus;
+        this.photoReviewMessage = photoReviewMessage;
+        this.photoReviewedAt = photoReviewedAt;
         this.printedByName = printedByName;
     }
 
@@ -114,6 +123,18 @@ public class StudentCardApplicationResponse {
 
     public LocalDateTime getFinanceReceiptReviewedAt() {
         return financeReceiptReviewedAt;
+    }
+
+    public String getPhotoReviewStatus() {
+        return photoReviewStatus;
+    }
+
+    public String getPhotoReviewMessage() {
+        return photoReviewMessage;
+    }
+
+    public LocalDateTime getPhotoReviewedAt() {
+        return photoReviewedAt;
     }
 
     public String getPrintedByName() {

@@ -32,6 +32,15 @@ public class AttendanceSession extends BaseEntity {
     @Column(nullable = false)
     private Boolean active = true;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean cancelled = false;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean defaultWeekly = false;
+
+    @Column(length = 80)
+    private String specialGroupKey;
+
     public String getTitle() {
         return title;
     }
@@ -78,5 +87,29 @@ public class AttendanceSession extends BaseEntity {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getCancelled() {
+        return cancelled;
+    }
+
+    public void setCancelled(Boolean cancelled) {
+        this.cancelled = cancelled;
+    }
+
+    public Boolean getDefaultWeekly() {
+        return defaultWeekly;
+    }
+
+    public void setDefaultWeekly(Boolean defaultWeekly) {
+        this.defaultWeekly = defaultWeekly;
+    }
+
+    public String getSpecialGroupKey() {
+        return specialGroupKey;
+    }
+
+    public void setSpecialGroupKey(String specialGroupKey) {
+        this.specialGroupKey = specialGroupKey;
     }
 }
